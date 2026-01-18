@@ -292,6 +292,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          is_active: boolean | null
           lawfirm_id: string | null
           theme_pref: Database["public"]["Enums"]["theme_pref"] | null
           updated_at: string | null
@@ -302,6 +303,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          is_active?: boolean | null
           lawfirm_id?: string | null
           theme_pref?: Database["public"]["Enums"]["theme_pref"] | null
           updated_at?: string | null
@@ -312,6 +314,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          is_active?: boolean | null
           lawfirm_id?: string | null
           theme_pref?: Database["public"]["Enums"]["theme_pref"] | null
           updated_at?: string | null

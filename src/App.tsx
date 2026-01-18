@@ -12,6 +12,7 @@ import Leads from "@/pages/Leads";
 import LeadNew from "@/pages/LeadNew";
 import LeadDetail from "@/pages/LeadDetail";
 import LeadEdit from "@/pages/LeadEdit";
+import Users from "@/pages/Users";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
                 <Route path="leads/new" element={<LeadNew />} />
                 <Route path="leads/:id" element={<LeadDetail />} />
                 <Route path="leads/:id/edit" element={<LeadEdit />} />
+                <Route path="users" element={<Users />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

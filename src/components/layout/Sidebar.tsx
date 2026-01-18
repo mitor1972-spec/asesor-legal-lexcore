@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Scale, LayoutDashboard, Users, Plus, Settings, X } from 'lucide-react';
+import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
@@ -67,6 +67,19 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         {isAdmin && (
           <>
             <div className="my-4 border-t border-sidebar-border" />
+            <Link
+              to="/users"
+              onClick={onClose}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                location.pathname === '/users'
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent'
+              )}
+            >
+              <UserCog className="h-4 w-4" />
+              Usuarios
+            </Link>
             <Link
               to="/settings"
               onClick={onClose}
