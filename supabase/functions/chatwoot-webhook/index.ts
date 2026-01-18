@@ -16,7 +16,7 @@ interface ChatwootContact {
 interface ChatwootMessage {
   id: number;
   content: string;
-  message_type: string;
+  message_type: number | string; // Can be 0/1 or 'incoming'/'outgoing'
   created_at: number;
   sender?: {
     type: string;
@@ -167,24 +167,74 @@ function extractConversationId(payload: ChatwootWebhookPayload): number | null {
   return null;
 }
 
-// Extract contact info from various locations
-function extractContact(payload: ChatwootWebhookPayload): ChatwootContact | null {
-  // Try meta.sender first (common location)
-  if (payload.meta?.sender) return payload.meta.sender;
-  // Try conversation.meta.sender
-  if (payload.conversation?.meta?.sender) return payload.conversation.meta.sender;
-  // Try conversation.contact
-  if (payload.conversation?.contact) return payload.conversation.contact;
-  // Try root contact
-  if (payload.contact) return payload.contact;
-  return null;
-}
-
 // Extract messages from various locations
 function extractMessages(payload: ChatwootWebhookPayload): ChatwootMessage[] {
   if (payload.messages && payload.messages.length > 0) return payload.messages;
   if (payload.conversation?.messages && payload.conversation.messages.length > 0) return payload.conversation.messages;
   return [];
+}
+
+// Extract contact data from message content (NOT from contact profile)
+// Chatwoot contact profile is always empty - data is collected by Amara in the conversation
+interface ExtractedContactData {
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
+function extractContactFromMessages(messages: ChatwootMessage[]): ExtractedContactData {
+  // Concatenate all incoming messages (from the client, not the agent)
+  const clientMessages = messages
+    .filter(m => m.message_type === 0 || m.message_type === 'incoming' || (m.sender?.type === 'contact'))
+    .map(m => m.content || '')
+    .join(' ');
+  
+  const allText = clientMessages;
+  
+  // Extract name patterns: "me llamo X", "soy X", "mi nombre es X"
+  let name: string | null = null;
+  const namePatterns = [
+    /me\s+llamo\s+([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?)/i,
+    /soy\s+([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?)/i,
+    /mi\s+nombre\s+es\s+([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?)/i,
+    /^([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?),?\s+(?:necesito|tengo|quiero)/i,
+  ];
+  
+  for (const pattern of namePatterns) {
+    const match = allText.match(pattern);
+    if (match && match[1]) {
+      name = match[1].trim();
+      break;
+    }
+  }
+  
+  // Extract Spanish phone number: 6XXXXXXXX, 7XXXXXXXX, 8XXXXXXXX, 9XXXXXXXX
+  let phone: string | null = null;
+  const phoneMatch = allText.match(/\b([6789]\d{8})\b/);
+  if (phoneMatch) {
+    phone = phoneMatch[1];
+  }
+  
+  // Extract email
+  let email: string | null = null;
+  const emailMatch = allText.match(/[\w.-]+@[\w.-]+\.\w+/i);
+  if (emailMatch) {
+    email = emailMatch[0].toLowerCase();
+  }
+  
+  return { name, phone, email };
+}
+
+// Build full conversation text from messages
+function buildConversationText(messages: ChatwootMessage[]): string {
+  return messages
+    .sort((a, b) => a.created_at - b.created_at)
+    .map(m => {
+      const isAgent = m.message_type === 1 || m.message_type === 'outgoing' || m.sender?.type === 'User';
+      const sender = isAgent ? 'Agente' : 'Cliente';
+      return `[${sender}]: ${m.content || ''}`;
+    })
+    .join('\n');
 }
 
 Deno.serve(async (req) => {
@@ -296,14 +346,10 @@ Deno.serve(async (req) => {
     // Extract key information
     const conversationId = extractConversationId(payload!);
     const status = extractStatus(payload!);
-    const contact = extractContact(payload!);
     
     console.log('[CHATWOOT_WEBHOOK] Extracted data:', {
       conversationId,
       status,
-      contactName: contact?.name,
-      contactEmail: contact?.email,
-      contactPhone: contact?.phone_number,
     });
 
     // Handle different event types
@@ -332,8 +378,8 @@ Deno.serve(async (req) => {
 
       console.log('[CHATWOOT_WEBHOOK] Status is resolved or setting allows all - processing...');
       
-      // Process the conversation
-      const result = await processConversation(supabase, payload, settings, conversationId, contact);
+      // Process the conversation - extract contact data from messages, not from contact profile
+      const result = await processConversation(supabase, payload, settings, conversationId);
       const logResult = result.error ? 'error' : 'success';
       await logWebhookRequest(supabase, req, payload.event, payload, logResult, result.error || null, startTime);
       
@@ -347,7 +393,7 @@ Deno.serve(async (req) => {
       // If only_resolved_conversations is false, process new conversations too
       if (!settings.only_resolved_conversations) {
         console.log('[CHATWOOT_WEBHOOK] Processing new conversation (only_resolved disabled)');
-        const result = await processConversation(supabase, payload, settings, conversationId, contact);
+        const result = await processConversation(supabase, payload, settings, conversationId);
         const logResult = result.error ? 'error' : 'success';
         await logWebhookRequest(supabase, req, payload.event, payload, logResult, result.error || null, startTime);
         
@@ -390,12 +436,12 @@ Deno.serve(async (req) => {
   }
 });
 
+// Process conversation - extract ALL data from messages, not from contact profile
 async function processConversation(
   supabase: any,
   payload: ChatwootWebhookPayload,
   settings: any,
-  conversationId: number | null,
-  contact: ChatwootContact | null
+  conversationId: number | null
 ) {
   console.log('[PROCESS_CONVERSATION] Starting...');
   
@@ -420,65 +466,40 @@ async function processConversation(
     return { message: 'Already processed', lead_id: existingConv.lead_id };
   }
 
-  // Extract contact info
-  const contactName = contact?.name || 'Sin nombre';
-  const contactEmail = contact?.email || null;
-  const contactPhone = contact?.phone_number || null;
-
-  console.log('[PROCESS_CONVERSATION] Contact extracted:', { name: contactName, email: contactEmail, phone: contactPhone });
-
-  // Check if we have contact info
-  if (!contactPhone && !contactEmail) {
-    console.log('[PROCESS_CONVERSATION] Skipping - no contact info');
-    await logImport(supabase, conversationId, payload.event, 'skipped', 'No contact info (no phone or email)', { contact });
-    return { message: 'Skipped - no contact info' };
-  }
-
-  // Build conversation content from messages
+  // Extract messages from payload
   const messages = extractMessages(payload);
-  let conversationContent = '';
+  console.log(`[PROCESS_CONVERSATION] Found ${messages.length} messages`);
   
-  if (messages.length > 0) {
-    console.log(`[PROCESS_CONVERSATION] Found ${messages.length} messages`);
-    conversationContent = messages
-      .filter(m => m.message_type === 'incoming' || m.message_type === 'outgoing')
-      .map(m => {
-        const sender = m.sender?.type === 'contact' ? contactName : 'Agente';
-        return `[${sender}]: ${m.content}`;
-      })
-      .join('\n');
+  if (messages.length === 0) {
+    console.log('[PROCESS_CONVERSATION] No messages in payload');
+    await logImport(supabase, conversationId, payload.event, 'skipped', 'No messages in payload', { payload_keys: Object.keys(payload) });
+    return { message: 'Skipped - no messages' };
   }
 
-  // If no messages in payload, use a placeholder
-  if (!conversationContent) {
-    console.log('[PROCESS_CONVERSATION] No messages in payload, using placeholder');
-    conversationContent = `Conversación de Chatwoot #${conversationId} con ${contactName}`;
-  }
+  // Build full conversation text from ALL messages
+  const conversationContent = buildConversationText(messages);
+  console.log('[PROCESS_CONVERSATION] Conversation content preview:', conversationContent.substring(0, 500));
 
-  // Build lead text
-  const leadText = `
-Consulta recibida por Web chat (Chatwoot)
+  // Extract contact data FROM MESSAGES (not from contact profile which is always empty)
+  const extractedContact = extractContactFromMessages(messages);
+  console.log('[PROCESS_CONVERSATION] Contact extracted from messages:', extractedContact);
 
-Contacto: ${contactName}
-${contactPhone ? `Teléfono: ${contactPhone}` : ''}
-${contactEmail ? `Email: ${contactEmail}` : ''}
+  // The lead_text IS the full conversation - this is the raw input for Lexcore
+  const leadText = conversationContent;
 
-Conversación:
-${conversationContent}
-  `.trim();
-
-  console.log('[PROCESS_CONVERSATION] Lead text preview:', leadText.substring(0, 300));
-
-  // Build structured fields
+  // Build structured fields with extracted data
   const structuredFields = {
-    nombre: contactName,
-    telefono: contactPhone,
-    email: contactEmail,
+    nombre: extractedContact.name || null,
+    telefono: extractedContact.phone || null,
+    email: extractedContact.email || null,
     fuente: 'Chatwoot',
     chatwoot_conversation_id: conversationId,
   };
 
-  // Create lead
+  console.log('[PROCESS_CONVERSATION] Structured fields:', structuredFields);
+
+  // Create lead - always create it, even without contact data
+  // Lexcore will extract more details from the conversation
   console.log('[PROCESS_CONVERSATION] Creating lead...');
   const { data: lead, error: leadError } = await supabase
     .from('leads')
@@ -505,12 +526,12 @@ ${conversationContent}
   // Save conversation record
   const { error: convError } = await supabase.from('chatwoot_conversations').insert({
     chatwoot_conversation_id: conversationId,
-    chatwoot_contact_id: contact?.id,
+    chatwoot_contact_id: null, // We don't use contact profile
     chatwoot_account_id: accountId,
     lead_id: lead.id,
-    contact_name: contactName,
-    contact_email: contactEmail,
-    contact_phone: contactPhone,
+    contact_name: extractedContact.name,
+    contact_email: extractedContact.email,
+    contact_phone: extractedContact.phone,
     status: extractStatus(payload),
     messages_count: messages.length,
     conversation_content: conversationContent,
@@ -520,9 +541,9 @@ ${conversationContent}
     console.error('[PROCESS_CONVERSATION] ERROR saving conversation record:', convError);
   }
 
-  // Process with Lexcore if enabled
+  // Process with Lexcore if enabled - this will extract legal area, urgency, etc.
   if (settings.auto_process_lexcore) {
-    console.log('[PROCESS_CONVERSATION] Calling Lexcore...');
+    console.log('[PROCESS_CONVERSATION] Calling Lexcore to extract and score...');
     try {
       const lexcoreResponse = await fetch(
         `${Deno.env.get('SUPABASE_URL')}/functions/v1/calculate-lexcore`,
@@ -545,15 +566,23 @@ ${conversationContent}
         const errorText = await lexcoreResponse.text();
         console.error('[PROCESS_CONVERSATION] Lexcore failed:', errorText);
       } else {
-        console.log('[PROCESS_CONVERSATION] Lexcore processing successful');
+        const lexcoreResult = await lexcoreResponse.json();
+        console.log('[PROCESS_CONVERSATION] Lexcore processing successful:', lexcoreResult);
       }
     } catch (lexcoreError) {
       console.error('[PROCESS_CONVERSATION] Error calling Lexcore:', lexcoreError);
     }
   }
 
-  await logImport(supabase, conversationId, payload.event, 'success', null, { lead_id: lead.id });
+  await logImport(supabase, conversationId, payload.event, 'success', null, { 
+    lead_id: lead.id,
+    extracted_contact: extractedContact 
+  });
 
   console.log(`[PROCESS_CONVERSATION] SUCCESS - Lead: ${lead.id}`);
-  return { message: 'Lead created', lead_id: lead.id };
+  return { 
+    message: 'Lead created', 
+    lead_id: lead.id,
+    extracted_contact: extractedContact
+  };
 }
