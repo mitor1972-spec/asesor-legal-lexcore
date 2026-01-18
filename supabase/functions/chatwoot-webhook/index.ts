@@ -147,43 +147,55 @@ async function fetchAllMessages(conversationId: number, accountId: number): Prom
   try {
     const all: ChatwootMessage[] = [];
 
-    // Chatwoot endpoints are typically paginated; loop defensively.
-    let page = 1;
+    // First request exactly as documented (no page param), then paginate if meta.next_page exists
+    let page: number | null = null;
     const maxPages = 25;
 
-    while (page <= maxPages) {
-      const url = `${normalizedBase}/api/v1/accounts/${accountId}/conversations/${conversationId}/messages?page=${page}`;
-      console.log(`[CHATWOOT_API] Fetching messages (page ${page}) from: ${url}`);
+    for (let i = 0; i < maxPages; i++) {
+      const qs = page ? `?page=${page}` : '';
+      const url = `${normalizedBase}/api/v1/accounts/${accountId}/conversations/${conversationId}/messages${qs}`;
+      console.log(`[CHATWOOT_API] Fetching messages${page ? ` (page ${page})` : ''} from: ${url}`);
 
       const response = await fetch(url, {
+        method: 'GET',
         headers: {
           api_access_token: apiToken,
-          'Content-Type': 'application/json',
         },
       });
 
+      const rawText = await response.text();
+      let data: any = null;
+      try {
+        data = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        // keep rawText for logs
+      }
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[CHATWOOT_API] Error ${response.status}: ${errorText}`);
+        console.error(`[CHATWOOT_API] Error ${response.status}:`, data ?? rawText);
         return [];
       }
 
-      const data = await response.json();
       const payload = (data?.payload ?? data) as any;
-
       const pageMessages: ChatwootMessage[] = Array.isArray(payload) ? payload : (payload?.messages ?? []);
-      console.log(`[CHATWOOT_API] Page ${page}: ${pageMessages.length} messages`);
+      console.log(`[CHATWOOT_API] Received ${pageMessages.length} messages`);
 
       all.push(...pageMessages);
 
-      // Stop conditions
-      if (!pageMessages.length) break;
-
       const nextPage = data?.meta?.next_page;
-      if (!nextPage) break;
+      if (nextPage) {
+        page = Number(nextPage);
+        if (!Number.isFinite(page) || page < 1) break;
+        continue;
+      }
 
-      page = Number(nextPage);
-      if (!Number.isFinite(page) || page < 1) break;
+      // Heuristic: if no next_page but got a full page, try next page once
+      if (!page && pageMessages.length >= 25) {
+        page = 2;
+        continue;
+      }
+
+      break;
     }
 
     console.log(`[CHATWOOT_API] Total fetched messages: ${all.length}`);
@@ -730,9 +742,10 @@ async function processConversation(
   // Fetch ALL messages from Chatwoot API
   console.log('[PROCESS] Fetching all messages from Chatwoot API...');
   let messages = await fetchAllMessages(conversationId, accountId);
+  const apiFallbackUsed = messages.length === 0;
   
   // Fallback to payload messages if API fails
-  if (messages.length === 0) {
+  if (apiFallbackUsed) {
     console.log('[PROCESS] API returned no messages, using payload messages');
     messages = payload.messages || payload.conversation?.messages || [];
   }
@@ -759,6 +772,7 @@ async function processConversation(
     await logImport(supabase, conversationId, payload.event, 'skipped', validation.reason, { 
       messages_count: messages.length,
       client_messages_count: messages.filter(m => m.message_type === 0 || m.message_type === 'incoming').length,
+      api_fallback_used: apiFallbackUsed,
       extracted_contact: extractedContact,
       preview: conversationContent.substring(0, 200)
     });
@@ -830,6 +844,7 @@ async function processConversation(
   await logImport(supabase, conversationId, payload.event, 'success', null, { 
     lead_id: lead.id,
     messages_count: messages.length,
+    api_fallback_used: apiFallbackUsed,
     extracted_contact: extractedContact 
   });
 
