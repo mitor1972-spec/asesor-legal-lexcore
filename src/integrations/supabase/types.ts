@@ -89,25 +89,76 @@ export type Database = {
       }
       lawfirms: {
         Row: {
+          address: string | null
+          areas_accepted: string[] | null
+          cif: string | null
+          city: string | null
+          contact_email: string | null
+          contact_person: string | null
           created_at: string | null
           email_derivations: string | null
+          exclusions: string[] | null
           id: string
+          logo_url: string | null
+          max_lead_price: number | null
+          min_lead_score: number | null
+          monthly_capacity: number | null
           name: string
+          openai_api_key: string | null
+          phone: string | null
+          province: string | null
+          provinces_accepted: string[] | null
+          settings_json: Json | null
           status: Database["public"]["Enums"]["lawfirm_status"] | null
+          website: string | null
         }
         Insert: {
+          address?: string | null
+          areas_accepted?: string[] | null
+          cif?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
           created_at?: string | null
           email_derivations?: string | null
+          exclusions?: string[] | null
           id?: string
+          logo_url?: string | null
+          max_lead_price?: number | null
+          min_lead_score?: number | null
+          monthly_capacity?: number | null
           name: string
+          openai_api_key?: string | null
+          phone?: string | null
+          province?: string | null
+          provinces_accepted?: string[] | null
+          settings_json?: Json | null
           status?: Database["public"]["Enums"]["lawfirm_status"] | null
+          website?: string | null
         }
         Update: {
+          address?: string | null
+          areas_accepted?: string[] | null
+          cif?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
           created_at?: string | null
           email_derivations?: string | null
+          exclusions?: string[] | null
           id?: string
+          logo_url?: string | null
+          max_lead_price?: number | null
+          min_lead_score?: number | null
+          monthly_capacity?: number | null
           name?: string
+          openai_api_key?: string | null
+          phone?: string | null
+          province?: string | null
+          provinces_accepted?: string[] | null
+          settings_json?: Json | null
           status?: Database["public"]["Enums"]["lawfirm_status"] | null
+          website?: string | null
         }
         Relationships: []
       }
@@ -115,19 +166,31 @@ export type Database = {
         Row: {
           assigned_at: string | null
           assigned_by_user_id: string | null
+          assigned_lawyer_id: string | null
           branch_id: string | null
+          contacted_at: string | null
+          firm_notes: string | null
+          firm_status: string | null
           id: string
           lawfirm_id: string | null
           lead_id: string | null
+          result_amount: number | null
+          result_notes: string | null
           status_delivery: Database["public"]["Enums"]["delivery_status"] | null
         }
         Insert: {
           assigned_at?: string | null
           assigned_by_user_id?: string | null
+          assigned_lawyer_id?: string | null
           branch_id?: string | null
+          contacted_at?: string | null
+          firm_notes?: string | null
+          firm_status?: string | null
           id?: string
           lawfirm_id?: string | null
           lead_id?: string | null
+          result_amount?: number | null
+          result_notes?: string | null
           status_delivery?:
             | Database["public"]["Enums"]["delivery_status"]
             | null
@@ -135,10 +198,16 @@ export type Database = {
         Update: {
           assigned_at?: string | null
           assigned_by_user_id?: string | null
+          assigned_lawyer_id?: string | null
           branch_id?: string | null
+          contacted_at?: string | null
+          firm_notes?: string | null
+          firm_status?: string | null
           id?: string
           lawfirm_id?: string | null
           lead_id?: string | null
+          result_amount?: number | null
+          result_notes?: string | null
           status_delivery?:
             | Database["public"]["Enums"]["delivery_status"]
             | null
@@ -147,6 +216,13 @@ export type Database = {
           {
             foreignKeyName: "lead_assignments_assigned_by_user_id_fkey"
             columns: ["assigned_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_assignments_assigned_lawyer_id_fkey"
+            columns: ["assigned_lawyer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -269,6 +345,63 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_legal_help: {
+        Row: {
+          commercial_next_steps: string | null
+          documentation_needed: string | null
+          estimated_complexity: string | null
+          generated_at: string | null
+          id: string
+          lawfirm_id: string | null
+          lead_id: string | null
+          legal_next_steps: string | null
+          legal_orientation: string | null
+          llm_response_json: Json | null
+          risks_alerts: string | null
+        }
+        Insert: {
+          commercial_next_steps?: string | null
+          documentation_needed?: string | null
+          estimated_complexity?: string | null
+          generated_at?: string | null
+          id?: string
+          lawfirm_id?: string | null
+          lead_id?: string | null
+          legal_next_steps?: string | null
+          legal_orientation?: string | null
+          llm_response_json?: Json | null
+          risks_alerts?: string | null
+        }
+        Update: {
+          commercial_next_steps?: string | null
+          documentation_needed?: string | null
+          estimated_complexity?: string | null
+          generated_at?: string | null
+          id?: string
+          lawfirm_id?: string | null
+          lead_id?: string | null
+          legal_next_steps?: string | null
+          legal_orientation?: string | null
+          llm_response_json?: Json | null
+          risks_alerts?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_legal_help_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_legal_help_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -545,6 +678,15 @@ export type Database = {
         | "lawfirm_lawyer"
       attachment_context: "initial" | "update"
       delivery_status: "pending" | "sent" | "delivered" | "failed"
+      firm_case_status:
+        | "received"
+        | "reviewing"
+        | "contacted"
+        | "in_progress"
+        | "won"
+        | "lost"
+        | "rejected"
+        | "archived"
       lawfirm_status: "active" | "inactive"
       lead_status: "Pendiente" | "Derivado" | "Facturado" | "Cerrado"
       source_channel: "Teléfono" | "Web chat" | "WhatsApp" | "Email"
@@ -685,6 +827,16 @@ export const Constants = {
       ],
       attachment_context: ["initial", "update"],
       delivery_status: ["pending", "sent", "delivered", "failed"],
+      firm_case_status: [
+        "received",
+        "reviewing",
+        "contacted",
+        "in_progress",
+        "won",
+        "lost",
+        "rejected",
+        "archived",
+      ],
       lawfirm_status: ["active", "inactive"],
       lead_status: ["Pendiente", "Derivado", "Facturado", "Cerrado"],
       source_channel: ["Teléfono", "Web chat", "WhatsApp", "Email"],

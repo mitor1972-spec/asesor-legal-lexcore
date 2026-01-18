@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { LawfirmLayout } from "@/components/lawfirm/LawfirmLayout";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Leads from "@/pages/Leads";
@@ -16,6 +17,9 @@ import Users from "@/pages/Users";
 import ApiKeys from "@/pages/settings/ApiKeys";
 import LexcoreConfig from "@/pages/settings/LexcoreConfig";
 import LawfirmsManagement from "@/pages/settings/LawfirmsManagement";
+import LawfirmDashboard from "@/pages/lawfirm/LawfirmDashboard";
+import LawfirmCases from "@/pages/lawfirm/LawfirmCases";
+import LawfirmCaseDetail from "@/pages/lawfirm/LawfirmCaseDetail";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +34,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
+              {/* Internal Panel */}
               <Route path="/" element={<MainLayout />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
@@ -41,6 +46,13 @@ const App = () => (
                 <Route path="settings/api-keys" element={<ApiKeys />} />
                 <Route path="settings/lexcore" element={<LexcoreConfig />} />
                 <Route path="settings/lawfirms" element={<LawfirmsManagement />} />
+              </Route>
+              {/* Lawfirm Portal */}
+              <Route path="/despacho" element={<LawfirmLayout />}>
+                <Route index element={<Navigate to="/despacho/dashboard" replace />} />
+                <Route path="dashboard" element={<LawfirmDashboard />} />
+                <Route path="casos" element={<LawfirmCases />} />
+                <Route path="casos/:id" element={<LawfirmCaseDetail />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

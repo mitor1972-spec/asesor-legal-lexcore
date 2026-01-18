@@ -1,11 +1,11 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Sidebar } from './Sidebar';
-import { Header } from './Header';
+import { LawfirmSidebar } from './LawfirmSidebar';
+import { LawfirmHeader } from './LawfirmHeader';
 import { useState } from 'react';
 
-export function MainLayout() {
-  const { user, loading, isInternal, isLawfirm } = useAuthContext();
+export function LawfirmLayout() {
+  const { user, loading, isLawfirm } = useAuthContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) {
@@ -20,21 +20,21 @@ export function MainLayout() {
     return <Navigate to="/login" replace />;
   }
 
-  // Redirect lawfirm users to their portal
-  if (isLawfirm) {
-    return <Navigate to="/despacho/dashboard" replace />;
+  // Redirect internal users to main dashboard
+  if (!isLawfirm) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (
-    <div className="min-h-screen flex bg-background">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className="min-h-screen flex bg-background lawfirm-theme">
+      <LawfirmSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <LawfirmHeader onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <Outlet />
         </main>
         <footer className="border-t py-3 px-4 text-center text-xs text-muted-foreground">
-          Lexcore™ v1.0 — © 2025 Asesor.Legal
+          Powered by Lexcore™ — © 2025 Asesor.Legal
         </footer>
       </div>
     </div>
