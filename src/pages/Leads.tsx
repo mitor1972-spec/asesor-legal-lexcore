@@ -7,12 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { LEAD_STATUSES, SOURCE_CHANNELS, AREAS_LEGALES, type LeadStatus, type SourceChannel } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Search, Pencil, Archive, Thermometer, FileDown } from 'lucide-react';
+import { Plus, Search, Pencil, Archive, Thermometer, FileDown, Building2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
+import { BulkAssignDialog } from '@/components/lead/BulkAssignDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { exportLeadsToExcel } from '@/lib/exportToExcel';
 
@@ -30,6 +32,8 @@ export default function Leads() {
   const [channel, setChannel] = useState<SourceChannel | ''>(searchParams.get('channel') as SourceChannel || '');
   const [areaLegal, setAreaLegal] = useState(searchParams.get('area') || '');
   const [page, setPage] = useState(1);
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [showBulkAssign, setShowBulkAssign] = useState(false);
 
   const { data, isLoading } = useLeads(
     { search: search || undefined, status: status || undefined, channel: channel || undefined, areaLegal: areaLegal || undefined },
@@ -38,7 +42,7 @@ export default function Leads() {
   const archiveMutation = useArchiveLead();
 
   const handleArchive = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // Prevent row click navigation
+    e.stopPropagation();
     if (confirm('¿Archivar este lead?')) {
       try {
         await archiveMutation.mutateAsync(id);
@@ -67,6 +71,28 @@ export default function Leads() {
     } catch {
       toast.error('Error al exportar');
     }
+  };
+
+  const toggleLeadSelection = (leadId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedLeads(prev => [...prev, leadId]);
+    } else {
+      setSelectedLeads(prev => prev.filter(id => id !== leadId));
+    }
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked && data?.leads) {
+      setSelectedLeads(data.leads.map(l => l.id));
+    } else {
+      setSelectedLeads([]);
+    }
+  };
+
+  const allSelected = data?.leads && data.leads.length > 0 && selectedLeads.length === data.leads.length;
+
+  const handleBulkAssignSuccess = () => {
+    setSelectedLeads([]);
   };
 
   return (
@@ -121,10 +147,35 @@ export default function Leads() {
         </CardContent>
       </Card>
 
+      {/* Bulk actions bar */}
+      {selectedLeads.length > 0 && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="py-3 flex items-center justify-between">
+            <span className="text-sm font-medium">
+              ☑️ {selectedLeads.length} leads seleccionados
+            </span>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => setShowBulkAssign(true)}>
+                <Building2 className="mr-2 h-4 w-4" />Asignar a despacho
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedLeads([])}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="shadow-soft overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                <Checkbox 
+                  checked={allSelected}
+                  onCheckedChange={toggleSelectAll}
+                />
+              </TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead>Nombre</TableHead>
               <TableHead>Canal</TableHead>
@@ -132,7 +183,7 @@ export default function Leads() {
               <TableHead className="text-center">
                 <span className="flex items-center justify-center gap-1">
                   <Thermometer className="h-3 w-3" />
-                  Temperatura
+                  Temp.
                 </span>
               </TableHead>
               <TableHead className="text-center">Precio</TableHead>
@@ -142,9 +193,9 @@ export default function Leads() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8">Cargando...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8">Cargando...</TableCell></TableRow>
             ) : data?.leads.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay leads</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No hay leads</TableCell></TableRow>
             ) : (
               data?.leads.map(lead => (
                 <TableRow 
@@ -152,6 +203,12 @@ export default function Leads() {
                   className="cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => handleRowClick(lead.id)}
                 >
+                  <TableCell onClick={e => e.stopPropagation()}>
+                    <Checkbox 
+                      checked={selectedLeads.includes(lead.id)}
+                      onCheckedChange={(checked) => toggleLeadSelection(lead.id, !!checked)}
+                    />
+                  </TableCell>
                   <TableCell className="text-sm">{format(new Date(lead.created_at), 'dd MMM yyyy', { locale: es })}</TableCell>
                   <TableCell className="font-medium">{lead.structured_fields?.nombre || 'Sin nombre'} {lead.structured_fields?.apellidos || ''}</TableCell>
                   <TableCell><Badge variant="outline">{lead.source_channel}</Badge></TableCell>
@@ -193,6 +250,13 @@ export default function Leads() {
           <Button variant="outline" disabled={page === data.totalPages} onClick={() => setPage(p => p + 1)}>Siguiente</Button>
         </div>
       )}
+
+      <BulkAssignDialog
+        open={showBulkAssign}
+        onOpenChange={setShowBulkAssign}
+        leadIds={selectedLeads}
+        onSuccess={handleBulkAssignSuccess}
+      />
     </div>
   );
 }
