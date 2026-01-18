@@ -2,7 +2,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -10,20 +9,7 @@ import {
   TrendingUp, MessageSquareQuote, ShoppingCart, AlertTriangle, 
   CheckCircle, ClipboardList, BookOpen, Euro
 } from 'lucide-react';
-
-interface MarketplaceLead {
-  id: string;
-  marketplace_summary: string;
-  marketplace_price: number;
-  score_final: number;
-  source_channel: string;
-  created_at: string;
-  structured_fields: Record<string, any>;
-  vj_value?: number;
-  vj_key_phrases?: string[];
-  raw_scores?: Record<string, { score: number; max: number; breakdown?: string }>;
-  case_summary?: string;
-}
+import type { MarketplaceLead } from '@/types/marketplace';
 
 interface LeadDetailModalProps {
   lead: MarketplaceLead | null;

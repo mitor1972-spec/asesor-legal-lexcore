@@ -7,43 +7,7 @@ import {
   Scale, MapPin, Zap, Phone, User, FileText, Gavel, Target, 
   TrendingUp, MessageSquareQuote, ShoppingCart, Eye, Euro
 } from 'lucide-react';
-
-interface RawScore {
-  score: number;
-  max: number;
-  breakdown?: string;
-}
-
-interface RawScores {
-  contactability?: RawScore;
-  personal_data?: RawScore;
-  case_facts?: RawScore;
-  legal_fit?: RawScore;
-  intent?: RawScore;
-}
-
-interface MarketplaceLead {
-  id: string;
-  marketplace_summary: string;
-  marketplace_price: number;
-  score_final: number;
-  source_channel: string;
-  created_at: string;
-  structured_fields: {
-    legal_area?: string;
-    area_legal?: string;
-    province?: string;
-    provincia?: string;
-    city?: string;
-    ciudad?: string;
-    urgencia_aplica?: boolean;
-    cuantia_aproximada?: string;
-    complejidad?: string;
-  };
-  vj_value?: number;
-  vj_key_phrases?: string[];
-  raw_scores?: RawScores;
-}
+import type { MarketplaceLead, RawScores } from '@/types/marketplace';
 
 interface LeadMarketCardProps {
   lead: MarketplaceLead;
@@ -81,8 +45,8 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
     const group = SCORING_GROUPS.find(g => g.key === key);
     if (!group) return null;
     
-    const data = lead.raw_scores?.[key as keyof RawScores];
-    const score = data?.score ?? Math.floor(Math.random() * group.maxDefault); // Fallback for demo
+    const data = lead.raw_scores?.[key];
+    const score = data?.score ?? Math.floor(Math.random() * group.maxDefault);
     const max = data?.max ?? group.maxDefault;
     const percent = max > 0 ? (score / max) * 100 : 0;
     const Icon = group.icon;
