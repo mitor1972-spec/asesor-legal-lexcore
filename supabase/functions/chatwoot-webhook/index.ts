@@ -608,6 +608,53 @@ Deno.serve(async (req) => {
   }
 });
 
+// Check if conversation has valid content worth creating a lead
+function isConversationValid(messages: ChatwootMessage[], extractedContact: ExtractedContactData): { valid: boolean; reason: string } {
+  // Filter messages from the client (not bot/agent)
+  const clientMessages = messages.filter(m => 
+    m.message_type === 0 || 
+    m.message_type === 'incoming'
+  );
+  
+  // Check 1: Must have at least one client message
+  if (clientMessages.length === 0) {
+    return { valid: false, reason: 'No client messages - only bot/agent messages' };
+  }
+  
+  // Check 2: Messages must not be only automated/empty content
+  const automatedPhrases = [
+    'hemos cerrado la conversación',
+    'periodo de inactividad',
+    'conversation closed',
+    'cerrada por inactividad',
+    'ha sido cerrada',
+    'auto-closed',
+  ];
+  
+  const meaningfulMessages = clientMessages.filter(m => {
+    const content = (m.content || '').toLowerCase().trim();
+    if (!content || content.length < 3) return false;
+    
+    // Check if it's an automated message
+    for (const phrase of automatedPhrases) {
+      if (content.includes(phrase)) return false;
+    }
+    
+    return true;
+  });
+  
+  if (meaningfulMessages.length === 0) {
+    return { valid: false, reason: 'Only automated/empty messages from client' };
+  }
+  
+  // Check 3: Must have at least phone OR email extracted
+  if (!extractedContact.phone && !extractedContact.email) {
+    return { valid: false, reason: 'No contact data (phone or email) could be extracted' };
+  }
+  
+  return { valid: true, reason: 'Valid conversation' };
+}
+
 // Process conversation - fetch ALL messages from API, extract data, create lead, call Lexcore
 async function processConversation(
   supabase: any,
@@ -657,6 +704,19 @@ async function processConversation(
   // Extract contact data from messages
   const extractedContact = extractContactFromMessages(messages);
   console.log('[PROCESS] Extracted contact:', extractedContact);
+
+  // VALIDATION: Check if conversation is worth creating a lead
+  const validation = isConversationValid(messages, extractedContact);
+  if (!validation.valid) {
+    console.log('[PROCESS] SKIPPED - Invalid conversation:', validation.reason);
+    await logImport(supabase, conversationId, payload.event, 'skipped', validation.reason, { 
+      messages_count: messages.length,
+      client_messages_count: messages.filter(m => m.message_type === 0 || m.message_type === 'incoming').length,
+      extracted_contact: extractedContact,
+      preview: conversationContent.substring(0, 200)
+    });
+    return { message: `Skipped - ${validation.reason}`, skipped: true };
+  }
 
   // Build structured fields
   const structuredFields = {
