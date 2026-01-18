@@ -88,20 +88,30 @@ export function LeadTemperature({ score, structuredFields, variant = 'full' }: L
   const cuantia = f.cuantia as number | undefined;
   const hasCuantia = cuantia !== null && cuantia !== undefined && cuantia !== 0;
 
-  // Mini variant - just the bar for the leads list
+  // Mini variant - badge style for the leads list
   if (variant === 'mini') {
+    const bgColorClass = score <= 30 
+      ? 'bg-red-500' 
+      : score <= 50 
+        ? 'bg-orange-500' 
+        : score <= 70 
+          ? 'bg-yellow-400' 
+          : 'bg-green-500';
+    
+    const textColorClass = score <= 30 || score > 70 
+      ? 'text-white' 
+      : score <= 50 
+        ? 'text-white' 
+        : 'text-gray-900'; // yellow needs dark text
+    
     return (
-      <div className="flex items-center gap-2 min-w-[80px]">
-        <div className="relative flex-1 h-1.5 bg-gradient-to-r from-red-500 via-orange-400 via-yellow-400 to-green-500 rounded-full overflow-hidden">
-          <div 
-            className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-white border-2 border-foreground rounded-full shadow-md transition-all"
-            style={{ left: `calc(${percentage}% - 4px)` }}
-          />
-        </div>
-        <span className={cn("text-xs font-bold min-w-[24px]", config.textColor)}>
-          {score}
-        </span>
-      </div>
+      <span className={cn(
+        "inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded text-xs font-bold",
+        bgColorClass,
+        textColorClass
+      )}>
+        {score}
+      </span>
     );
   }
 
