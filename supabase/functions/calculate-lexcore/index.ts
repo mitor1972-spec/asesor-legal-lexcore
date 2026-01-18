@@ -81,6 +81,28 @@ serve(async (req) => {
       });
     }
 
+    // Fetch AI prompts from database
+    const { data: aiPrompts, error: promptsError } = await adminClient
+      .from("ai_prompts")
+      .select("prompt_key, prompt_text")
+      .eq("is_active", true);
+
+    if (promptsError) {
+      console.error("AI prompts error:", promptsError);
+    }
+
+    // Build prompts map with fallbacks
+    const promptsMap: Record<string, string> = {};
+    for (const p of aiPrompts || []) {
+      promptsMap[p.prompt_key] = p.prompt_text;
+    }
+
+    const marketplaceSummaryPrompt = promptsMap["marketplace_summary"] || 
+      "Un párrafo de 3-5 frases que describa de qué trata este caso legal de forma clara y atractiva para abogados. Debe explicar: el tipo de problema legal, la situación del cliente, qué busca conseguir y por qué es un caso interesante. NO incluir datos personales (nombre, teléfono, email). Redactar en tercera persona.";
+    
+    const conclusionPrompt = promptsMap["scoring_conclusion"] || 
+      "2-4 líneas resumiendo el lead y el scoring";
+
     const openAIKey = apiSetting.key_value;
     const configJson = config.config_json;
 
@@ -212,9 +234,10 @@ Devuelve SOLO un JSON válido:
   "score_final": X (0-100, mínimo 0),
   "price_before_caps": X,
   "price_final": X,
-  "conclusion": "2-4 líneas resumiendo el lead y el scoring",
-  "marketplace_summary": "Un párrafo de 3-5 frases que describa de qué trata este caso legal de forma clara y atractiva para abogados. Debe explicar: el tipo de problema legal, la situación del cliente, qué busca conseguir y por qué es un caso interesante. NO incluir datos personales (nombre, teléfono, email). Redactar en tercera persona."
+  "conclusion": "${conclusionPrompt}",
+  "marketplace_summary": "${marketplaceSummaryPrompt}"
 }`;
+
 
     console.log("Calling OpenAI for scoring...");
     

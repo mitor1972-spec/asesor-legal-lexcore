@@ -22,6 +22,7 @@ import LawfirmsManagement from "@/pages/settings/LawfirmsManagement";
 import LawfirmApplications from "@/pages/settings/LawfirmApplications";
 import ChatwootSettings from "@/pages/settings/ChatwootSettings";
 import ProfileSettings from "@/pages/settings/ProfileSettings";
+import AiPromptsSettings from "@/pages/settings/AiPromptsSettings";
 import LawfirmDashboard from "@/pages/lawfirm/LawfirmDashboard";
 import LawfirmCases from "@/pages/lawfirm/LawfirmCases";
 import LawfirmCaseDetail from "@/pages/lawfirm/LawfirmCaseDetail";
@@ -69,6 +70,7 @@ const App = () => (
                 <Route path="users" element={<Users />} />
                 <Route path="settings/api-keys" element={<ApiKeys />} />
                 <Route path="settings/lexcore" element={<LexcoreConfig />} />
+                <Route path="settings/ai-prompts" element={<AiPromptsSettings />} />
                 <Route path="settings/lawfirms" element={<LawfirmsManagement />} />
                 <Route path="settings/solicitudes" element={<LawfirmApplications />} />
                 <Route path="settings/chatwoot" element={<ChatwootSettings />} />

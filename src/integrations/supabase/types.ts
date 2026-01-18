@@ -73,6 +73,39 @@ export type Database = {
           },
         ]
       }
+      ai_prompts: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          prompt_key: string
+          prompt_name: string
+          prompt_text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          prompt_key: string
+          prompt_name: string
+          prompt_text: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          prompt_key?: string
+          prompt_name?: string
+          prompt_text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       api_settings: {
         Row: {
           created_at: string | null
