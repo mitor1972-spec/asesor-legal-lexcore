@@ -1,16 +1,18 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useLead, useUpdateLead, useLeadHistory } from '@/hooks/useLeads';
-import { useLexcoreRuns } from '@/hooks/useLexcoreRuns';
+import { useLexcoreRuns, useExtractLeadData, useCalculateLexcore } from '@/hooks/useLexcoreRuns';
 import { useGenerateCaseSummary } from '@/hooks/useCaseSummary';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
 import { LEAD_STATUSES, type LeadStatus } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LexcoreScoring } from '@/components/scoring/LexcoreScoring';
 import { ScoringHeader } from '@/components/lead/ScoringHeader';
@@ -27,13 +29,25 @@ const statusColors: Record<LeadStatus, string> = {
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: lead, isLoading } = useLead(id);
+  const { data: lead, isLoading, refetch: refetchLead } = useLead(id);
   const { data: history } = useLeadHistory(id);
-  const { data: lexcoreRuns } = useLexcoreRuns(id);
+  const { data: lexcoreRuns, refetch: refetchRuns } = useLexcoreRuns(id);
   const updateMutation = useUpdateLead();
   const summaryMutation = useGenerateCaseSummary();
+  const extractMutation = useExtractLeadData();
+  const calculateMutation = useCalculateLexcore();
+
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const [recalcStep, setRecalcStep] = useState(0);
 
   const latestRun = lexcoreRuns?.[0];
+
+  const recalcSteps = [
+    'Extrayendo datos con IA...',
+    'Calculando scoring Lexcore...',
+    'Generando resumen estructurado...',
+    '¡Completado!'
+  ];
 
   const handleStatusChange = async (newStatus: LeadStatus) => {
     if (!id) return;
@@ -62,6 +76,68 @@ export default function LeadDetail() {
       toast.success('Resumen generado correctamente');
     } catch {
       toast.error('Error al generar el resumen');
+    }
+  };
+
+  const handleRecalculateFull = async () => {
+    if (!id || !lead) return;
+    
+    setIsRecalculating(true);
+    setRecalcStep(0);
+    
+    try {
+      // Step 1: Extract data with AI
+      setRecalcStep(0);
+      const extractedData = await extractMutation.mutateAsync(lead.lead_text);
+      
+      // Update lead with new extracted data
+      const newStructuredFields = { 
+        ...lead.structured_fields as Record<string, unknown>, 
+        ...extractedData.extracted_data 
+      };
+      await updateMutation.mutateAsync({ 
+        id, 
+        structured_fields: newStructuredFields 
+      });
+      
+      // Step 2: Calculate Lexcore scoring
+      setRecalcStep(1);
+      const scoringResult = await calculateMutation.mutateAsync({
+        leadId: id,
+        leadText: lead.lead_text,
+        structuredFields: newStructuredFields,
+        sourceChannel: lead.source_channel || 'Web chat',
+      });
+      
+      // Step 3: Generate case summary
+      setRecalcStep(2);
+      await summaryMutation.mutateAsync({
+        leadId: id,
+        leadText: lead.lead_text,
+        structuredFields: newStructuredFields,
+        scoringData: {
+          score_final: scoringResult.score_final,
+          price_lexcore: scoringResult.price_lexcore,
+          vj_json: scoringResult.vj_json,
+        },
+        sourceChannel: lead.source_channel || undefined,
+      });
+      
+      // Step 4: Complete
+      setRecalcStep(3);
+      
+      // Refresh data
+      await refetchLead();
+      await refetchRuns();
+      
+      toast.success('Recálculo completado correctamente');
+    } catch (error) {
+      toast.error('Error al recalcular: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    } finally {
+      setTimeout(() => {
+        setIsRecalculating(false);
+        setRecalcStep(0);
+      }, 1000);
     }
   };
 
@@ -98,9 +174,45 @@ export default function LeadDetail() {
             </div>
           )}
           <Button asChild variant="outline"><Link to={`/leads/${id}/edit`}><Pencil className="mr-2 h-4 w-4" />Editar</Link></Button>
+          <Button 
+            variant="outline" 
+            onClick={handleRecalculateFull}
+            disabled={isRecalculating}
+          >
+            {isRecalculating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            Recalcular Lexcore
+          </Button>
         </div>
       </div>
 
+      {/* Recalculating Progress */}
+      {isRecalculating && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardContent className="py-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">{recalcSteps[recalcStep]}</span>
+                <span className="text-muted-foreground">{recalcStep + 1}/{recalcSteps.length}</span>
+              </div>
+              <Progress value={((recalcStep + 1) / recalcSteps.length) * 100} className="h-2" />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                {recalcSteps.map((step, i) => (
+                  <span 
+                    key={i} 
+                    className={i <= recalcStep ? 'text-primary font-medium' : ''}
+                  >
+                    {i + 1}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <Tabs defaultValue="resumen" className="space-y-4">
         <TabsList>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>

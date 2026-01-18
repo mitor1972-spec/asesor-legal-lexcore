@@ -264,8 +264,8 @@ export function LexcoreScoring({ lead }: LexcoreScoringProps) {
         </CardContent>
       </Card>
 
-      {/* History */}
-      {runs && runs.length > 1 && (
+      {/* History - Always show if there are runs */}
+      {runs && runs.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Historial de Runs</CardTitle>
@@ -275,15 +275,32 @@ export function LexcoreScoring({ lead }: LexcoreScoringProps) {
               {runs.map((run, index) => (
                 <div 
                   key={run.id} 
-                  className="flex items-center justify-between py-2 px-3 rounded border text-sm cursor-pointer hover:bg-muted"
+                  className={`flex items-center justify-between py-3 px-4 rounded-lg border text-sm cursor-pointer transition-colors ${
+                    index === 0 
+                      ? 'bg-primary/5 border-primary/30 hover:bg-primary/10' 
+                      : 'hover:bg-muted'
+                  }`}
                   onClick={() => showJson(run)}
                 >
-                  <span>
-                    Run #{runs.length - index} - {format(new Date(run.computed_at), "dd/MM/yyyy HH:mm")}
-                  </span>
-                  <span className="font-mono">
-                    Score: {run.score_final} - Precio: {run.price_lexcore}€
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                    <div>
+                      <span className="font-medium">
+                        Run #{runs.length - index}
+                        {index === 0 && <Badge variant="secondary" className="ml-2 text-xs">actual</Badge>}
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(run.computed_at), "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right font-mono">
+                    <span className={`font-semibold ${index === 0 ? 'text-primary' : ''}`}>
+                      Score: {run.score_final}
+                    </span>
+                    <span className="mx-2 text-muted-foreground">•</span>
+                    <span className="text-green-600">{run.price_lexcore}€</span>
+                  </div>
                 </div>
               ))}
             </div>
