@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Scale, MessageSquare, Lock, Inbox, Euro } from 'lucide-react';
 import type { LexcoreRun } from '@/hooks/useLexcoreRuns';
 
@@ -19,18 +18,7 @@ export function ScoringHeader({ scoreFinal, priceFinal, latestRun, sourceChannel
   const vjScore = vj?.value ?? 0;
   const vjConclusion = vj?.reason || '';
 
-  // Get adjustments
-  const adjustments = latestRun?.adjustments_json || [];
-  const accessAdjustment = adjustments.find((a) => 
-    a.name?.toLowerCase().includes('acceso') || a.name?.toLowerCase().includes('exclusiv')
-  );
-  const channelAdjustment = adjustments.find((a) => 
-    a.name?.toLowerCase().includes('canal')
-  );
-
-  const nDespachos = 1; // Default, can be extracted from structured fields if available
-  const accessPoints = accessAdjustment?.value || 0;
-  const channelPoints = channelAdjustment?.value || 0;
+  const nDespachos = 1; // Default
 
   return (
     <Card className="shadow-soft border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
@@ -64,7 +52,7 @@ export function ScoringHeader({ scoreFinal, priceFinal, latestRun, sourceChannel
             </div>
           </div>
 
-          {/* Access */}
+          {/* Access - simplified, no adjustment points */}
           <div className="space-y-0.5">
             <div className="flex items-center gap-1 text-muted-foreground text-xs">
               <Lock className="h-3 w-3" />
@@ -73,15 +61,10 @@ export function ScoringHeader({ scoreFinal, priceFinal, latestRun, sourceChannel
             <div className="text-sm font-medium">
               {nDespachos} despacho{nDespachos > 1 ? 's' : ''} 
               {nDespachos === 1 && <span className="text-primary text-xs ml-1">(exclusivo)</span>}
-              {accessPoints !== 0 && (
-                <Badge variant="outline" className="ml-1 text-xs py-0">
-                  {accessPoints > 0 ? '+' : ''}{accessPoints}
-                </Badge>
-              )}
             </div>
           </div>
 
-          {/* Channel */}
+          {/* Channel - simplified, no adjustment points */}
           <div className="space-y-0.5">
             <div className="flex items-center gap-1 text-muted-foreground text-xs">
               <Inbox className="h-3 w-3" />
@@ -89,19 +72,14 @@ export function ScoringHeader({ scoreFinal, priceFinal, latestRun, sourceChannel
             </div>
             <div className="text-sm font-medium">
               {sourceChannel || ''}
-              {channelPoints !== 0 && (
-                <Badge variant="outline" className="ml-1 text-xs py-0">
-                  {channelPoints > 0 ? '+' : ''}{channelPoints}
-                </Badge>
-              )}
             </div>
           </div>
 
-          {/* Price */}
+          {/* Price - renamed to "Precio estimado" */}
           <div className="space-y-0.5">
             <div className="flex items-center gap-1 text-muted-foreground text-xs">
               <Euro className="h-3 w-3" />
-              Precio
+              Precio estimado
             </div>
             <div className="text-xl font-bold text-green-600">{priceFinal}€</div>
           </div>

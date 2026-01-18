@@ -173,20 +173,33 @@ export function useCloseCaseResult() {
       assignmentId, 
       firmStatus,
       resultAmount,
-      resultNotes
+      resultNotes,
+      serviceType,
+      lostReason
     }: { 
       assignmentId: string; 
       firmStatus: 'won' | 'lost' | 'rejected';
       resultAmount?: number;
       resultNotes?: string;
+      serviceType?: string;
+      lostReason?: string;
     }) => {
+      const updateData: Record<string, unknown> = { 
+        firm_status: firmStatus,
+        result_amount: resultAmount,
+        result_notes: resultNotes
+      };
+
+      if (serviceType) {
+        updateData.service_type = serviceType;
+      }
+      if (lostReason) {
+        updateData.lost_reason = lostReason;
+      }
+
       const { error } = await supabase
         .from('lead_assignments')
-        .update({ 
-          firm_status: firmStatus,
-          result_amount: resultAmount,
-          result_notes: resultNotes
-        })
+        .update(updateData)
         .eq('id', assignmentId);
 
       if (error) throw error;

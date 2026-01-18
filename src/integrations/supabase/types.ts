@@ -87,6 +87,88 @@ export type Database = {
           },
         ]
       }
+      case_activities: {
+        Row: {
+          activity_type: string
+          call_duration_minutes: number | null
+          call_result: string | null
+          created_at: string | null
+          email_direction: string | null
+          email_subject: string | null
+          id: string
+          lawfirm_id: string
+          lead_id: string
+          notes: string | null
+          reminder_date: string | null
+          reminder_sent: boolean | null
+          task_completed: boolean | null
+          task_due_date: string | null
+          title: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          call_duration_minutes?: number | null
+          call_result?: string | null
+          created_at?: string | null
+          email_direction?: string | null
+          email_subject?: string | null
+          id?: string
+          lawfirm_id: string
+          lead_id: string
+          notes?: string | null
+          reminder_date?: string | null
+          reminder_sent?: boolean | null
+          task_completed?: boolean | null
+          task_due_date?: string | null
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          call_duration_minutes?: number | null
+          call_result?: string | null
+          created_at?: string | null
+          email_direction?: string | null
+          email_subject?: string | null
+          id?: string
+          lawfirm_id?: string
+          lead_id?: string
+          notes?: string | null
+          reminder_date?: string | null
+          reminder_sent?: boolean | null
+          task_completed?: boolean | null
+          task_due_date?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_activities_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_activities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           address: string | null
@@ -382,10 +464,15 @@ export type Database = {
           firm_notes: string | null
           firm_status: string | null
           id: string
+          last_contact_at: string | null
           lawfirm_id: string | null
           lead_id: string | null
+          lost_reason: string | null
+          next_action_date: string | null
+          next_action_description: string | null
           result_amount: number | null
           result_notes: string | null
+          service_type: string | null
           status_delivery: Database["public"]["Enums"]["delivery_status"] | null
         }
         Insert: {
@@ -397,10 +484,15 @@ export type Database = {
           firm_notes?: string | null
           firm_status?: string | null
           id?: string
+          last_contact_at?: string | null
           lawfirm_id?: string | null
           lead_id?: string | null
+          lost_reason?: string | null
+          next_action_date?: string | null
+          next_action_description?: string | null
           result_amount?: number | null
           result_notes?: string | null
+          service_type?: string | null
           status_delivery?:
             | Database["public"]["Enums"]["delivery_status"]
             | null
@@ -414,10 +506,15 @@ export type Database = {
           firm_notes?: string | null
           firm_status?: string | null
           id?: string
+          last_contact_at?: string | null
           lawfirm_id?: string | null
           lead_id?: string | null
+          lost_reason?: string | null
+          next_action_date?: string | null
+          next_action_description?: string | null
           result_amount?: number | null
           result_notes?: string | null
+          service_type?: string | null
           status_delivery?:
             | Database["public"]["Enums"]["delivery_status"]
             | null
