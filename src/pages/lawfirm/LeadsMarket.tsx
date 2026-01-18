@@ -55,15 +55,28 @@ export default function LeadsMarket() {
     enabled: !!user?.profile?.lawfirm_id,
   });
 
-  // Fetch marketplace leads
+  // Fetch marketplace leads - show all pending leads not yet assigned
   const { data: leads, isLoading } = useQuery({
     queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore],
     queryFn: async () => {
+      // Get leads that are pending and not archived
       let query = supabase
         .from('leads')
-        .select('id, marketplace_summary, marketplace_price, score_final, source_channel, created_at, structured_fields')
-        .eq('is_in_marketplace', true)
-        .order('score_final', { ascending: false });
+        .select(`
+          id, 
+          marketplace_summary, 
+          case_summary,
+          marketplace_price, 
+          price_final,
+          score_final, 
+          source_channel, 
+          created_at, 
+          structured_fields,
+          lead_assignments!left(id)
+        `)
+        .is('archived_at', null)
+        .eq('status_internal', 'Pendiente')
+        .order('score_final', { ascending: false, nullsFirst: false });
 
       if (minScore && !isNaN(parseInt(minScore))) {
         query = query.gte('score_final', parseInt(minScore));
@@ -72,20 +85,34 @@ export default function LeadsMarket() {
       const { data, error } = await query;
       if (error) throw error;
       
+      // Filter out leads that already have assignments
+      let filtered = (data || []).filter(l => 
+        !l.lead_assignments || l.lead_assignments.length === 0
+      );
+
       // Filter by area and province in frontend (since it's in JSONB)
-      let filtered = data || [];
       if (areaFilter !== 'all') {
-        filtered = filtered.filter(l => 
-          (l.structured_fields as any)?.legal_area === areaFilter
-        );
+        filtered = filtered.filter(l => {
+          const fields = l.structured_fields as any;
+          return fields?.area_legal === areaFilter || fields?.legal_area === areaFilter;
+        });
       }
       if (provinceFilter !== 'all') {
-        filtered = filtered.filter(l => 
-          (l.structured_fields as any)?.province === provinceFilter
-        );
+        filtered = filtered.filter(l => {
+          const fields = l.structured_fields as any;
+          return fields?.provincia === provinceFilter || fields?.province === provinceFilter;
+        });
       }
       
-      return filtered as MarketplaceLead[];
+      return filtered.map(l => ({
+        id: l.id,
+        marketplace_summary: l.marketplace_summary || l.case_summary?.substring(0, 200) || 'Lead disponible para compra',
+        marketplace_price: l.marketplace_price || l.price_final || 25,
+        score_final: l.score_final || 0,
+        source_channel: l.source_channel,
+        created_at: l.created_at,
+        structured_fields: l.structured_fields || {},
+      })) as MarketplaceLead[];
     },
   });
 

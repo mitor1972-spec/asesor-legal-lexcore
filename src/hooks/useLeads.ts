@@ -11,6 +11,7 @@ interface LeadFilters {
   areaLegal?: string;
   dateFrom?: Date;
   dateTo?: Date;
+  showArchived?: boolean;
 }
 
 interface CreateLeadData {
@@ -31,9 +32,15 @@ export function useLeads(filters?: LeadFilters, page = 1, pageSize = 20) {
       let query = supabase
         .from('leads')
         .select('*', { count: 'exact' })
-        .is('archived_at', null)
         .order('created_at', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
+
+      // Filter by archived status
+      if (filters?.showArchived) {
+        query = query.not('archived_at', 'is', null);
+      } else {
+        query = query.is('archived_at', null);
+      }
 
       if (filters?.status) {
         query = query.eq('status_internal', filters.status);
@@ -259,5 +266,65 @@ export function useLeadHistory(leadId: string | undefined) {
       return data || [];
     },
     enabled: !!leadId,
+  });
+}
+
+export function useRestoreLead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data: userData } = await supabase.auth.getUser();
+
+      const { error } = await supabase
+        .from('leads')
+        .update({ archived_at: null })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await supabase.from('lead_history').insert({
+        lead_id: id,
+        user_id: userData.user?.id,
+        action: 'restored',
+        details: {},
+      });
+
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
+    },
+  });
+}
+
+export function useDeleteLead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // First delete related records
+      await supabase.from('lead_history').delete().eq('lead_id', id);
+      await supabase.from('lead_attachments').delete().eq('lead_id', id);
+      await supabase.from('lead_assignments').delete().eq('lead_id', id);
+      await supabase.from('lexcore_runs').delete().eq('lead_id', id);
+      await supabase.from('case_activities').delete().eq('lead_id', id);
+      await supabase.from('lead_legal_help').delete().eq('lead_id', id);
+      await supabase.from('lead_purchases').delete().eq('lead_id', id);
+      await supabase.from('chatwoot_conversations').delete().eq('lead_id', id);
+
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
+    },
   });
 }
