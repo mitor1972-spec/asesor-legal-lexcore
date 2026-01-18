@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useLawfirmCase, useUpdateCaseStatus, useUpdateCaseNotes, useCloseCaseResult } from '@/hooks/useLawfirmCases';
 import { useLegalHelp, useGenerateLegalHelp } from '@/hooks/useLegalHelp';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
+import { ScoringHeader } from '@/components/lead/ScoringHeader';
 import { processAndSanitize } from '@/lib/sanitize';
+import { formatLocation } from '@/lib/cityProvinceMapping';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -25,7 +27,14 @@ import {
   MessageSquare,
   History,
   Sparkles,
-  AlertTriangle
+  AlertTriangle,
+  User,
+  Mail,
+  MapPin,
+  Scale,
+  Euro,
+  Zap,
+  Inbox
 } from 'lucide-react';
 
 const statusLabels: Record<string, string> = {
@@ -177,34 +186,40 @@ ${legalHelp.estimated_complexity}
     );
   }
 
-  const fields = caseData.lead?.structured_fields as Record<string, string> | null;
+  const fields = caseData.lead?.structured_fields as Record<string, unknown> | null;
+  const f = fields || {};
   const score = caseData.lead?.score_final || 0;
+  
+  // Location with auto-province detection
+  const ciudad = f.ciudad as string | undefined;
+  const provincia = f.provincia as string | undefined;
+  const location = formatLocation(ciudad, provincia);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         <Link 
           to="/despacho/casos" 
-          className="flex items-center gap-1 text-muted-foreground hover:text-foreground w-fit"
+          className="flex items-center gap-1 text-muted-foreground hover:text-foreground w-fit text-sm"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver a casos
         </Link>
 
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-display font-bold">
-              {fields?.nombre || 'Cliente'} — {fields?.area_legal || 'Caso'}
+            <h1 className="text-xl font-display font-bold">
+              {f.nombre as string || 'Cliente'} — {f.area_legal as string || 'Caso'}
             </h1>
-            <p className="text-muted-foreground">
-              {fields?.provincia || 'España'} • Recibido {format(new Date(caseData.assigned_at), "dd 'de' MMMM 'de' yyyy", { locale: es })}
+            <p className="text-sm text-muted-foreground">
+              {location || 'España'} • Recibido {format(new Date(caseData.assigned_at), "dd 'de' MMMM 'de' yyyy", { locale: es })}
             </p>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Select value={caseData.firm_status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[160px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -221,48 +236,75 @@ ${legalHelp.estimated_complexity}
         </div>
       </div>
 
-      {/* Temperature & Info */}
-      <Card className="shadow-soft">
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="md:w-1/3">
-              <LeadTemperature 
-                score={score} 
-                structuredFields={fields || {}}
-                variant="full" 
-              />
-            </div>
-            <div className="md:w-2/3 grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Precio del lead</p>
-                <p className="font-semibold">{caseData.lead?.price_final || 0}€</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Canal</p>
-                <p className="font-semibold">{caseData.lead?.source_channel || 'Web'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Teléfono</p>
-                <p className="font-semibold">{fields?.telefono || 'No disponible'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Email</p>
-                <p className="font-semibold">{fields?.email || 'No disponible'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Horario contacto</p>
-                <p className="font-semibold">{fields?.horario_contacto || 'No especificado'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Urgencia</p>
-                <p className="font-semibold">{fields?.urgencia_nivel || 'No especificada'}</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* ROW 1: TEMPERATURA DEL LEAD */}
+      <LeadTemperature 
+        score={score} 
+        structuredFields={f}
+        variant="full" 
+      />
 
-      {/* Tabs */}
+      {/* ROW 2: VALORACIÓN DEL LEAD - LEXCORE™ */}
+      <ScoringHeader 
+        scoreFinal={caseData.lead?.score_final || null}
+        priceFinal={caseData.lead?.price_final || null}
+        sourceChannel={caseData.lead?.source_channel || undefined}
+      />
+
+      {/* ROW 3: CONTACTO + CASO (side by side) */}
+      <div className="grid md:grid-cols-2 gap-3">
+        <Card className="shadow-soft">
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <User className="h-3.5 w-3.5" />
+              Contacto
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm py-2 px-3">
+            <p><strong>Nombre:</strong> {(f.nombre as string) || ''} {(f.apellidos as string) || ''}</p>
+            <p className="flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Teléfono:</strong> {(f.telefono as string) || ''}
+            </p>
+            <p className="flex items-center gap-2">
+              <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Email:</strong> {(f.email as string) || ''}
+            </p>
+            <p className="flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Ubicación:</strong> {location}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-soft">
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <FileText className="h-3.5 w-3.5" />
+              Caso
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm py-2 px-3">
+            <p className="flex items-center gap-2">
+              <Scale className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Área:</strong> {(f.area_legal as string) || ''}
+            </p>
+            <p><strong>Subárea:</strong> {(f.subarea as string) || ''}</p>
+            <p className="flex items-center gap-2">
+              <Euro className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Cuantía:</strong> {(f.cuantia as number) ? `${(f.cuantia as number).toLocaleString()}€` : ''}
+            </p>
+            <p className="flex items-center gap-2">
+              <Zap className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Urgencia:</strong> {(f.urgencia_aplica as boolean) ? <Badge variant="outline" className="bg-destructive/10 text-destructive text-xs py-0">{(f.urgencia_nivel as string) || 'Sí'}</Badge> : ''}
+            </p>
+            <p className="flex items-center gap-2">
+              <Inbox className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Canal:</strong> {caseData.lead?.source_channel ? <Badge variant="outline" className="text-xs py-0">{caseData.lead.source_channel}</Badge> : ''}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ROW 4: Tabs */}
       <Tabs defaultValue="summary">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="summary">
@@ -284,30 +326,30 @@ ${legalHelp.estimated_complexity}
         </TabsList>
 
         {/* Summary Tab */}
-        <TabsContent value="summary" className="mt-4">
+        <TabsContent value="summary" className="mt-3">
           <Card className="shadow-soft">
-            <CardHeader>
-              <CardTitle>Resumen del Caso</CardTitle>
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="text-sm">Resumen del Caso</CardTitle>
             </CardHeader>
-              <CardContent className="prose prose-sm max-w-none dark:prose-invert">
-                {caseData.lead?.case_summary ? (
-                  <div 
-                    className="whitespace-pre-wrap" 
-                    dangerouslySetInnerHTML={{ __html: processAndSanitize(caseData.lead.case_summary) }} 
-                  />
-                ) : (
-                  <p className="text-muted-foreground">No hay resumen disponible</p>
-                )}
-              </CardContent>
+            <CardContent className="prose prose-sm max-w-none dark:prose-invert py-2 px-3">
+              {caseData.lead?.case_summary ? (
+                <div 
+                  className="whitespace-pre-wrap text-sm" 
+                  dangerouslySetInnerHTML={{ __html: processAndSanitize(caseData.lead.case_summary) }} 
+                />
+              ) : (
+                <p className="text-muted-foreground text-sm">No hay resumen disponible</p>
+              )}
+            </CardContent>
           </Card>
         </TabsContent>
 
         {/* Legal Help Tab - KEY FEATURE */}
-        <TabsContent value="legal-help" className="mt-4">
+        <TabsContent value="legal-help" className="mt-3">
           <Card className="shadow-soft border-lawfirm-primary/20">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-lawfirm-primary" />
+            <CardHeader className="flex flex-row items-center justify-between py-2 px-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Sparkles className="h-4 w-4 text-lawfirm-primary" />
                 Orientación para el Abogado
               </CardTitle>
               <div className="flex gap-2">
@@ -332,79 +374,79 @@ ${legalHelp.estimated_complexity}
                 )}
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="py-2 px-3">
               {isLoadingHelp ? (
-                <div className="flex items-center justify-center py-8">
+                <div className="flex items-center justify-center py-6">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : legalHelp ? (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {/* Legal Orientation */}
                   <section>
-                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                    <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
                       1) Orientación Legal
                     </h3>
-                      <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert">
-                        <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.legal_orientation) }} />
-                      </div>
+                    <div className="bg-muted/50 rounded-lg p-3 prose prose-sm max-w-none dark:prose-invert">
+                      <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.legal_orientation) }} />
+                    </div>
                   </section>
 
                   {/* Documentation */}
                   <section>
-                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                    <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
                       2) Documentación a Solicitar
                     </h3>
-                      <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert">
-                        <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.documentation_needed) }} />
-                      </div>
+                    <div className="bg-muted/50 rounded-lg p-3 prose prose-sm max-w-none dark:prose-invert">
+                      <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.documentation_needed) }} />
+                    </div>
                   </section>
 
                   {/* Commercial Steps */}
                   <section>
-                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                    <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
                       3) Próximos Pasos Comerciales
                     </h3>
-                      <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert">
-                        <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.commercial_next_steps) }} />
-                      </div>
+                    <div className="bg-muted/50 rounded-lg p-3 prose prose-sm max-w-none dark:prose-invert">
+                      <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.commercial_next_steps) }} />
+                    </div>
                   </section>
 
                   {/* Legal Steps */}
                   <section>
-                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                    <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
                       4) Próximos Pasos Jurídicos
                     </h3>
-                      <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert">
-                        <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.legal_next_steps) }} />
-                      </div>
+                    <div className="bg-muted/50 rounded-lg p-3 prose prose-sm max-w-none dark:prose-invert">
+                      <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.legal_next_steps) }} />
+                    </div>
                   </section>
 
                   {/* Risks */}
                   <section>
-                    <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-warning" />
+                    <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-warning" />
                       5) Riesgos y Alertas
                     </h3>
-                      <div className="bg-warning/10 border border-warning/30 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert">
-                        <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.risks_alerts) }} />
-                      </div>
+                    <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 prose prose-sm max-w-none dark:prose-invert">
+                      <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.risks_alerts) }} />
+                    </div>
                   </section>
 
                   {/* Complexity */}
                   <section>
-                    <h3 className="font-semibold text-lg mb-2">Complejidad Estimada</h3>
-                    <Badge variant="secondary" className="text-sm">
+                    <h3 className="font-semibold text-sm mb-1">Complejidad Estimada</h3>
+                    <Badge variant="secondary" className="text-xs">
                       {legalHelp.estimated_complexity}
                     </Badge>
                   </section>
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Sparkles className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground mb-4">
+                <div className="text-center py-6">
+                  <Sparkles className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+                  <p className="text-muted-foreground text-sm mb-3">
                     La orientación legal aún no ha sido generada para este caso
                   </p>
-                  <Button onClick={handleGenerateLegalHelp} disabled={generateLegalHelp.isPending}>
+                  <Button size="sm" onClick={handleGenerateLegalHelp} disabled={generateLegalHelp.isPending}>
                     {generateLegalHelp.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                     ) : (
@@ -419,19 +461,20 @@ ${legalHelp.estimated_complexity}
         </TabsContent>
 
         {/* Notes Tab */}
-        <TabsContent value="notes" className="mt-4">
+        <TabsContent value="notes" className="mt-3">
           <Card className="shadow-soft">
-            <CardHeader>
-              <CardTitle>Notas Internas</CardTitle>
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="text-sm">Notas Internas</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 py-2 px-3">
               <Textarea
                 placeholder="Añade notas privadas sobre este caso..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={6}
+                rows={4}
               />
               <Button 
+                size="sm"
                 onClick={handleSaveNotes} 
                 disabled={updateNotes.isPending}
               >
@@ -443,28 +486,28 @@ ${legalHelp.estimated_complexity}
         </TabsContent>
 
         {/* History Tab */}
-        <TabsContent value="history" className="mt-4">
+        <TabsContent value="history" className="mt-3">
           <Card className="shadow-soft">
-            <CardHeader>
-              <CardTitle>Historial del Caso</CardTitle>
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="text-sm">Historial del Caso</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3 pb-4 border-b">
-                  <div className="w-2 h-2 rounded-full bg-lawfirm-primary mt-2" />
+            <CardContent className="py-2 px-3">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 pb-3 border-b">
+                  <div className="w-1.5 h-1.5 rounded-full bg-lawfirm-primary mt-1.5" />
                   <div>
-                    <p className="font-medium">Caso recibido</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="font-medium text-sm">Caso recibido</p>
+                    <p className="text-xs text-muted-foreground">
                       {format(new Date(caseData.assigned_at), "dd 'de' MMMM 'de' yyyy 'a las' HH:mm", { locale: es })}
                     </p>
                   </div>
                 </div>
                 {caseData.contacted_at && (
-                  <div className="flex items-start gap-3 pb-4 border-b">
-                    <div className="w-2 h-2 rounded-full bg-success mt-2" />
+                  <div className="flex items-start gap-3 pb-3 border-b">
+                    <div className="w-1.5 h-1.5 rounded-full bg-success mt-1.5" />
                     <div>
-                      <p className="font-medium">Cliente contactado</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-medium text-sm">Cliente contactado</p>
+                      <p className="text-xs text-muted-foreground">
                         {format(new Date(caseData.contacted_at), "dd 'de' MMMM 'de' yyyy 'a las' HH:mm", { locale: es })}
                       </p>
                     </div>
@@ -476,29 +519,38 @@ ${legalHelp.estimated_complexity}
         </TabsContent>
       </Tabs>
 
-      {/* Actions */}
+      {/* Quick Actions */}
       <Card className="shadow-soft">
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-3">
+        <CardContent className="py-3 px-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-medium text-muted-foreground">Acciones rápidas:</span>
+            
+            {!caseData.contacted_at && (
+              <Button 
+                size="sm" 
+                onClick={handleMarkContacted}
+                disabled={updateStatus.isPending}
+              >
+                <Phone className="h-4 w-4 mr-2" />
+                Marcar contactado
+              </Button>
+            )}
+            
             <Button 
-              variant="outline"
-              onClick={handleMarkContacted}
-              disabled={updateStatus.isPending || caseData.firm_status === 'contacted'}
-            >
-              <Phone className="h-4 w-4 mr-2" />
-              Marcar como contactado
-            </Button>
-            <Button 
-              variant="default"
-              className="bg-success hover:bg-success/90"
+              variant="outline" 
+              size="sm"
+              className="text-green-600 border-green-600 hover:bg-green-50"
               onClick={handleCloseWon}
               disabled={closeCase.isPending}
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
               Cerrar ganado
             </Button>
+            
             <Button 
-              variant="destructive"
+              variant="outline" 
+              size="sm"
+              className="text-destructive border-destructive hover:bg-destructive/10"
               onClick={handleReject}
               disabled={closeCase.isPending}
             >

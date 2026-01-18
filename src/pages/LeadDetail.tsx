@@ -13,13 +13,15 @@ import { Progress } from '@/components/ui/progress';
 import { LEAD_STATUSES, type LeadStatus } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2, Eye } from 'lucide-react';
+import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2, Eye, Euro, Scale, Zap, Inbox } from 'lucide-react';
 import { toast } from 'sonner';
 import { LexcoreScoring } from '@/components/scoring/LexcoreScoring';
 import { ScoringHeader } from '@/components/lead/ScoringHeader';
 import { CaseSummaryView } from '@/components/lead/CaseSummaryView';
 import { ConversationView } from '@/components/lead/ConversationView';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
+import { formatLocation } from '@/lib/cityProvinceMapping';
+
 const statusColors: Record<LeadStatus, string> = {
   'Pendiente': 'bg-warning/10 text-warning border-warning/20',
   'Derivado': 'bg-primary/10 text-primary border-primary/20',
@@ -152,9 +154,14 @@ export default function LeadDetail() {
 
   const f = lead.structured_fields as Record<string, unknown> | null;
   const caseSummary = (lead as { case_summary?: string }).case_summary;
+  
+  // Location with auto-province detection
+  const ciudad = f?.ciudad as string | undefined;
+  const provincia = f?.provincia as string | undefined;
+  const location = formatLocation(ciudad, provincia);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+    <div className="max-w-4xl mx-auto space-y-4 animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-5 w-5" /></Button>
@@ -207,36 +214,98 @@ export default function LeadDetail() {
       {/* Recalculating Progress */}
       {isRecalculating && (
         <Card className="border-primary/50 bg-primary/5">
-          <CardContent className="py-4">
-            <div className="space-y-3">
+          <CardContent className="py-3">
+            <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium">{recalcSteps[recalcStep]}</span>
                 <span className="text-muted-foreground">{recalcStep + 1}/{recalcSteps.length}</span>
               </div>
-              <Progress value={((recalcStep + 1) / recalcSteps.length) * 100} className="h-2" />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                {recalcSteps.map((step, i) => (
-                  <span 
-                    key={i} 
-                    className={i <= recalcStep ? 'text-primary font-medium' : ''}
-                  >
-                    {i + 1}
-                  </span>
-                ))}
-              </div>
+              <Progress value={((recalcStep + 1) / recalcSteps.length) * 100} className="h-1.5" />
             </div>
           </CardContent>
         </Card>
       )}
-      <Tabs defaultValue="resumen" className="space-y-4">
+
+      {/* ROW 1: TEMPERATURA DEL LEAD */}
+      <LeadTemperature 
+        score={lead.score_final}
+        structuredFields={f}
+        variant="full"
+      />
+
+      {/* ROW 2: VALORACIÓN DEL LEAD - LEXCORE™ */}
+      <ScoringHeader 
+        scoreFinal={lead.score_final}
+        priceFinal={lead.price_final}
+        latestRun={latestRun}
+        sourceChannel={lead.source_channel || undefined}
+      />
+
+      {/* ROW 3: CONTACTO + CASO (side by side) */}
+      <div className="grid md:grid-cols-2 gap-3">
+        <Card className="shadow-soft">
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <User className="h-3.5 w-3.5" />
+              Contacto
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm py-2 px-3">
+            <p><strong>Nombre:</strong> {(f?.nombre as string) || ''} {(f?.apellidos as string) || ''}</p>
+            <p className="flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Teléfono:</strong> {(f?.telefono as string) || ''}
+            </p>
+            <p className="flex items-center gap-2">
+              <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Email:</strong> {(f?.email as string) || ''}
+            </p>
+            <p className="flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Ubicación:</strong> {location}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-soft">
+          <CardHeader className="py-2 px-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <FileText className="h-3.5 w-3.5" />
+              Caso
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm py-2 px-3">
+            <p className="flex items-center gap-2">
+              <Scale className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Área:</strong> {(f?.area_legal as string) || ''}
+            </p>
+            <p><strong>Subárea:</strong> {(f?.subarea as string) || ''}</p>
+            <p className="flex items-center gap-2">
+              <Euro className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Cuantía:</strong> {(f?.cuantia as number) ? `${(f.cuantia as number).toLocaleString()}€` : ''}
+            </p>
+            <p className="flex items-center gap-2">
+              <Zap className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Urgencia:</strong> {(f?.urgencia_aplica as boolean) ? <Badge variant="outline" className="bg-destructive/10 text-destructive text-xs py-0">{(f?.urgencia_nivel as string) || 'Sí'}</Badge> : ''}
+            </p>
+            <p className="flex items-center gap-2">
+              <Inbox className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Canal:</strong> {lead.source_channel ? <Badge variant="outline" className="text-xs py-0">{lead.source_channel}</Badge> : ''}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ROW 4: RESUMEN ESTRUCTURADO (with tabs) */}
+      <Tabs defaultValue="resumen" className="space-y-3">
         <TabsList>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
-          <TabsTrigger value="scoring" className="flex items-center gap-1">
+          <TabsTrigger value="ayuda-legal" className="flex items-center gap-1">
             <Sparkles className="h-3 w-3" />
-            Scoring
-            {lead.score_final !== null && (
-              <Badge variant="secondary" className="ml-1 text-xs">{lead.score_final}</Badge>
-            )}
+            Ayuda Legal
+          </TabsTrigger>
+          <TabsTrigger value="notas">
+            <MessageSquare className="h-3 w-3 mr-1" />
+            Notas
           </TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="conversacion" className="flex items-center gap-1">
@@ -245,22 +314,7 @@ export default function LeadDetail() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="resumen" className="space-y-4">
-          {/* Lead Temperature */}
-          <LeadTemperature 
-            score={lead.score_final}
-            structuredFields={f}
-            variant="full"
-          />
-
-          {/* Scoring Header Card - Always visible at top */}
-          <ScoringHeader 
-            scoreFinal={lead.score_final}
-            priceFinal={lead.price_final}
-            latestRun={latestRun}
-            sourceChannel={lead.source_channel || undefined}
-          />
-
+        <TabsContent value="resumen" className="space-y-3">
           {/* Case Summary */}
           <CaseSummaryView 
             summary={caseSummary || null}
@@ -268,50 +322,51 @@ export default function LeadDetail() {
             onGenerate={handleGenerateSummary}
           />
 
-          {/* Original Data Cards - Collapsible or secondary */}
-          <div className="grid md:grid-cols-2 gap-4">
-            <Card className="shadow-soft">
-              <CardHeader><CardTitle className="flex items-center gap-2"><User className="h-4 w-4" />Contacto</CardTitle></CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <p><strong>Nombre:</strong> {(f?.nombre as string) || '-'} {(f?.apellidos as string) || ''}</p>
-                <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" />{(f?.telefono as string) || '-'}</p>
-                <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" />{(f?.email as string) || '-'}</p>
-                <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" />{(f?.ciudad as string) || '-'}, {(f?.provincia as string) || '-'}</p>
-              </CardContent>
-            </Card>
-            <Card className="shadow-soft">
-              <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-4 w-4" />Caso</CardTitle></CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <p><strong>Área:</strong> {(f?.area_legal as string) || '-'}</p>
-                <p><strong>Subárea:</strong> {(f?.subarea as string) || '-'}</p>
-                <p><strong>Cuantía:</strong> {(f?.cuantia as number) ? `${(f.cuantia as number).toLocaleString()}€` : '-'}</p>
-                <p><strong>Urgencia:</strong> {(f?.urgencia_aplica as boolean) ? <Badge variant="outline" className="bg-destructive/10 text-destructive">{(f?.urgencia_nivel as string) || 'Sí'}</Badge> : 'No'}</p>
-                <p><strong>Canal:</strong> <Badge variant="outline">{lead.source_channel || 'No especificado'}</Badge></p>
-              </CardContent>
-            </Card>
-          </div>
-
           {(f?.notas_operador as string) && (
             <Card className="shadow-soft">
-              <CardHeader><CardTitle>Notas del Operador</CardTitle></CardHeader>
-              <CardContent><p className="whitespace-pre-wrap text-sm">{(f.notas_operador as string)}</p></CardContent>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-sm">Notas del Operador</CardTitle>
+              </CardHeader>
+              <CardContent className="py-2 px-3">
+                <p className="whitespace-pre-wrap text-sm">{(f.notas_operador as string)}</p>
+              </CardContent>
             </Card>
           )}
         </TabsContent>
 
-        <TabsContent value="scoring">
+        <TabsContent value="ayuda-legal">
           <LexcoreScoring lead={lead} />
+        </TabsContent>
+
+        <TabsContent value="notas">
+          <Card className="shadow-soft">
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="text-sm">Notas internas</CardTitle>
+            </CardHeader>
+            <CardContent className="py-2 px-3">
+              {(f?.notas_operador as string) ? (
+                <p className="whitespace-pre-wrap text-sm">{(f.notas_operador as string)}</p>
+              ) : (
+                <p className="text-muted-foreground text-sm">Sin notas</p>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="historial">
           <Card className="shadow-soft">
-            <CardHeader><CardTitle className="flex items-center gap-2"><Clock className="h-4 w-4" />Historial de cambios</CardTitle></CardHeader>
-            <CardContent>
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Clock className="h-3.5 w-3.5" />
+                Historial de cambios
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2 px-3">
               {history?.length === 0 ? <p className="text-muted-foreground text-sm">Sin historial</p> : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {history?.map((h: { id: string; action: string; created_at: string }) => (
-                    <div key={h.id} className="flex gap-4 pb-4 border-b last:border-0">
-                      <div className="w-2 h-2 mt-2 rounded-full bg-primary" />
+                    <div key={h.id} className="flex gap-3 pb-3 border-b last:border-0">
+                      <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-primary" />
                       <div className="flex-1">
                         <p className="text-sm font-medium capitalize">{h.action}</p>
                         <p className="text-xs text-muted-foreground">{format(new Date(h.created_at), "dd MMM yyyy 'a las' HH:mm", { locale: es })}</p>

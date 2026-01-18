@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useLeads, useArchiveLead } from '@/hooks/useLeads';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LEAD_STATUSES, SOURCE_CHANNELS, AREAS_LEGALES, type LeadStatus, type SourceChannel } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Search, Eye, Pencil, Archive, Thermometer } from 'lucide-react';
+import { Plus, Search, Pencil, Archive, Thermometer } from 'lucide-react';
 import { toast } from 'sonner';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
 
@@ -22,6 +22,7 @@ const statusColors: Record<LeadStatus, string> = {
 };
 
 export default function Leads() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [status, setStatus] = useState<LeadStatus | ''>(searchParams.get('status') as LeadStatus || '');
@@ -35,7 +36,8 @@ export default function Leads() {
   );
   const archiveMutation = useArchiveLead();
 
-  const handleArchive = async (id: string) => {
+  const handleArchive = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // Prevent row click navigation
     if (confirm('¿Archivar este lead?')) {
       try {
         await archiveMutation.mutateAsync(id);
@@ -44,6 +46,10 @@ export default function Leads() {
         toast.error('Error al archivar');
       }
     }
+  };
+
+  const handleRowClick = (leadId: string) => {
+    navigate(`/leads/${leadId}`);
   };
 
   return (
@@ -119,7 +125,11 @@ export default function Leads() {
               <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay leads</TableCell></TableRow>
             ) : (
               data?.leads.map(lead => (
-                <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/50">
+                <TableRow 
+                  key={lead.id} 
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => handleRowClick(lead.id)}
+                >
                   <TableCell className="text-sm">{format(new Date(lead.created_at), 'dd MMM yyyy', { locale: es })}</TableCell>
                   <TableCell className="font-medium">{lead.structured_fields?.nombre || 'Sin nombre'} {lead.structured_fields?.apellidos || ''}</TableCell>
                   <TableCell><Badge variant="outline">{lead.source_channel}</Badge></TableCell>
@@ -142,10 +152,9 @@ export default function Leads() {
                   </TableCell>
                   <TableCell><Badge className={statusColors[lead.status_internal]}>{lead.status_internal}</Badge></TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" asChild><Link to={`/leads/${lead.id}`}><Eye className="h-4 w-4" /></Link></Button>
+                    <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" asChild><Link to={`/leads/${lead.id}/edit`}><Pencil className="h-4 w-4" /></Link></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleArchive(lead.id)}><Archive className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={(e) => handleArchive(e, lead.id)}><Archive className="h-4 w-4" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
