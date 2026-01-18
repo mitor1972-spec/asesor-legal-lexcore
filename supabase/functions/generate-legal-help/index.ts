@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "npm:@supabase/supabase-js@2.90.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,14 +38,15 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
-    if (authError || !user) {
+    // Get current user (compatible with signing keys)
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: authError } = await supabaseUser.auth.getClaims(token);
+    if (authError || !claimsData?.claims) {
       console.error('Auth error:', authError);
       throw new Error('Unauthorized: Invalid token');
     }
-    
-    const userId = user.id;
+
+    const userId = claimsData.claims.sub as string;
     console.log('Authenticated user:', userId);
     
     // Check if user has access to this lead
@@ -72,6 +73,10 @@ serve(async (req) => {
     
     // Verify authorization
     if (!isInternal) {
+      if (!userLawfirmId) {
+        throw new Error('Unauthorized: No lawfirm associated with user');
+      }
+
       // For lawfirm users, check if lead is assigned to their lawfirm
       const { data: assignment, error: assignmentError } = await supabaseAdmin
         .from('lead_assignments')
@@ -104,9 +109,8 @@ serve(async (req) => {
     }
 
     // Determine which lawfirm_id to use
-    const targetLawfirmId = lawfirm_id || userLawfirmId || '00000000-0000-0000-0000-000000000000';
-
-    // Fetch lawfirm to check for custom API key (if lawfirm_id provided)
+    // In internal preview mode there may be no lawfirm; store it as NULL (FK-safe)
+    const targetLawfirmId = (lawfirm_id ?? userLawfirmId ?? null) as string | null;
     let lawfirmName = 'Asesor.Legal';
     if (targetLawfirmId && targetLawfirmId !== '00000000-0000-0000-0000-000000000000') {
       const { data: lawfirm } = await supabaseAdmin
