@@ -18,10 +18,15 @@ import Users from "@/pages/Users";
 import ApiKeys from "@/pages/settings/ApiKeys";
 import LexcoreConfig from "@/pages/settings/LexcoreConfig";
 import LawfirmsManagement from "@/pages/settings/LawfirmsManagement";
+import LawfirmApplications from "@/pages/settings/LawfirmApplications";
+import ChatwootSettings from "@/pages/settings/ChatwootSettings";
 import ProfileSettings from "@/pages/settings/ProfileSettings";
 import LawfirmDashboard from "@/pages/lawfirm/LawfirmDashboard";
 import LawfirmCases from "@/pages/lawfirm/LawfirmCases";
 import LawfirmCaseDetail from "@/pages/lawfirm/LawfirmCaseDetail";
+import LeadsMarket from "@/pages/lawfirm/LeadsMarket";
+import LawfirmAnuncios from "@/pages/lawfirm/LawfirmAnuncios";
+import RegistroDespacho from "@/pages/RegistroDespacho";
 import SalesReport from "@/pages/reports/SalesReport";
 import NotFound from "@/pages/NotFound";
 
@@ -37,6 +42,8 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
+              {/* Public routes */}
+              <Route path="/registro-despacho" element={<RegistroDespacho />} />
               {/* Internal Panel */}
               <Route path="/" element={<MainLayout />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
@@ -50,6 +57,8 @@ const App = () => (
                 <Route path="settings/api-keys" element={<ApiKeys />} />
                 <Route path="settings/lexcore" element={<LexcoreConfig />} />
                 <Route path="settings/lawfirms" element={<LawfirmsManagement />} />
+                <Route path="settings/solicitudes" element={<LawfirmApplications />} />
+                <Route path="settings/chatwoot" element={<ChatwootSettings />} />
                 <Route path="settings/profile" element={<ProfileSettings />} />
                 <Route path="informes/ventas" element={<SalesReport />} />
               </Route>
@@ -59,6 +68,8 @@ const App = () => (
                 <Route path="dashboard" element={<LawfirmDashboard />} />
                 <Route path="casos" element={<LawfirmCases />} />
                 <Route path="casos/:id" element={<LawfirmCaseDetail />} />
+                <Route path="leadsmarket" element={<LeadsMarket />} />
+                <Route path="anuncios" element={<LawfirmAnuncios />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
