@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LEAD_STATUSES, SOURCE_CHANNELS, AREAS_LEGALES, type LeadStatus, type SourceChannel } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Search, Eye, Pencil, Archive } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Archive, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const statusColors: Record<LeadStatus, string> = {
@@ -100,15 +100,22 @@ export default function Leads() {
               <TableHead>Nombre</TableHead>
               <TableHead>Canal</TableHead>
               <TableHead>Área</TableHead>
+              <TableHead className="text-center">
+                <span className="flex items-center justify-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  Score
+                </span>
+              </TableHead>
+              <TableHead className="text-center">Precio</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8">Cargando...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8">Cargando...</TableCell></TableRow>
             ) : data?.leads.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay leads</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay leads</TableCell></TableRow>
             ) : (
               data?.leads.map(lead => (
                 <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/50">
@@ -116,6 +123,24 @@ export default function Leads() {
                   <TableCell className="font-medium">{lead.structured_fields?.nombre || 'Sin nombre'} {lead.structured_fields?.apellidos || ''}</TableCell>
                   <TableCell><Badge variant="outline">{lead.source_channel}</Badge></TableCell>
                   <TableCell className="text-sm text-muted-foreground">{lead.structured_fields?.area_legal || '-'}</TableCell>
+                  <TableCell className="text-center">
+                    {lead.score_final !== null ? (
+                      <Badge variant="outline" className="font-mono bg-primary/10 text-primary border-primary/20">
+                        {lead.score_final}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">--</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {lead.price_final !== null ? (
+                      <Badge variant="outline" className="font-mono bg-green-500/10 text-green-600 border-green-500/20">
+                        {lead.price_final}€
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">--</span>
+                    )}
+                  </TableCell>
                   <TableCell><Badge className={statusColors[lead.status_internal]}>{lead.status_internal}</Badge></TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">

@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LEAD_STATUSES, type LeadStatus } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User } from 'lucide-react';
+import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { LexcoreScoring } from '@/components/scoring/LexcoreScoring';
 
 const statusColors: Record<LeadStatus, string> = {
   'Pendiente': 'bg-warning/10 text-warning border-warning/20',
@@ -51,6 +52,18 @@ export default function LeadDetail() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {/* Score and Price badges */}
+          {lead.score_final !== null && (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="font-mono bg-primary/10 text-primary border-primary/20">
+                <Sparkles className="h-3 w-3 mr-1" />
+                Score: {lead.score_final}
+              </Badge>
+              <Badge variant="outline" className="font-mono bg-green-500/10 text-green-600 border-green-500/20">
+                {lead.price_final}€
+              </Badge>
+            </div>
+          )}
           <Select value={lead.status_internal} onValueChange={v => handleStatusChange(v as LeadStatus)}>
             <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
             <SelectContent>{LEAD_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
@@ -60,7 +73,17 @@ export default function LeadDetail() {
       </div>
 
       <Tabs defaultValue="resumen" className="space-y-4">
-        <TabsList><TabsTrigger value="resumen">Resumen</TabsTrigger><TabsTrigger value="scoring">Scoring</TabsTrigger><TabsTrigger value="historial">Historial</TabsTrigger></TabsList>
+        <TabsList>
+          <TabsTrigger value="resumen">Resumen</TabsTrigger>
+          <TabsTrigger value="scoring" className="flex items-center gap-1">
+            <Sparkles className="h-3 w-3" />
+            Scoring
+            {lead.score_final !== null && (
+              <Badge variant="secondary" className="ml-1 text-xs">{lead.score_final}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="historial">Historial</TabsTrigger>
+        </TabsList>
 
         <TabsContent value="resumen" className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
@@ -97,12 +120,7 @@ export default function LeadDetail() {
         </TabsContent>
 
         <TabsContent value="scoring">
-          <Card className="shadow-soft">
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <p className="text-lg font-medium">Scoring no calculado aún</p>
-              <p className="text-sm">Esta funcionalidad se implementará en Prompt 2</p>
-            </CardContent>
-          </Card>
+          <LexcoreScoring lead={lead} />
         </TabsContent>
 
         <TabsContent value="historial">
