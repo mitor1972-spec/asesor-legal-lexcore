@@ -14,6 +14,17 @@ const PHRASES_TO_FILTER = [
   'Buenos días, Por medio del presente les compartimos ficha resumen de un "posible" cliente para su tratamiento.',
   'Buenos días, Por medio del presente les compartimos ficha resumen',
   'Por medio del presente les compartimos',
+  'Buenos días,',
+];
+
+// Values to hide when they are empty/undefined
+const VALUES_TO_HIDE = [
+  'Email: No consta',
+  'Email: undefined',
+  'Email: null',
+  'Urgencia: undefined',
+  'Urgencia: null',
+  'undefined',
 ];
 
 function filterSummaryPhrases(text: string): string {
@@ -21,8 +32,14 @@ function filterSummaryPhrases(text: string): string {
   for (const phrase of PHRASES_TO_FILTER) {
     filtered = filtered.replace(phrase, '').trim();
   }
+  // Remove problematic values
+  for (const value of VALUES_TO_HIDE) {
+    filtered = filtered.replace(new RegExp(value, 'gi'), '').trim();
+  }
   // Remove leading dashes or empty lines that might remain
   filtered = filtered.replace(/^[-–—\s]+/gm, '').trim();
+  // Remove lines that are now empty or just whitespace
+  filtered = filtered.split('\n').filter(line => line.trim() !== '').join('\n');
   return filtered;
 }
 

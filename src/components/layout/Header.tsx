@@ -68,26 +68,25 @@ export function Header({ onMenuClick }: HeaderProps) {
 
           <NotificationBell />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                {theme === 'light' && <Sun className="h-5 w-5" />}
-                {theme === 'dark' && <Moon className="h-5 w-5" />}
-                {theme === 'system' && <Monitor className="h-5 w-5" />}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme('light')}>
-                <Sun className="mr-2 h-4 w-4" /> Claro
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('dark')}>
-                <Moon className="mr-2 h-4 w-4" /> Oscuro
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('system')}>
-                <Monitor className="mr-2 h-4 w-4" /> Sistema
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Theme toggle with label */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="flex items-center gap-2"
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun className="h-4 w-4" />
+                <span className="hidden sm:inline">☀️ Modo claro</span>
+              </>
+            ) : (
+              <>
+                <Moon className="h-4 w-4" />
+                <span className="hidden sm:inline">🌙 Modo oscuro</span>
+              </>
+            )}
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -104,8 +103,8 @@ export function Header({ onMenuClick }: HeaderProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" /> Perfil
+              <DropdownMenuItem onClick={() => navigate('/settings/profile')}>
+                <User className="mr-2 h-4 w-4" /> Mi perfil
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSignOut} className="text-destructive">

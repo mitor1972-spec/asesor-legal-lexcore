@@ -375,64 +375,64 @@ ${legalHelp.estimated_complexity}
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : legalHelp ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
+                  {/* Complexity - moved to top */}
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-sm mb-2">📊 Complejidad Estimada</h3>
+                    <Badge variant="secondary" className="text-sm px-3 py-1">
+                      {legalHelp.estimated_complexity}
+                    </Badge>
+                  </section>
+
                   {/* Legal Orientation */}
-                  <section>
-                    <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
                       1) Orientación Legal
                     </h3>
-                    <div className="bg-muted/50 rounded-lg p-3 prose prose-sm max-w-none dark:prose-invert">
+                    <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert space-y-2">
                       <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.legal_orientation) }} />
                     </div>
                   </section>
 
                   {/* Documentation */}
-                  <section>
-                    <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
                       2) Documentación a Solicitar
                     </h3>
-                    <div className="bg-muted/50 rounded-lg p-3 prose prose-sm max-w-none dark:prose-invert">
+                    <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert space-y-2">
                       <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.documentation_needed) }} />
                     </div>
                   </section>
 
                   {/* Commercial Steps */}
-                  <section>
-                    <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
                       3) Próximos Pasos Comerciales
                     </h3>
-                    <div className="bg-muted/50 rounded-lg p-3 prose prose-sm max-w-none dark:prose-invert">
+                    <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert space-y-2">
                       <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.commercial_next_steps) }} />
                     </div>
                   </section>
 
                   {/* Legal Steps */}
-                  <section>
-                    <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
                       4) Próximos Pasos Jurídicos
                     </h3>
-                    <div className="bg-muted/50 rounded-lg p-3 prose prose-sm max-w-none dark:prose-invert">
+                    <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert space-y-2">
                       <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.legal_next_steps) }} />
                     </div>
                   </section>
 
                   {/* Risks */}
-                  <section>
-                    <h3 className="font-semibold text-sm mb-1 flex items-center gap-2">
+                  <section className="mb-6">
+                    <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
                       <AlertTriangle className="h-3.5 w-3.5 text-warning" />
                       5) Riesgos y Alertas
                     </h3>
-                    <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 prose prose-sm max-w-none dark:prose-invert">
+                    <div className="bg-warning/10 border border-warning/30 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert space-y-2">
                       <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.risks_alerts) }} />
                     </div>
-                  </section>
-
-                  {/* Complexity */}
-                  <section>
-                    <h3 className="font-semibold text-sm mb-1">Complejidad Estimada</h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {legalHelp.estimated_complexity}
-                    </Badge>
                   </section>
                 </div>
               ) : (
