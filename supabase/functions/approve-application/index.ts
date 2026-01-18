@@ -206,7 +206,7 @@ function generatePassword(): string {
 }
 
 async function sendWelcomeEmail(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   params: { to: string; name: string; lawfirmName: string; password: string }
 ) {
   // Get email settings
