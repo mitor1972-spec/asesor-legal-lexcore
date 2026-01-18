@@ -13,7 +13,8 @@ import { Progress } from '@/components/ui/progress';
 import { LEAD_STATUSES, type LeadStatus } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2, Eye, Euro, Scale, Zap, Inbox, Building2, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2, Eye, Euro, Scale, Zap, Inbox, Building2, BarChart3, Plus } from 'lucide-react';
+import { NewLeadButton } from '@/components/lead/NewLeadButton';
 import { toast } from 'sonner';
 import { LexcoreScoring } from '@/components/scoring/LexcoreScoring';
 import { ScoringHeader } from '@/components/lead/ScoringHeader';
@@ -181,6 +182,7 @@ export default function LeadDetail() {
           {isInternal && (
             <Button variant="secondary" onClick={handleViewAsLawyer}><Eye className="mr-2 h-4 w-4" />Ver como abogado</Button>
           )}
+          <NewLeadButton />
         </div>
       </div>
 
