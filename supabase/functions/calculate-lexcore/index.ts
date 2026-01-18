@@ -103,6 +103,73 @@ serve(async (req) => {
     const conclusionPrompt = promptsMap["scoring_conclusion"] || 
       "2-4 líneas resumiendo el lead y el scoring";
 
+    // Get configurable scoring rules from database
+    const scoringRulesPrompt = promptsMap["lexcore_scoring_rules"] || `## GRUPOS DE SCORING (evalúa cada uno de 0 a su máximo):
+
+### 1. CONTACTABILIDAD (max 8):
+- Teléfono válido: +5
+- Email válido: +3
+- Nombre completo: +1 (cap en 8)
+
+### 2. INTENCIÓN (max 20):
+- Solicita abogado explícitamente: 0/6/10
+- Acepta que tendrá coste: 0/2/4
+- Busca acción (no solo info): 0/2/4
+- Disponible para llamada: 0/1/2
+
+### 3. URGENCIA (max 10, solo Modo A):
+- Plazo específico: 0/3/5
+- Riesgo inmediato: 0/2/3
+- Ventana de oportunidad: 0/1/2
+
+### 4. CASO (max 25):
+- Área/subárea clara: 0-5
+- Hechos y cronología: 0-7
+- Petición concreta: 0-5
+- Identificadores trazables: 0-3
+- Contraparte identificada: 0-2
+- Fase procesal definida: 0-3
+
+### 5. EVIDENCIA (max 10):
+- 0: Nada
+- 2: Menciona que tiene docs
+- 4: Describe docs básicos
+- 6: Aporta docs relevantes
+- 8: Docs clave del caso
+- 10: Expediente completo
+
+### 6. CLARIDAD (max 10):
+- Relato ordenado: 0-4
+- Completitud: 0-3
+- Coherencia: 0-2
+- Tono colaborativo: 0-1
+
+## PENALIZACIONES (aplicar si procede):
+- Caso demasiado genérico: -10 a -20
+- Faltan datos críticos: -5 a -15
+- Falta documentación razonable: -3 a -10
+- Contacto incompleto real: -3 a -8
+- Segunda opinión (ya tiene abogado): -6
+- Precedente negativo: -6
+- Inconsistencia temporal: -3 a -8
+
+## AJUSTES COMERCIALES:
+- Exclusividad (n_despachos): 1 despacho +6 / 2: -6 / 3: -12 / 4+: -18
+- Canal: Teléfono +6 / Web +4 / WhatsApp +2 / Email 0
+- Cuantía: <1000€ -10 / 1000-4999€ 0 / 5000-19999€ +4 / >20000€ +6
+
+## VJ (Valoración de Juicio):
+- Solo valores: +10, +6, 0, -6, -10
+- Máximo impacto: ±1 tramo de precio
+- Justificar en 1 frase
+
+## GATE NO CONTACTABLE:
+Si no hay teléfono válido NI email válido → precio_final = 5€
+
+## SCORE MÁXIMO:
+El score_final NUNCA puede superar 95. Un score de 100 es IMPOSIBLE.
+Reserva 90-95 solo para leads excepcionales con toda la información perfecta.`;
+
     const openAIKey = apiSetting.key_value;
     const configJson = config.config_json;
 
@@ -129,77 +196,7 @@ Analiza el lead y calcula el scoring siguiendo estas reglas:
 - Si urgencia_aplica = true → usar MODO A (incluye grupo urgencia, pesos en weights_mode_a)
 - Si urgencia_aplica = false → usar MODO B (sin grupo urgencia, pesos en weights_mode_b)
 
-## GRUPOS DE SCORING (evalúa cada uno de 0 a su máximo):
-
-1. CONTACTABILIDAD (max 8):
-   - Teléfono válido: +5
-   - Email válido: +3
-   - Nombre completo: +1 (cap en 8)
-
-2. INTENCIÓN (max 20):
-   - Solicita abogado explícitamente: 0/6/10
-   - Acepta que tendrá coste: 0/2/4
-   - Busca acción (no solo info): 0/2/4
-   - Disponible para llamada: 0/1/2
-
-3. URGENCIA (max 10, solo Modo A):
-   - Plazo específico: 0/3/5
-   - Riesgo inmediato: 0/2/3
-   - Ventana de oportunidad: 0/1/2
-
-4. CASO (max 25):
-   - Área/subárea clara: 0-5
-   - Hechos y cronología: 0-7
-   - Petición concreta: 0-5
-   - Identificadores trazables: 0-3
-   - Contraparte identificada: 0-2
-   - Fase procesal definida: 0-3
-
-5. EVIDENCIA (max 10):
-   - 0: Nada
-   - 2: Menciona que tiene docs
-   - 4: Describe docs básicos
-   - 6: Aporta docs relevantes
-   - 8: Docs clave del caso
-   - 10: Expediente completo
-
-6. CLARIDAD (max 10):
-   - Relato ordenado: 0-4
-   - Completitud: 0-3
-   - Coherencia: 0-2
-   - Tono colaborativo: 0-1
-
-## PENALIZACIONES (aplicar si procede):
-- Caso demasiado genérico: -10 a -20
-- Faltan datos críticos: -5 a -15
-- Falta documentación razonable: -3 a -10
-- Contacto incompleto real: -3 a -8
-- Segunda opinión (ya tiene abogado): -6
-- Precedente negativo: -6
-- Inconsistencia temporal: -3 a -8
-
-## AJUSTES COMERCIALES:
-- Exclusividad (n_despachos): 1 despacho +6 / 2: -6 / 3: -12 / 4+: -18
-- Canal: Teléfono +6 / Web +4 / WhatsApp +2 / Email 0
-- Cuantía: <1000€ -10 / 1000-4999€ 0 / 5000-19999€ +4 / >20000€ +6
-
-## VJ (Valoración de Juicio):
-- Solo valores: +10, +6, 0, -6, -10
-- Máximo impacto: ±1 tramo de precio
-- Justificar en 1 frase
-
-## GATE NO CONTACTABLE:
-Si no hay teléfono válido NI email válido → precio_final = 5€
-
-## CÁLCULO DEL SCORE FINAL:
-1. Suma los raw_scores de todos los grupos (máx 83 en Modo A, 73 en Modo B)
-2. Aplica las penalizaciones (resta)
-3. Aplica los ajustes comerciales (suma/resta)
-4. Aplica VJ (suma/resta)
-5. **IMPORTANTE: El score_final NUNCA puede superar 95**. Si la suma da más de 95, capa a 95.
-6. El score_final mínimo es 0.
-
-Un score de 100 es IMPOSIBLE porque siempre hay margen de mejora. Reserva 90-95 solo para leads excepcionales con toda la información perfecta.
+${scoringRulesPrompt}
 
 ## CÁLCULO DEL PRECIO:
 Usa los price_steps de la configuración para mapear score_final a precio.

@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Cog, Check, Copy, Download, Upload, Loader2, Radio } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Cog, Check, Copy, Download, Upload, Loader2, Radio, FileText, Save, RotateCcw, Sparkles } from 'lucide-react';
 import { 
   useLexcoreConfigs, 
   useActivateConfig, 
@@ -15,6 +16,7 @@ import {
   LexcoreConfigJson,
   PriceStep,
 } from '@/hooks/useLexcoreConfig';
+import { useAiPrompts, useUpdateAiPrompt } from '@/hooks/useAiPrompts';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -29,9 +31,11 @@ import {
 
 export default function LexcoreConfig() {
   const { data: configs, isLoading } = useLexcoreConfigs();
+  const { data: aiPrompts, isLoading: promptsLoading } = useAiPrompts();
   const activateConfig = useActivateConfig();
   const updateConfigJson = useUpdateConfigJson();
   const duplicateConfig = useDuplicateConfig();
+  const updateAiPrompt = useUpdateAiPrompt();
   
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<LexcoreConfigType | null>(null);
@@ -91,7 +95,10 @@ export default function LexcoreConfig() {
     await updateConfigJson.mutateAsync({ configId, configJson: newConfigJson });
   };
 
-  if (isLoading) {
+  // Find the lexcore_scoring_rules prompt
+  const scoringRulesPrompt = aiPrompts?.find(p => p.prompt_key === 'lexcore_scoring_rules');
+
+  if (isLoading || promptsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -111,8 +118,15 @@ export default function LexcoreConfig() {
 
       <Card className="shadow-soft">
         <CardContent className="p-0">
-          <Tabs defaultValue="versions" className="w-full">
-            <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
+          <Tabs defaultValue="instructions" className="w-full">
+            <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 overflow-x-auto">
+              <TabsTrigger 
+                value="instructions" 
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
+              >
+                <FileText className="h-4 w-4 mr-1" />
+                Instrucciones IA
+              </TabsTrigger>
               <TabsTrigger 
                 value="versions" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
@@ -132,6 +146,16 @@ export default function LexcoreConfig() {
                 Pesos
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="instructions" className="p-6">
+              <ScoringRulesEditor 
+                prompt={scoringRulesPrompt}
+                onSave={async (id, text) => {
+                  await updateAiPrompt.mutateAsync({ id, prompt_text: text });
+                }}
+                isPending={updateAiPrompt.isPending}
+              />
+            </TabsContent>
 
             <TabsContent value="versions" className="p-6 space-y-4">
               {configs?.map((config) => (
@@ -411,6 +435,166 @@ function WeightsEditor({
           >
             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Guardar Modo B
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const DEFAULT_SCORING_RULES = `## GRUPOS DE SCORING (evalúa cada uno de 0 a su máximo):
+
+### 1. CONTACTABILIDAD (max 8):
+- Teléfono válido: +5
+- Email válido: +3
+- Nombre completo: +1 (cap en 8)
+
+### 2. INTENCIÓN (max 20):
+- Solicita abogado explícitamente: 0/6/10
+- Acepta que tendrá coste: 0/2/4
+- Busca acción (no solo info): 0/2/4
+- Disponible para llamada: 0/1/2
+
+### 3. URGENCIA (max 10, solo Modo A):
+- Plazo específico: 0/3/5
+- Riesgo inmediato: 0/2/3
+- Ventana de oportunidad: 0/1/2
+
+### 4. CASO (max 25):
+- Área/subárea clara: 0-5
+- Hechos y cronología: 0-7
+- Petición concreta: 0-5
+- Identificadores trazables: 0-3
+- Contraparte identificada: 0-2
+- Fase procesal definida: 0-3
+
+### 5. EVIDENCIA (max 10):
+- 0: Nada
+- 2: Menciona que tiene docs
+- 4: Describe docs básicos
+- 6: Aporta docs relevantes
+- 8: Docs clave del caso
+- 10: Expediente completo
+
+### 6. CLARIDAD (max 10):
+- Relato ordenado: 0-4
+- Completitud: 0-3
+- Coherencia: 0-2
+- Tono colaborativo: 0-1
+
+## PENALIZACIONES (aplicar si procede):
+- Caso demasiado genérico: -10 a -20
+- Faltan datos críticos: -5 a -15
+- Falta documentación razonable: -3 a -10
+- Contacto incompleto real: -3 a -8
+- Segunda opinión (ya tiene abogado): -6
+- Precedente negativo: -6
+- Inconsistencia temporal: -3 a -8
+
+## AJUSTES COMERCIALES:
+- Exclusividad (n_despachos): 1 despacho +6 / 2: -6 / 3: -12 / 4+: -18
+- Canal: Teléfono +6 / Web +4 / WhatsApp +2 / Email 0
+- Cuantía: <1000€ -10 / 1000-4999€ 0 / 5000-19999€ +4 / >20000€ +6
+
+## VJ (Valoración de Juicio):
+- Solo valores: +10, +6, 0, -6, -10
+- Máximo impacto: ±1 tramo de precio
+- Justificar en 1 frase
+
+## GATE NO CONTACTABLE:
+Si no hay teléfono válido NI email válido → precio_final = 5€
+
+## SCORE MÁXIMO:
+El score_final NUNCA puede superar 95. Un score de 100 es IMPOSIBLE.
+Reserva 90-95 solo para leads excepcionales con toda la información perfecta.`;
+
+interface ScoringRulesEditorProps {
+  prompt?: {
+    id: string;
+    prompt_text: string;
+    updated_at: string;
+  };
+  onSave: (id: string, text: string) => Promise<void>;
+  isPending: boolean;
+}
+
+function ScoringRulesEditor({ prompt, onSave, isPending }: ScoringRulesEditorProps) {
+  const [editedText, setEditedText] = useState<string | null>(null);
+  
+  const currentText = editedText ?? prompt?.prompt_text ?? DEFAULT_SCORING_RULES;
+  const hasChanges = editedText !== null && editedText !== prompt?.prompt_text;
+
+  const handleSave = async () => {
+    if (prompt && editedText) {
+      await onSave(prompt.id, editedText);
+      setEditedText(null);
+    }
+  };
+
+  const handleReset = () => {
+    setEditedText(DEFAULT_SCORING_RULES);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-gradient-to-br from-primary/5 to-transparent border border-primary/20 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <Sparkles className="h-5 w-5 text-primary mt-0.5" />
+          <div>
+            <p className="text-sm font-medium">Instrucciones de Scoring</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Estas son las reglas que la IA usa para calcular el score de cada lead. 
+              Puedes modificar los valores máximos, las penalizaciones y los ajustes comerciales.
+              Los cambios aplicarán a los nuevos cálculos de Lexcore.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm font-medium">Reglas de Scoring</Label>
+          {hasChanges && (
+            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+              Sin guardar
+            </Badge>
+          )}
+        </div>
+        <Textarea
+          value={currentText}
+          onChange={(e) => setEditedText(e.target.value)}
+          className="min-h-[500px] font-mono text-sm"
+          placeholder="Escribe las instrucciones para el scoring..."
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {prompt?.updated_at && `Última actualización: ${format(new Date(prompt.updated_at), "d MMM yyyy 'a las' HH:mm", { locale: es })}`}
+        </p>
+        
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={isPending}
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Restaurar por defecto
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={!hasChanges || isPending || !prompt}
+            className="gradient-brand"
+          >
+            {isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Guardar cambios
           </Button>
         </div>
       </div>
