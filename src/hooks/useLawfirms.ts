@@ -32,6 +32,9 @@ export interface Lawfirm {
   is_active: boolean | null;
   created_at: string | null;
   settings_json: Json | null;
+  marketplace_balance: number | null;
+  marketplace_alerts_enabled: boolean | null;
+  alert_frequency: string | null;
 }
 
 export function useLawfirms() {

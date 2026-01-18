@@ -223,7 +223,7 @@ export default function LeadsMarket() {
             <ShoppingCart className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
             <h3 className="text-lg font-medium">No hay leads disponibles</h3>
             <p className="text-muted-foreground mt-1">
-              Los leads se publican a las 8:00 y 18:00
+              Cuando haya nuevos leads disponibles, aparecerán aquí automáticamente
             </p>
           </CardContent>
         </Card>

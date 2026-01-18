@@ -16,6 +16,7 @@ import {
   Scale,
   X,
   Megaphone,
+  HelpCircle,
 } from 'lucide-react';
 
 interface LawfirmSidebarProps {
@@ -139,6 +140,19 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             </nav>
           </>
         )}
+
+        {/* Help link */}
+        <div className="my-4 border-t border-sidebar-border" />
+        <nav className="space-y-1">
+          <a
+            href="#"
+            onClick={(e) => { e.preventDefault(); /* TODO: Open help modal */ }}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          >
+            <HelpCircle className="h-5 w-5" />
+            Ayuda
+          </a>
+        </nav>
       </ScrollArea>
 
       {/* Footer */}
