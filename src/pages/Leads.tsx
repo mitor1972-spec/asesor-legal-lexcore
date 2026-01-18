@@ -10,9 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LEAD_STATUSES, SOURCE_CHANNELS, AREAS_LEGALES, type LeadStatus, type SourceChannel } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Search, Pencil, Archive, Thermometer } from 'lucide-react';
+import { Plus, Search, Pencil, Archive, Thermometer, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
+import { supabase } from '@/integrations/supabase/client';
+import { exportLeadsToExcel } from '@/lib/exportToExcel';
 
 const statusColors: Record<LeadStatus, string> = {
   'Pendiente': 'bg-warning/10 text-warning border-warning/20',
@@ -52,6 +54,22 @@ export default function Leads() {
     navigate(`/leads/${leadId}`);
   };
 
+  const handleExport = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*, lead_assignments(lawfirm_id, assigned_at, firm_status, contacted_at, result_notes, lawfirms(name))')
+        .is('archived_at', null)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      exportLeadsToExcel(data || []);
+      toast.success('Exportación completada');
+    } catch {
+      toast.error('Error al exportar');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -59,9 +77,14 @@ export default function Leads() {
           <h1 className="text-2xl font-display font-bold">Leads</h1>
           <p className="text-muted-foreground">{data?.totalCount ?? 0} leads en total</p>
         </div>
-        <Button asChild className="gradient-brand">
-          <Link to="/leads/new"><Plus className="mr-2 h-4 w-4" />Nuevo Lead</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport}>
+            <FileDown className="mr-2 h-4 w-4" />Exportar Excel
+          </Button>
+          <Button asChild className="gradient-brand">
+            <Link to="/leads/new"><Plus className="mr-2 h-4 w-4" />Nuevo Lead</Link>
+          </Button>
+        </div>
       </div>
 
       <Card className="shadow-soft">

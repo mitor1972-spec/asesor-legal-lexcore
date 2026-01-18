@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog, ChevronDown, Key, Cog, Building2 } from 'lucide-react';
+import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog, ChevronDown, Key, Cog, Building2, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -11,6 +11,7 @@ const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Leads', href: '/leads', icon: Users },
   { label: 'Nuevo Lead', href: '/leads/new', icon: Plus },
+  { label: 'Informes', href: '/informes/ventas', icon: BarChart3 },
 ];
 
 const configSubItems = [

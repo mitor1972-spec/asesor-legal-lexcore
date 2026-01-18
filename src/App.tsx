@@ -21,6 +21,7 @@ import LawfirmsManagement from "@/pages/settings/LawfirmsManagement";
 import LawfirmDashboard from "@/pages/lawfirm/LawfirmDashboard";
 import LawfirmCases from "@/pages/lawfirm/LawfirmCases";
 import LawfirmCaseDetail from "@/pages/lawfirm/LawfirmCaseDetail";
+import SalesReport from "@/pages/reports/SalesReport";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
                 <Route path="settings/api-keys" element={<ApiKeys />} />
                 <Route path="settings/lexcore" element={<LexcoreConfig />} />
                 <Route path="settings/lawfirms" element={<LawfirmsManagement />} />
+                <Route path="informes/ventas" element={<SalesReport />} />
               </Route>
               {/* Lawfirm Portal */}
               <Route path="/despacho" element={<LawfirmLayout />}>
