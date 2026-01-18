@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Inbox, Euro, Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -9,9 +10,10 @@ interface KPICardProps {
   change?: number;
   changeLabel?: string;
   format?: 'number' | 'currency' | 'percent';
+  link?: string;
 }
 
-function KPICard({ title, value, icon: Icon, change, changeLabel, format = 'number' }: KPICardProps) {
+function KPICard({ title, value, icon: Icon, change, changeLabel, format = 'number', link }: KPICardProps) {
   const formattedValue = () => {
     if (format === 'currency') return `${value.toLocaleString('es-ES')}€`;
     if (format === 'percent') return `${Number(value).toFixed(1)}%`;
@@ -30,8 +32,8 @@ function KPICard({ title, value, icon: Icon, change, changeLabel, format = 'numb
       ? TrendingUp 
       : TrendingDown;
 
-  return (
-    <Card className="shadow-soft hover:shadow-medium transition-shadow">
+  const cardContent = (
+    <Card className="shadow-soft hover:shadow-medium transition-all cursor-pointer hover:scale-[1.02] hover:border-primary/50">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <div className="p-2 rounded-lg bg-primary/10">
@@ -52,6 +54,12 @@ function KPICard({ title, value, icon: Icon, change, changeLabel, format = 'numb
       </CardContent>
     </Card>
   );
+
+  if (link) {
+    return <Link to={link}>{cardContent}</Link>;
+  }
+
+  return cardContent;
 }
 
 interface DashboardKPIsProps {
@@ -89,6 +97,7 @@ export function DashboardKPIs({
       icon: Inbox,
       change: isLoading ? undefined : calcChange(totalLeads, prevTotalLeads),
       format: 'number' as const,
+      link: '/leads',
     },
     {
       title: 'Valor Total',
@@ -96,6 +105,7 @@ export function DashboardKPIs({
       icon: Euro,
       change: isLoading ? undefined : calcChange(totalValue, prevTotalValue),
       format: 'currency' as const,
+      link: '/leads',
     },
     {
       title: 'Leads Ganados',
@@ -103,6 +113,7 @@ export function DashboardKPIs({
       icon: Trophy,
       change: isLoading ? undefined : calcChange(leadsWon, prevLeadsWon),
       format: 'number' as const,
+      link: '/leads?status=Aceptado',
     },
     {
       title: 'Tasa Conversión',
@@ -110,6 +121,7 @@ export function DashboardKPIs({
       icon: TrendingUp,
       change: isLoading ? undefined : conversionRate - prevConversionRate,
       format: 'percent' as const,
+      link: '/reports/sales',
     },
   ];
 

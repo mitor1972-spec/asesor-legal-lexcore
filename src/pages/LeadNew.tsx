@@ -241,7 +241,8 @@ export default function LeadNew() {
         </Card>
       )}
 
-      <form onSubmit={handleSaveOnly} className="grid md:grid-cols-2 gap-6">
+      <form onSubmit={handleSaveOnly} className="space-y-6">
+        {/* Contenido principal + Botón de guardar */}
         <Card className="shadow-soft">
           <CardHeader><CardTitle>Contenido del Lead</CardTitle></CardHeader>
           <CardContent className="space-y-4">
@@ -275,10 +276,37 @@ export default function LeadNew() {
                 ))}
               </div>
             </div>
+            
+            {/* Botón principal visible sin scroll */}
+            <div className="pt-4 flex flex-col sm:flex-row gap-3">
+              <Button 
+                type="button" 
+                className="gradient-brand flex-1" 
+                disabled={isProcessing || leadText.length < 50}
+                onClick={handleSaveAndProcess}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Guardar y Calcular Lexcore
+                  </>
+                )}
+              </Button>
+              <Button type="submit" variant="outline" disabled={createMutation.isPending || isProcessing}>
+                <Save className="mr-2 h-4 w-4" />
+                Guardar solo
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
+        {/* Campos adicionales en grid */}
+        <div className="grid md:grid-cols-2 gap-6">
           <Card className="shadow-soft">
             <CardHeader><CardTitle>Datos de Contacto</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-2 gap-4">
@@ -312,75 +340,56 @@ export default function LeadNew() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-soft">
-            <CardHeader><CardTitle>Clasificación</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Área Legal *</Label>
-                <Select value={fields.area_legal || ''} onValueChange={v => updateField('area_legal', v as AreaLegal)} disabled={isProcessing}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar área" /></SelectTrigger>
-                  <SelectContent>{AREAS_LEGALES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Subárea</Label>
-                <Input value={fields.subarea || ''} onChange={e => updateField('subarea', e.target.value)} disabled={isProcessing} />
-              </div>
-              <div className="space-y-2">
-                <Label>Cuantía (€)</Label>
-                <Input type="number" value={fields.cuantia ?? ''} onChange={e => updateField('cuantia', e.target.value ? Number(e.target.value) : null)} disabled={isProcessing} />
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox id="urgencia" checked={fields.urgencia_aplica || false} onCheckedChange={c => updateField('urgencia_aplica', !!c)} disabled={isProcessing} />
-                <Label htmlFor="urgencia">Urgencia aplica</Label>
-              </div>
-              {fields.urgencia_aplica && (
-                <Select value={fields.urgencia_nivel || ''} onValueChange={v => updateField('urgencia_nivel', v as UrgencyLevel)} disabled={isProcessing}>
-                  <SelectTrigger><SelectValue placeholder="Nivel de urgencia" /></SelectTrigger>
-                  <SelectContent>{URGENCY_LEVELS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-                </Select>
-              )}
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <Card className="shadow-soft">
+              <CardHeader><CardTitle>Clasificación</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Área Legal *</Label>
+                  <Select value={fields.area_legal || ''} onValueChange={v => updateField('area_legal', v as AreaLegal)} disabled={isProcessing}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar área" /></SelectTrigger>
+                    <SelectContent>{AREAS_LEGALES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Subárea</Label>
+                  <Input value={fields.subarea || ''} onChange={e => updateField('subarea', e.target.value)} disabled={isProcessing} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cuantía (€)</Label>
+                  <Input type="number" value={fields.cuantia ?? ''} onChange={e => updateField('cuantia', e.target.value ? Number(e.target.value) : null)} disabled={isProcessing} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="urgencia" checked={fields.urgencia_aplica || false} onCheckedChange={c => updateField('urgencia_aplica', !!c)} disabled={isProcessing} />
+                  <Label htmlFor="urgencia">Urgencia aplica</Label>
+                </div>
+                {fields.urgencia_aplica && (
+                  <Select value={fields.urgencia_nivel || ''} onValueChange={v => updateField('urgencia_nivel', v as UrgencyLevel)} disabled={isProcessing}>
+                    <SelectTrigger><SelectValue placeholder="Nivel de urgencia" /></SelectTrigger>
+                    <SelectContent>{URGENCY_LEVELS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
+              </CardContent>
+            </Card>
 
-          <Card className="shadow-soft">
-            <CardHeader><CardTitle>Notas Internas</CardTitle></CardHeader>
-            <CardContent>
-              <Textarea 
-                placeholder="Notas del operador..." 
-                value={fields.notas_operador || ''} 
-                onChange={e => updateField('notas_operador', e.target.value)} 
-                disabled={isProcessing}
-              />
-            </CardContent>
-          </Card>
+            <Card className="shadow-soft">
+              <CardHeader><CardTitle>Notas Internas</CardTitle></CardHeader>
+              <CardContent>
+                <Textarea 
+                  placeholder="Notas del operador..." 
+                  value={fields.notas_operador || ''} 
+                  onChange={e => updateField('notas_operador', e.target.value)} 
+                  disabled={isProcessing}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        <div className="md:col-span-2 flex flex-col sm:flex-row justify-end gap-3">
+        {/* Botón cancelar al final */}
+        <div className="flex justify-end">
           <Button type="button" variant="outline" onClick={() => navigate(-1)} disabled={isProcessing}>
             Cancelar
-          </Button>
-          <Button type="submit" variant="outline" disabled={createMutation.isPending || isProcessing}>
-            <Save className="mr-2 h-4 w-4" />
-            Guardar solo
-          </Button>
-          <Button 
-            type="button" 
-            className="gradient-brand" 
-            disabled={isProcessing || leadText.length < 50}
-            onClick={handleSaveAndProcess}
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Procesando...
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Guardar y Calcular Lexcore
-              </>
-            )}
           </Button>
         </div>
       </form>

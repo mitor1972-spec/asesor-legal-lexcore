@@ -12,6 +12,7 @@ import { ChannelChart } from '@/components/dashboard/charts/ChannelChart';
 import { ScoreDistributionChart } from '@/components/dashboard/charts/ScoreDistributionChart';
 import { TopLawfirmsCard } from '@/components/dashboard/TopLawfirmsCard';
 import { RecentLeadsTable } from '@/components/dashboard/RecentLeadsTable';
+import { NewLeadButton } from '@/components/lead/NewLeadButton';
 
 export default function Dashboard() {
   const [period, setPeriod] = useState<DatePeriod>('month');
@@ -37,12 +38,7 @@ export default function Dashboard() {
             customRange={customRange}
             onCustomRangeChange={setCustomRange}
           />
-          <Button asChild className="gradient-brand">
-            <Link to="/leads/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Lead
-            </Link>
-          </Button>
+          <NewLeadButton />
         </div>
       </div>
 

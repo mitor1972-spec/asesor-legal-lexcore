@@ -56,8 +56,10 @@ export function useLeads(filters?: LeadFilters, page = 1, pageSize = 20) {
       }
 
       if (filters?.search) {
+        // Búsqueda en lead_text y en campos estructurados (nombre, apellidos, email, telefono, area_legal, ciudad, provincia)
+        const searchTerm = filters.search.toLowerCase();
         query = query.or(
-          `lead_text.ilike.%${filters.search}%,structured_fields->nombre.ilike.%${filters.search}%,structured_fields->apellidos.ilike.%${filters.search}%,structured_fields->email.ilike.%${filters.search}%,structured_fields->telefono.ilike.%${filters.search}%`
+          `lead_text.ilike.%${searchTerm}%,structured_fields->>nombre.ilike.%${searchTerm}%,structured_fields->>apellidos.ilike.%${searchTerm}%,structured_fields->>email.ilike.%${searchTerm}%,structured_fields->>telefono.ilike.%${searchTerm}%,structured_fields->>area_legal.ilike.%${searchTerm}%,structured_fields->>ciudad.ilike.%${searchTerm}%,structured_fields->>provincia.ilike.%${searchTerm}%`
         );
       }
 
