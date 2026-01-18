@@ -129,6 +129,13 @@ function extractConversationId(payload: ChatwootWebhookPayload): number | null {
 function extractAccountId(payload: ChatwootWebhookPayload): number | null {
   if (payload.conversation?.account_id) return payload.conversation.account_id;
   if (payload.account?.id) return payload.account.id;
+  // Fallback: extract from first message's account_id (common in conversation_created events)
+  if (payload.messages && payload.messages.length > 0) {
+    const firstMsg = payload.messages[0] as any;
+    if (firstMsg.account_id && typeof firstMsg.account_id === 'number') {
+      return firstMsg.account_id;
+    }
+  }
   return null;
 }
 
