@@ -1,9 +1,15 @@
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { Lead } from '@/types';
 
-interface ExportLead extends Lead {
+interface ExportLead {
+  id: string;
+  created_at: string;
+  source_channel: string | null;
+  status_internal: string | null;
+  score_final: number | null;
+  price_final: number | null;
+  structured_fields: Record<string, unknown> | null;
   lead_assignments?: {
     lawfirm_id: string | null;
     assigned_at: string | null;

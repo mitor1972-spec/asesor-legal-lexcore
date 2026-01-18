@@ -63,7 +63,7 @@ export default function Leads() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      exportLeadsToExcel(data || []);
+      exportLeadsToExcel(data as any || []);
       toast.success('Exportación completada');
     } catch {
       toast.error('Error al exportar');
