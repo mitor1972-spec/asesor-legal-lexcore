@@ -282,6 +282,125 @@ export type Database = {
           },
         ]
       }
+      chatwoot_conversations: {
+        Row: {
+          chatwoot_account_id: number | null
+          chatwoot_contact_id: number | null
+          chatwoot_conversation_id: number
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          conversation_content: string | null
+          created_at: string | null
+          id: string
+          lead_id: string | null
+          messages_count: number | null
+          processed_at: string | null
+          status: string | null
+        }
+        Insert: {
+          chatwoot_account_id?: number | null
+          chatwoot_contact_id?: number | null
+          chatwoot_conversation_id: number
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          conversation_content?: string | null
+          created_at?: string | null
+          id?: string
+          lead_id?: string | null
+          messages_count?: number | null
+          processed_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          chatwoot_account_id?: number | null
+          chatwoot_contact_id?: number | null
+          chatwoot_conversation_id?: number
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          conversation_content?: string | null
+          created_at?: string | null
+          id?: string
+          lead_id?: string | null
+          messages_count?: number | null
+          processed_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatwoot_conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chatwoot_import_logs: {
+        Row: {
+          chatwoot_conversation_id: number | null
+          created_at: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          payload_json: Json | null
+          status: string
+        }
+        Insert: {
+          chatwoot_conversation_id?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          payload_json?: Json | null
+          status: string
+        }
+        Update: {
+          chatwoot_conversation_id?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          payload_json?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
+      chatwoot_settings: {
+        Row: {
+          auto_process_lexcore: boolean | null
+          created_at: string | null
+          default_source_channel: string | null
+          id: string
+          is_active: boolean | null
+          only_resolved_conversations: boolean | null
+          updated_at: string | null
+          webhook_token: string
+        }
+        Insert: {
+          auto_process_lexcore?: boolean | null
+          created_at?: string | null
+          default_source_channel?: string | null
+          id?: string
+          is_active?: boolean | null
+          only_resolved_conversations?: boolean | null
+          updated_at?: string | null
+          webhook_token?: string
+        }
+        Update: {
+          auto_process_lexcore?: boolean | null
+          created_at?: string | null
+          default_source_channel?: string | null
+          id?: string
+          is_active?: boolean | null
+          only_resolved_conversations?: boolean | null
+          updated_at?: string | null
+          webhook_token?: string
+        }
+        Relationships: []
+      }
       company_settings: {
         Row: {
           address: string | null
