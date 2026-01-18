@@ -16,7 +16,7 @@ import { LexcoreScoring } from '@/components/scoring/LexcoreScoring';
 import { ScoringHeader } from '@/components/lead/ScoringHeader';
 import { CaseSummaryView } from '@/components/lead/CaseSummaryView';
 import { ConversationView } from '@/components/lead/ConversationView';
-
+import { LeadTemperature } from '@/components/lead/LeadTemperature';
 const statusColors: Record<LeadStatus, string> = {
   'Pendiente': 'bg-warning/10 text-warning border-warning/20',
   'Derivado': 'bg-primary/10 text-primary border-primary/20',
@@ -87,15 +87,15 @@ export default function LeadDetail() {
             <SelectContent>{LEAD_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
           </Select>
           {lead.score_final !== null && (
-            <>
-              <Badge variant="outline" className="font-mono bg-primary/10 text-primary border-primary/20">
-                <Sparkles className="h-3 w-3 mr-1" />
-                Score: {lead.score_final}
-              </Badge>
+            <div className="flex items-center gap-3">
+              <LeadTemperature 
+                score={lead.score_final} 
+                variant="mini" 
+              />
               <Badge variant="outline" className="font-mono bg-green-500/10 text-green-600 border-green-500/20">
                 {lead.price_final}€
               </Badge>
-            </>
+            </div>
           )}
           <Button asChild variant="outline"><Link to={`/leads/${id}/edit`}><Pencil className="mr-2 h-4 w-4" />Editar</Link></Button>
         </div>
@@ -119,6 +119,13 @@ export default function LeadDetail() {
         </TabsList>
 
         <TabsContent value="resumen" className="space-y-4">
+          {/* Lead Temperature */}
+          <LeadTemperature 
+            score={lead.score_final}
+            structuredFields={f}
+            variant="full"
+          />
+
           {/* Scoring Header Card - Always visible at top */}
           <ScoringHeader 
             scoreFinal={lead.score_final}
@@ -151,8 +158,8 @@ export default function LeadDetail() {
                 <p><strong>Área:</strong> {(f?.area_legal as string) || '-'}</p>
                 <p><strong>Subárea:</strong> {(f?.subarea as string) || '-'}</p>
                 <p><strong>Cuantía:</strong> {(f?.cuantia as number) ? `${(f.cuantia as number).toLocaleString()}€` : '-'}</p>
-                <p><strong>Urgencia:</strong> {(f?.urgencia_aplica as boolean) ? <Badge variant="outline" className="bg-destructive/10 text-destructive">{(f?.urgencia_nivel as string)}</Badge> : 'No'}</p>
-                <p><strong>Canal:</strong> <Badge variant="outline">{lead.source_channel}</Badge></p>
+                <p><strong>Urgencia:</strong> {(f?.urgencia_aplica as boolean) ? <Badge variant="outline" className="bg-destructive/10 text-destructive">{(f?.urgencia_nivel as string) || 'Sí'}</Badge> : 'No'}</p>
+                <p><strong>Canal:</strong> <Badge variant="outline">{lead.source_channel || 'No especificado'}</Badge></p>
               </CardContent>
             </Card>
           </div>
