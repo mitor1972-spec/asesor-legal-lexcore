@@ -6,6 +6,7 @@ import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog, ChevronDown,
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ViewSwitcher } from './ViewSwitcher';
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -134,6 +135,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                 })}
               </CollapsibleContent>
             </Collapsible>
+
+            {/* View Switcher */}
+            <ViewSwitcher onClose={onClose} />
           </>
         )}
       </nav>
