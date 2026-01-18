@@ -13,6 +13,9 @@ import LeadNew from "@/pages/LeadNew";
 import LeadDetail from "@/pages/LeadDetail";
 import LeadEdit from "@/pages/LeadEdit";
 import Users from "@/pages/Users";
+import ApiKeys from "@/pages/settings/ApiKeys";
+import LexcoreConfig from "@/pages/settings/LexcoreConfig";
+import LawfirmsManagement from "@/pages/settings/LawfirmsManagement";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +38,9 @@ const App = () => (
                 <Route path="leads/:id" element={<LeadDetail />} />
                 <Route path="leads/:id/edit" element={<LeadEdit />} />
                 <Route path="users" element={<Users />} />
+                <Route path="settings/api-keys" element={<ApiKeys />} />
+                <Route path="settings/lexcore" element={<LexcoreConfig />} />
+                <Route path="settings/lawfirms" element={<LawfirmsManagement />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
