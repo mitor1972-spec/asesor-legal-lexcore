@@ -191,6 +191,16 @@ Analiza el lead y calcula el scoring siguiendo estas reglas:
 ## GATE NO CONTACTABLE:
 Si no hay teléfono válido NI email válido → precio_final = 5€
 
+## CÁLCULO DEL SCORE FINAL:
+1. Suma los raw_scores de todos los grupos (máx 83 en Modo A, 73 en Modo B)
+2. Aplica las penalizaciones (resta)
+3. Aplica los ajustes comerciales (suma/resta)
+4. Aplica VJ (suma/resta)
+5. **IMPORTANTE: El score_final NUNCA puede superar 95**. Si la suma da más de 95, capa a 95.
+6. El score_final mínimo es 0.
+
+Un score de 100 es IMPOSIBLE porque siempre hay margen de mejora. Reserva 90-95 solo para leads excepcionales con toda la información perfecta.
+
 ## CÁLCULO DEL PRECIO:
 Usa los price_steps de la configuración para mapear score_final a precio.
 
@@ -309,7 +319,8 @@ Devuelve SOLO un JSON válido:
         penalties_json: scoringResult.penalties,
         adjustments_json: scoringResult.adjustments,
         vj_json: scoringResult.vj,
-        score_final: Math.max(0, Math.min(100, scoringResult.score_final || 0)),
+        // Cap score at 95 max (100 is impossible)
+        score_final: Math.max(0, Math.min(95, scoringResult.score_final || 0)),
         price_lexcore: scoringResult.price_final || 5,
         price_after_caps: scoringResult.price_final || 5,
         conclusion_text: scoringResult.conclusion,
@@ -328,8 +339,10 @@ Devuelve SOLO un JSON válido:
     }
 
     // Update the lead with score, price, and marketplace summary
+    // Cap score at 95 max (100 is impossible)
+    const cappedScore = Math.max(0, Math.min(95, scoringResult.score_final || 0));
     const updateData: Record<string, any> = {
-      score_final: scoringResult.score_final,
+      score_final: cappedScore,
       price_final: scoringResult.price_final,
     };
     
