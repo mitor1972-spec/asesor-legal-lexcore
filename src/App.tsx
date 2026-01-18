@@ -27,6 +27,7 @@ import LawfirmCases from "@/pages/lawfirm/LawfirmCases";
 import LawfirmCaseDetail from "@/pages/lawfirm/LawfirmCaseDetail";
 import LeadsMarket from "@/pages/lawfirm/LeadsMarket";
 import LawfirmAnuncios from "@/pages/lawfirm/LawfirmAnuncios";
+import LawfirmConfig from "@/pages/lawfirm/LawfirmConfig";
 import RegistroDespacho from "@/pages/RegistroDespacho";
 import SalesReport from "@/pages/reports/SalesReport";
 import NotFound from "@/pages/NotFound";
@@ -72,6 +73,7 @@ const App = () => (
                 <Route path="casos/:id" element={<LawfirmCaseDetail />} />
                 <Route path="leadsmarket" element={<LeadsMarket />} />
                 <Route path="anuncios" element={<LawfirmAnuncios />} />
+                <Route path="configuracion" element={<LawfirmConfig />} />
               </Route>
             <Route path="*" element={<NotFound />} />
             </Routes>

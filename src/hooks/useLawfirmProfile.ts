@@ -15,9 +15,11 @@ export interface Lawfirm {
   address: string | null;
   city: string | null;
   province: string | null;
+  postal_code: string | null;
   website: string | null;
   contact_person: string | null;
   contact_email: string | null;
+  contact_phone: string | null;
   logo_url: string | null;
   areas_accepted: string[] | null;
   provinces_accepted: string[] | null;
@@ -27,6 +29,10 @@ export interface Lawfirm {
   exclusions: string[] | null;
   openai_api_key: string | null;
   settings_json: Json | null;
+  marketplace_balance: number | null;
+  marketplace_alerts_enabled: boolean | null;
+  alert_frequency: string | null;
+  is_active: boolean | null;
 }
 
 export function useLawfirmProfile() {

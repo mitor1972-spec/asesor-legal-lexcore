@@ -102,55 +102,63 @@ export default function LawfirmDashboard() {
         </p>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Clickable */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-soft">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Casos Totales
-            </CardTitle>
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalCases}</div>
-          </CardContent>
-        </Card>
+        <Link to="/despacho/casos">
+          <Card className="shadow-soft hover:shadow-medium transition-all cursor-pointer hover:scale-[1.02]">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Casos Totales
+              </CardTitle>
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalCases}</div>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="shadow-soft">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Nuevos (7 días)
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-lawfirm-primary">{newCases}</div>
-          </CardContent>
-        </Card>
+        <Link to="/despacho/casos?tab=new">
+          <Card className="shadow-soft hover:shadow-medium transition-all cursor-pointer hover:scale-[1.02]">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Nuevos (7 días)
+              </CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-lawfirm-primary">{newCases}</div>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="shadow-soft">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              En Curso
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{inProgressCases}</div>
-          </CardContent>
-        </Card>
+        <Link to="/despacho/casos?tab=in_progress">
+          <Card className="shadow-soft hover:shadow-medium transition-all cursor-pointer hover:scale-[1.02]">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                En Curso
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{inProgressCases}</div>
+            </CardContent>
+          </Card>
+        </Link>
 
-        <Card className="shadow-soft">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Cerrados (mes)
-            </CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{closedThisMonth}</div>
-          </CardContent>
-        </Card>
+        <Link to="/despacho/casos?tab=closed">
+          <Card className="shadow-soft hover:shadow-medium transition-all cursor-pointer hover:scale-[1.02]">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Cerrados (mes)
+              </CardTitle>
+              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-success">{closedThisMonth}</div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Chart */}

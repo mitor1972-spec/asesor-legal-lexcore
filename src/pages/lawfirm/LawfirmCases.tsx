@@ -1,14 +1,16 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLawfirmCases } from '@/hooks/useLawfirmCases';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Search, Briefcase, ArrowRight } from 'lucide-react';
+import { Search, Briefcase, ArrowRight, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { NewCaseDialog } from '@/components/lawfirm/NewCaseDialog';
 
 const statusLabels: Record<string, string> = {
   received: 'Recibido',
@@ -34,8 +36,18 @@ const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | '
 
 export default function LawfirmCases() {
   const { data: cases = [], isLoading } = useLawfirmCases();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'all');
+  const [showNewCase, setShowNewCase] = useState(false);
+
+  // Sync tab from URL
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && ['all', 'new', 'in_progress', 'closed'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
 
   // Filter cases
   const filteredCases = cases.filter(caseItem => {
@@ -77,14 +89,19 @@ export default function LawfirmCases() {
             {cases.length} casos asignados a tu despacho
           </p>
         </div>
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar casos..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex gap-2">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar casos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Button onClick={() => setShowNewCase(true)}>
+            <Plus className="mr-2 h-4 w-4" />Nuevo Caso
+          </Button>
         </div>
       </div>
 
@@ -158,6 +175,8 @@ export default function LawfirmCases() {
           )}
         </TabsContent>
       </Tabs>
+
+      <NewCaseDialog open={showNewCase} onOpenChange={setShowNewCase} />
     </div>
   );
 }
