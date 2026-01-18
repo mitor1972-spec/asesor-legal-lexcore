@@ -87,25 +87,221 @@ export type Database = {
           },
         ]
       }
+      company_settings: {
+        Row: {
+          address: string | null
+          cif: string | null
+          city: string | null
+          company_name: string | null
+          currency: string | null
+          date_format: string | null
+          email: string | null
+          id: string
+          legal_name: string | null
+          logo_url: string | null
+          phone: string | null
+          postal_code: string | null
+          primary_color: string | null
+          province: string | null
+          secondary_color: string | null
+          timezone: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          cif?: string | null
+          city?: string | null
+          company_name?: string | null
+          currency?: string | null
+          date_format?: string | null
+          email?: string | null
+          id?: string
+          legal_name?: string | null
+          logo_url?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          primary_color?: string | null
+          province?: string | null
+          secondary_color?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          cif?: string | null
+          city?: string | null
+          company_name?: string | null
+          currency?: string | null
+          date_format?: string | null
+          email?: string | null
+          id?: string
+          legal_name?: string | null
+          logo_url?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          primary_color?: string | null
+          province?: string | null
+          secondary_color?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      email_log: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          lawfirm_id: string | null
+          lead_id: string | null
+          recipient_email: string
+          sent_at: string | null
+          status: string | null
+          subject: string
+          template_key: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          lawfirm_id?: string | null
+          lead_id?: string | null
+          recipient_email: string
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+          template_key?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          lawfirm_id?: string | null
+          lead_id?: string | null
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+          template_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_log_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_configured: boolean | null
+          sender_email: string | null
+          sender_name: string | null
+          smtp_host: string | null
+          smtp_password: string | null
+          smtp_port: number | null
+          smtp_security: string | null
+          smtp_user: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_configured?: boolean | null
+          sender_email?: string | null
+          sender_name?: string | null
+          smtp_host?: string | null
+          smtp_password?: string | null
+          smtp_port?: number | null
+          smtp_security?: string | null
+          smtp_user?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_configured?: boolean | null
+          sender_email?: string | null
+          sender_name?: string | null
+          smtp_host?: string | null
+          smtp_password?: string | null
+          smtp_port?: number | null
+          smtp_security?: string | null
+          smtp_user?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          body_html: string
+          id: string
+          is_active: boolean | null
+          subject: string
+          template_key: string
+          updated_at: string | null
+          variables: string[] | null
+        }
+        Insert: {
+          body_html: string
+          id?: string
+          is_active?: boolean | null
+          subject: string
+          template_key: string
+          updated_at?: string | null
+          variables?: string[] | null
+        }
+        Update: {
+          body_html?: string
+          id?: string
+          is_active?: boolean | null
+          subject?: string
+          template_key?: string
+          updated_at?: string | null
+          variables?: string[] | null
+        }
+        Relationships: []
+      }
       lawfirms: {
         Row: {
           address: string | null
           areas_accepted: string[] | null
           cif: string | null
           city: string | null
+          commercial_notes: string | null
           contact_email: string | null
           contact_person: string | null
+          contact_phone: string | null
           created_at: string | null
+          discount_percent: number | null
           email_derivations: string | null
           exclusions: string[] | null
           id: string
+          initial_credit: number | null
+          is_active: boolean | null
           logo_url: string | null
           max_lead_price: number | null
           min_lead_score: number | null
           monthly_capacity: number | null
           name: string
           openai_api_key: string | null
+          payment_model: string | null
           phone: string | null
+          postal_code: string | null
           province: string | null
           provinces_accepted: string[] | null
           settings_json: Json | null
@@ -117,19 +313,26 @@ export type Database = {
           areas_accepted?: string[] | null
           cif?: string | null
           city?: string | null
+          commercial_notes?: string | null
           contact_email?: string | null
           contact_person?: string | null
+          contact_phone?: string | null
           created_at?: string | null
+          discount_percent?: number | null
           email_derivations?: string | null
           exclusions?: string[] | null
           id?: string
+          initial_credit?: number | null
+          is_active?: boolean | null
           logo_url?: string | null
           max_lead_price?: number | null
           min_lead_score?: number | null
           monthly_capacity?: number | null
           name: string
           openai_api_key?: string | null
+          payment_model?: string | null
           phone?: string | null
+          postal_code?: string | null
           province?: string | null
           provinces_accepted?: string[] | null
           settings_json?: Json | null
@@ -141,19 +344,26 @@ export type Database = {
           areas_accepted?: string[] | null
           cif?: string | null
           city?: string | null
+          commercial_notes?: string | null
           contact_email?: string | null
           contact_person?: string | null
+          contact_phone?: string | null
           created_at?: string | null
+          discount_percent?: number | null
           email_derivations?: string | null
           exclusions?: string[] | null
           id?: string
+          initial_credit?: number | null
+          is_active?: boolean | null
           logo_url?: string | null
           max_lead_price?: number | null
           min_lead_score?: number | null
           monthly_capacity?: number | null
           name?: string
           openai_api_key?: string | null
+          payment_model?: string | null
           phone?: string | null
+          postal_code?: string | null
           province?: string | null
           provinces_accepted?: string[] | null
           settings_json?: Json | null
@@ -582,6 +792,47 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          link: string | null
+          message: string | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          link?: string | null
+          message?: string | null
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          link?: string | null
+          message?: string | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           branch_id: string | null
@@ -650,6 +901,64 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      voice_notes: {
+        Row: {
+          audio_url: string
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          is_internal: boolean | null
+          lawfirm_id: string | null
+          lead_id: string | null
+          transcription: string | null
+          user_id: string | null
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          is_internal?: boolean | null
+          lawfirm_id?: string | null
+          lead_id?: string | null
+          transcription?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          is_internal?: boolean | null
+          lawfirm_id?: string | null
+          lead_id?: string | null
+          transcription?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_notes_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_notes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
