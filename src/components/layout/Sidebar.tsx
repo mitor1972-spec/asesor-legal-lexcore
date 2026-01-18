@@ -1,14 +1,22 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog } from 'lucide-react';
+import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog, ChevronDown, Key, Cog, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Leads', href: '/leads', icon: Users },
   { label: 'Nuevo Lead', href: '/leads/new', icon: Plus },
+];
+
+const configSubItems = [
+  { label: 'API Keys', href: '/settings/api-keys', icon: Key },
+  { label: 'Configuración Lexcore', href: '/settings/lexcore', icon: Cog },
+  { label: 'Gestión de Despachos', href: '/settings/lawfirms', icon: Building2 },
 ];
 
 interface SidebarProps {
@@ -19,6 +27,7 @@ interface SidebarProps {
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
   const { isAdmin } = useAuthContext();
+  const [configOpen, setConfigOpen] = useState(location.pathname.startsWith('/settings'));
 
   return (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
@@ -41,11 +50,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.href || 
-            (item.href !== '/dashboard' && location.pathname.startsWith(item.href));
+            (item.href !== '/dashboard' && item.href !== '/leads/new' && location.pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
@@ -67,6 +76,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         {isAdmin && (
           <>
             <div className="my-4 border-t border-sidebar-border" />
+            
             <Link
               to="/users"
               onClick={onClose}
@@ -80,19 +90,47 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               <UserCog className="h-4 w-4" />
               Usuarios
             </Link>
-            <Link
-              to="/settings"
-              onClick={onClose}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                location.pathname === '/settings'
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent'
-              )}
-            >
-              <Settings className="h-4 w-4" />
-              Configuración
-            </Link>
+
+            <Collapsible open={configOpen} onOpenChange={setConfigOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  className={cn(
+                    'flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                    location.pathname.startsWith('/settings')
+                      ? 'bg-sidebar-accent text-sidebar-foreground'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent'
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <Settings className="h-4 w-4" />
+                    Configuración
+                  </span>
+                  <ChevronDown className={cn('h-4 w-4 transition-transform', configOpen && 'rotate-180')} />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-1 ml-4 space-y-1">
+                {configSubItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      onClick={onClose}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                        isActive
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </CollapsibleContent>
+            </Collapsible>
           </>
         )}
       </nav>
