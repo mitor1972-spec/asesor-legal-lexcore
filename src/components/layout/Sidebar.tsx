@@ -31,7 +31,8 @@ interface SidebarProps {
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
   const { isAdmin } = useAuthContext();
-  const [configOpen, setConfigOpen] = useState(location.pathname.startsWith('/settings'));
+  // Always keep config expanded for admins
+  const [configOpen, setConfigOpen] = useState(true);
 
   return (
     <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { useLeads, useArchiveLead } from '@/hooks/useLeads';
+import { useLeads, useArchiveLead, useRestoreLead, useDeleteLead } from '@/hooks/useLeads';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { LEAD_STATUSES, SOURCE_CHANNELS, AREAS_LEGALES, type LeadStatus, type SourceChannel } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Search, Pencil, Archive, Thermometer, FileDown, Building2, X } from 'lucide-react';
+import { Plus, Search, Pencil, Archive, Thermometer, FileDown, Building2, X, Trash2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
 import { BulkAssignDialog } from '@/components/lead/BulkAssignDialog';
@@ -31,15 +31,18 @@ export default function Leads() {
   const [status, setStatus] = useState<LeadStatus | ''>(searchParams.get('status') as LeadStatus || '');
   const [channel, setChannel] = useState<SourceChannel | ''>(searchParams.get('channel') as SourceChannel || '');
   const [areaLegal, setAreaLegal] = useState(searchParams.get('area') || '');
+  const [showArchived, setShowArchived] = useState(false);
   const [page, setPage] = useState(1);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [showBulkAssign, setShowBulkAssign] = useState(false);
 
   const { data, isLoading } = useLeads(
-    { search: search || undefined, status: status || undefined, channel: channel || undefined, areaLegal: areaLegal || undefined },
+    { search: search || undefined, status: status || undefined, channel: channel || undefined, areaLegal: areaLegal || undefined, showArchived },
     page
   );
   const archiveMutation = useArchiveLead();
+  const restoreMutation = useRestoreLead();
+  const deleteMutation = useDeleteLead();
 
   const handleArchive = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -49,6 +52,28 @@ export default function Leads() {
         toast.success('Lead archivado');
       } catch {
         toast.error('Error al archivar');
+      }
+    }
+  };
+
+  const handleRestore = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await restoreMutation.mutateAsync(id);
+      toast.success('Lead restaurado');
+    } catch {
+      toast.error('Error al restaurar');
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm('¿ELIMINAR PERMANENTEMENTE este lead? Esta acción no se puede deshacer.')) {
+      try {
+        await deleteMutation.mutateAsync(id);
+        toast.success('Lead eliminado permanentemente');
+      } catch {
+        toast.error('Error al eliminar');
       }
     }
   };
@@ -114,7 +139,17 @@ export default function Leads() {
 
       <Card className="shadow-soft">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Filtros</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Filtros</CardTitle>
+            <Button
+              variant={showArchived ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setShowArchived(!showArchived); setPage(1); }}
+            >
+              <Archive className="mr-2 h-4 w-4" />
+              {showArchived ? 'Ver activos' : 'Ver archivados'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
@@ -172,7 +207,7 @@ export default function Leads() {
             <TableRow>
               <TableHead className="w-[40px]">
                 <Checkbox 
-                  checked={allSelected}
+                  checked={allSelected ?? false}
                   onCheckedChange={toggleSelectAll}
                 />
               </TableHead>
@@ -232,8 +267,28 @@ export default function Leads() {
                   <TableCell><Badge className={statusColors[lead.status_internal]}>{lead.status_internal}</Badge></TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" asChild><Link to={`/leads/${lead.id}/edit`}><Pencil className="h-4 w-4" /></Link></Button>
-                      <Button variant="ghost" size="icon" onClick={(e) => handleArchive(e, lead.id)}><Archive className="h-4 w-4" /></Button>
+                      {showArchived ? (
+                        <>
+                          <Button variant="ghost" size="icon" onClick={(e) => handleRestore(e, lead.id)} title="Restaurar">
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={(e) => handleDelete(e, lead.id)} title="Eliminar permanentemente" className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button variant="ghost" size="icon" asChild title="Editar">
+                            <Link to={`/leads/${lead.id}/edit`}><Pencil className="h-4 w-4" /></Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={(e) => handleArchive(e, lead.id)} title="Archivar">
+                            <Archive className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={(e) => handleDelete(e, lead.id)} title="Eliminar" className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
