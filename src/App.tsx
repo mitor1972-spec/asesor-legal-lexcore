@@ -35,6 +35,9 @@ import LawfirmAIServices from "@/pages/lawfirm/LawfirmAIServices";
 import LawfirmTeam from "@/pages/lawfirm/LawfirmTeam";
 import LawfirmBranches from "@/pages/lawfirm/LawfirmBranches";
 import LawfirmBilling from "@/pages/lawfirm/LawfirmBilling";
+import LawfirmServices from "@/pages/lawfirm/LawfirmServices";
+import LawfirmReports from "@/pages/lawfirm/LawfirmReports";
+import LawfirmOutsourcing from "@/pages/lawfirm/LawfirmOutsourcing";
 import RegistroDespacho from "@/pages/RegistroDespacho";
 import SalesReport from "@/pages/reports/SalesReport";
 import NotFound from "@/pages/NotFound";
@@ -88,6 +91,9 @@ const App = () => (
                 <Route path="equipo" element={<LawfirmTeam />} />
                 <Route path="sucursales" element={<LawfirmBranches />} />
                 <Route path="facturacion" element={<LawfirmBilling />} />
+                <Route path="servicios" element={<LawfirmServices />} />
+                <Route path="informes" element={<LawfirmReports />} />
+                <Route path="outsourcing" element={<LawfirmOutsourcing />} />
               </Route>
             <Route path="*" element={<NotFound />} />
             </Routes>
