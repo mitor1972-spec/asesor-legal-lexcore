@@ -132,38 +132,62 @@ function extractAccountId(payload: ChatwootWebhookPayload): number | null {
   return null;
 }
 
-// Fetch ALL messages from Chatwoot API
+// Fetch ALL messages from Chatwoot API (handles pagination)
 async function fetchAllMessages(conversationId: number, accountId: number): Promise<ChatwootMessage[]> {
   const baseUrl = Deno.env.get('CHATWOOT_BASE_URL');
   const apiToken = Deno.env.get('CHATWOOT_API_TOKEN');
-  
+
   if (!baseUrl || !apiToken) {
     console.error('[CHATWOOT_API] Missing CHATWOOT_BASE_URL or CHATWOOT_API_TOKEN');
     return [];
   }
-  
+
+  const normalizedBase = baseUrl.replace(/\/$/, '');
+
   try {
-    const url = `${baseUrl}/api/v1/accounts/${accountId}/conversations/${conversationId}/messages`;
-    console.log(`[CHATWOOT_API] Fetching messages from: ${url}`);
-    
-    const response = await fetch(url, {
-      headers: {
-        'api_access_token': apiToken,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[CHATWOOT_API] Error ${response.status}: ${errorText}`);
-      return [];
+    const all: ChatwootMessage[] = [];
+
+    // Chatwoot endpoints are typically paginated; loop defensively.
+    let page = 1;
+    const maxPages = 25;
+
+    while (page <= maxPages) {
+      const url = `${normalizedBase}/api/v1/accounts/${accountId}/conversations/${conversationId}/messages?page=${page}`;
+      console.log(`[CHATWOOT_API] Fetching messages (page ${page}) from: ${url}`);
+
+      const response = await fetch(url, {
+        headers: {
+          api_access_token: apiToken,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[CHATWOOT_API] Error ${response.status}: ${errorText}`);
+        return [];
+      }
+
+      const data = await response.json();
+      const payload = (data?.payload ?? data) as any;
+
+      const pageMessages: ChatwootMessage[] = Array.isArray(payload) ? payload : (payload?.messages ?? []);
+      console.log(`[CHATWOOT_API] Page ${page}: ${pageMessages.length} messages`);
+
+      all.push(...pageMessages);
+
+      // Stop conditions
+      if (!pageMessages.length) break;
+
+      const nextPage = data?.meta?.next_page;
+      if (!nextPage) break;
+
+      page = Number(nextPage);
+      if (!Number.isFinite(page) || page < 1) break;
     }
-    
-    const data = await response.json();
-    console.log(`[CHATWOOT_API] Fetched ${data.payload?.length || 0} messages`);
-    
-    // Chatwoot returns { payload: [...messages...] }
-    return data.payload || data || [];
+
+    console.log(`[CHATWOOT_API] Total fetched messages: ${all.length}`);
+    return all;
   } catch (error) {
     console.error('[CHATWOOT_API] Error fetching messages:', error);
     return [];
@@ -177,16 +201,17 @@ interface ExtractedContactData {
   email: string | null;
 }
 
-function extractContactFromMessages(messages: ChatwootMessage[]): ExtractedContactData {
-  // Get all text from incoming messages (from client, not agent)
-  const clientMessages = messages
-    .filter(m => m.message_type === 0 || m.message_type === 'incoming')
-    .map(m => m.content || '')
+function extractContactFromMessages(messages: ChatwootMessage[], metaSender?: { name?: string; email?: string; phone_number?: string } | null): ExtractedContactData {
+  // 1) Build text from ALL messages (Chatwoot contact profile is often empty)
+  const allText = messages
+    .map(m => (m.content || '').replace(/<[^>]*>/g, ' '))
     .join(' ');
-  
-  const allText = clientMessages;
-  
-  // Extract name patterns
+
+  // 2) Best-effort: sender name from any incoming message
+  const incoming = messages.filter(m => m.message_type === 0 || m.message_type === 'incoming');
+  const senderNameFromMessages = incoming.find(m => m.sender?.name)?.sender?.name?.trim();
+
+  // 3) Extract name patterns
   let name: string | null = null;
   const namePatterns = [
     /me\s+llamo\s+m?\s*([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?)/i,
@@ -194,8 +219,11 @@ function extractContactFromMessages(messages: ChatwootMessage[]): ExtractedConta
     /mi\s+nombre\s+es\s+([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?)/i,
     /^([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?),?\s+(?:necesito|tengo|quiero)/i,
     /hola,?\s+(?:soy|me llamo)\s+([A-ZÀ-ÿa-z]+)/i,
+    // When an agent addresses the user by name (e.g. "De nada, Pilar")
+    /de\s+nada,?\s*([A-ZÀ-ÿa-z]+)\b/i,
+    /gracias,?\s*([A-ZÀ-ÿa-z]+)\b/i,
   ];
-  
+
   for (const pattern of namePatterns) {
     const match = allText.match(pattern);
     if (match && match[1]) {
@@ -203,21 +231,29 @@ function extractContactFromMessages(messages: ChatwootMessage[]): ExtractedConta
       break;
     }
   }
-  
+
+  if (!name && senderNameFromMessages) name = senderNameFromMessages;
+  if (!name && metaSender?.name) name = metaSender.name.trim();
+
   // Extract Spanish phone number: 6XXXXXXXX, 7XXXXXXXX, 8XXXXXXXX, 9XXXXXXXX
   let phone: string | null = null;
   const phoneMatch = allText.match(/\b([6789]\d{8})\b/);
   if (phoneMatch) {
     phone = phoneMatch[1];
+  } else if (metaSender?.phone_number) {
+    const clean = String(metaSender.phone_number).replace(/\D/g, '');
+    if (clean.match(/^[6789]\d{8}$/)) phone = clean;
   }
-  
+
   // Extract email
   let email: string | null = null;
-  const emailMatch = allText.match(/[\w.-]+@[\w.-]+\.\w+/i);
+  const emailMatch = allText.match(/[\w.-]+@[\w.-]+\.[A-Za-z]{2,}/i);
   if (emailMatch) {
     email = emailMatch[0].toLowerCase();
+  } else if (metaSender?.email) {
+    email = metaSender.email.toLowerCase();
   }
-  
+
   return { name, phone, email };
 }
 
@@ -545,9 +581,19 @@ Deno.serve(async (req) => {
     console.log('[CHATWOOT_WEBHOOK] Event:', payload?.event);
     
     const conversationId = extractConversationId(payload!);
-    const accountId = extractAccountId(payload!) || 138173; // Default to known account
+    const accountId = extractAccountId(payload!);
     const status = extractStatus(payload!);
-    
+
+    if (!conversationId || !accountId) {
+      const msg = `Missing conversationId/accountId (conversationId: ${conversationId}, accountId: ${accountId})`;
+      await logImport(supabase, conversationId, payload?.event || 'unknown', 'error', msg, { payload_keys: Object.keys(payload || {}) });
+      await logWebhookRequest(supabase, req, payload?.event || null, payload, 'error', msg, startTime);
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log('[CHATWOOT_WEBHOOK] ConversationId:', conversationId, 'Status:', status, 'AccountId:', accountId);
 
     // Handle conversation status change
@@ -611,16 +657,13 @@ Deno.serve(async (req) => {
 // Check if conversation has valid content worth creating a lead
 function isConversationValid(messages: ChatwootMessage[], extractedContact: ExtractedContactData): { valid: boolean; reason: string } {
   // Filter messages from the client (not bot/agent)
-  const clientMessages = messages.filter(m => 
-    m.message_type === 0 || 
-    m.message_type === 'incoming'
-  );
-  
+  const clientMessages = messages.filter(m => m.message_type === 0 || m.message_type === 'incoming');
+
   // Check 1: Must have at least one client message
   if (clientMessages.length === 0) {
     return { valid: false, reason: 'No client messages - only bot/agent messages' };
   }
-  
+
   // Check 2: Messages must not be only automated/empty content
   const automatedPhrases = [
     'hemos cerrado la conversación',
@@ -630,28 +673,32 @@ function isConversationValid(messages: ChatwootMessage[], extractedContact: Extr
     'ha sido cerrada',
     'auto-closed',
   ];
-  
+
   const meaningfulMessages = clientMessages.filter(m => {
     const content = (m.content || '').toLowerCase().trim();
     if (!content || content.length < 3) return false;
-    
-    // Check if it's an automated message
+
     for (const phrase of automatedPhrases) {
       if (content.includes(phrase)) return false;
     }
-    
+
     return true;
   });
-  
+
   if (meaningfulMessages.length === 0) {
     return { valid: false, reason: 'Only automated/empty messages from client' };
   }
-  
+
   // Check 3: Must have at least phone OR email extracted
   if (!extractedContact.phone && !extractedContact.email) {
     return { valid: false, reason: 'No contact data (phone or email) could be extracted' };
   }
-  
+
+  // Check 4: Avoid "Sin nombre" leads
+  if (!extractedContact.name) {
+    return { valid: false, reason: 'No name could be extracted' };
+  }
+
   return { valid: true, reason: 'Valid conversation' };
 }
 
@@ -701,8 +748,8 @@ async function processConversation(
   const conversationContent = buildConversationText(messages);
   console.log('[PROCESS] Conversation preview:', conversationContent.substring(0, 300));
 
-  // Extract contact data from messages
-  const extractedContact = extractContactFromMessages(messages);
+  // Extract contact data from messages (Chatwoot contact profile can be empty)
+  const extractedContact = extractContactFromMessages(messages, payload.meta?.sender || null);
   console.log('[PROCESS] Extracted contact:', extractedContact);
 
   // VALIDATION: Check if conversation is worth creating a lead
