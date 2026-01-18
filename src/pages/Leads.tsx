@@ -67,24 +67,24 @@ export default function Leads() {
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar..." className="pl-10" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <Select value={status} onValueChange={v => setStatus(v as LeadStatus | '')}>
+            <Select value={status || "__all__"} onValueChange={v => setStatus(v === "__all__" ? '' : v as LeadStatus)}>
               <SelectTrigger className="w-[150px]"><SelectValue placeholder="Estado" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="__all__">Todos</SelectItem>
                 {LEAD_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={channel} onValueChange={v => setChannel(v as SourceChannel | '')}>
+            <Select value={channel || "__all__"} onValueChange={v => setChannel(v === "__all__" ? '' : v as SourceChannel)}>
               <SelectTrigger className="w-[150px]"><SelectValue placeholder="Canal" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="__all__">Todos</SelectItem>
                 {SOURCE_CHANNELS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={areaLegal} onValueChange={setAreaLegal}>
+            <Select value={areaLegal || "__all__"} onValueChange={v => setAreaLegal(v === "__all__" ? '' : v)}>
               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Área Legal" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="__all__">Todas</SelectItem>
                 {AREAS_LEGALES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
               </SelectContent>
             </Select>
