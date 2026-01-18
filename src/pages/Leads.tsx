@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useLeads, useArchiveLead, useRestoreLead, useDeleteLead } from '@/hooks/useLeads';
+import { useCalculateLexcore } from '@/hooks/useLexcoreRuns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { LEAD_STATUSES, SOURCE_CHANNELS, AREAS_LEGALES, type LeadStatus, type SourceChannel } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Search, Pencil, Archive, Thermometer, FileDown, Building2, X, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Search, Pencil, Archive, Thermometer, FileDown, Building2, X, Trash2, RotateCcw, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
 import { BulkAssignDialog } from '@/components/lead/BulkAssignDialog';
@@ -43,6 +44,8 @@ export default function Leads() {
   const archiveMutation = useArchiveLead();
   const restoreMutation = useRestoreLead();
   const deleteMutation = useDeleteLead();
+  const calculateLexcore = useCalculateLexcore();
+  const [isRecalculating, setIsRecalculating] = useState(false);
 
   const handleArchive = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -120,6 +123,62 @@ export default function Leads() {
     setSelectedLeads([]);
   };
 
+  const handleRecalculateLexcore = async () => {
+    if (selectedLeads.length === 0) {
+      toast.error('Selecciona al menos un lead');
+      return;
+    }
+
+    const confirmed = confirm(
+      `¿Re-ejecutar Lexcore para ${selectedLeads.length} lead(s)?\n\nEsto actualizará:\n• Puntuación (score)\n• Precio\n• Resumen para marketplace\n• Toda la valoración IA`
+    );
+
+    if (!confirmed) return;
+
+    setIsRecalculating(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const leadId of selectedLeads) {
+      try {
+        // Get lead data
+        const { data: lead, error: fetchError } = await supabase
+          .from('leads')
+          .select('lead_text, structured_fields, source_channel')
+          .eq('id', leadId)
+          .single();
+
+        if (fetchError || !lead) {
+          errorCount++;
+          continue;
+        }
+
+        // Re-calculate Lexcore
+        await calculateLexcore.mutateAsync({
+          leadId,
+          leadText: lead.lead_text,
+          structuredFields: (lead.structured_fields as Record<string, unknown>) || {},
+          sourceChannel: lead.source_channel || 'Web chat',
+        });
+
+        successCount++;
+      } catch (error) {
+        console.error(`Error recalculating lead ${leadId}:`, error);
+        errorCount++;
+      }
+    }
+
+    setIsRecalculating(false);
+    setSelectedLeads([]);
+
+    if (successCount > 0) {
+      toast.success(`${successCount} lead(s) recalculados correctamente`);
+    }
+    if (errorCount > 0) {
+      toast.error(`${errorCount} lead(s) con errores`);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -190,6 +249,20 @@ export default function Leads() {
               ☑️ {selectedLeads.length} leads seleccionados
             </span>
             <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleRecalculateLexcore}
+                disabled={isRecalculating}
+                className="bg-amber-500/10 border-amber-500/30 text-amber-600 hover:bg-amber-500/20"
+              >
+                {isRecalculating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                {isRecalculating ? 'Recalculando...' : 'Re-ejecutar Lexcore'}
+              </Button>
               <Button size="sm" onClick={() => setShowBulkAssign(true)}>
                 <Building2 className="mr-2 h-4 w-4" />Asignar a despacho
               </Button>
