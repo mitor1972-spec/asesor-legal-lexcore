@@ -18,6 +18,7 @@ import Users from "@/pages/Users";
 import ApiKeys from "@/pages/settings/ApiKeys";
 import LexcoreConfig from "@/pages/settings/LexcoreConfig";
 import LawfirmsManagement from "@/pages/settings/LawfirmsManagement";
+import ProfileSettings from "@/pages/settings/ProfileSettings";
 import LawfirmDashboard from "@/pages/lawfirm/LawfirmDashboard";
 import LawfirmCases from "@/pages/lawfirm/LawfirmCases";
 import LawfirmCaseDetail from "@/pages/lawfirm/LawfirmCaseDetail";
@@ -49,6 +50,7 @@ const App = () => (
                 <Route path="settings/api-keys" element={<ApiKeys />} />
                 <Route path="settings/lexcore" element={<LexcoreConfig />} />
                 <Route path="settings/lawfirms" element={<LawfirmsManagement />} />
+                <Route path="settings/profile" element={<ProfileSettings />} />
                 <Route path="informes/ventas" element={<SalesReport />} />
               </Route>
               {/* Lawfirm Portal */}
