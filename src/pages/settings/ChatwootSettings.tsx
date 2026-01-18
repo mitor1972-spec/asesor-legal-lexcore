@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Copy, RefreshCw, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle, Activity, FileText } from 'lucide-react';
+import { Copy, RefreshCw, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle, Activity, FileText, Clipboard } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -160,6 +160,15 @@ export default function ChatwootSettings() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('Error copiando URL');
+    }
+  };
+
+  const copyPayload = async (payload: any) => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+      toast.success('Payload copiado al portapapeles');
+    } catch {
+      toast.error('Error copiando payload');
     }
   };
 
@@ -416,7 +425,21 @@ export default function ChatwootSettings() {
                             )}
                             {log.payload && (
                               <div>
-                                <Label className="text-xs">Payload</Label>
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-xs">Payload</Label>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-6 text-xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      copyPayload(log.payload);
+                                    }}
+                                  >
+                                    <Clipboard className="w-3 h-3 mr-1" />
+                                    Copiar payload
+                                  </Button>
+                                </div>
                                 <pre className="text-xs mt-1 p-2 bg-background rounded overflow-x-auto max-h-64">
                                   {JSON.stringify(log.payload, null, 2)}
                                 </pre>
