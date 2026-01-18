@@ -40,6 +40,28 @@ serve(async (req) => {
       );
     }
 
+    // SECURITY: Verify user belongs to the lawfirm they're purchasing for
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('lawfirm_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !userProfile) {
+      return new Response(
+        JSON.stringify({ error: 'Perfil de usuario no encontrado' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (userProfile.lawfirm_id !== lawfirm_id) {
+      console.warn(`Security: User ${user.id} tried to purchase for lawfirm ${lawfirm_id} but belongs to ${userProfile.lawfirm_id}`);
+      return new Response(
+        JSON.stringify({ error: 'No autorizado: Solo puedes comprar para tu propio despacho' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Get lead details
     const { data: lead, error: leadError } = await supabaseAdmin
       .from('leads')
