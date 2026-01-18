@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.generate-case-summary]
 verify_jwt = false
+
+[functions.generate-legal-help]
+verify_jwt = false
