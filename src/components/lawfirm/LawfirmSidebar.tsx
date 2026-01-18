@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   Briefcase,
   ShoppingCart,
+  ShoppingBag,
   Users,
   Settings,
   Scale,
@@ -28,6 +29,7 @@ import {
   Bot,
   Mail,
   BarChart3,
+  Handshake,
 } from 'lucide-react';
 
 interface LawfirmSidebarProps {
@@ -39,7 +41,19 @@ const navigation = [
   { name: 'Dashboard', href: '/despacho/dashboard', icon: LayoutDashboard },
   { name: 'Mis Casos', href: '/despacho/casos', icon: Briefcase },
   { name: 'LeadsMarket', href: '/despacho/leadsmarket', icon: ShoppingCart, hasBadge: true },
-  { name: 'Informes', href: '/despacho/informes', icon: BarChart3, disabled: true },
+  { name: 'Venta de Servicios', href: '/despacho/servicios', icon: ShoppingBag },
+  { name: 'Informes', href: '/despacho/informes', icon: BarChart3 },
+];
+
+const marketingNavigation = [
+  { name: 'Web', href: '/despacho/marketing', icon: Globe },
+  { name: 'Asistente Amara', href: '/despacho/marketing?tab=amara', icon: Bot },
+  { name: 'Newsletters', href: '/despacho/marketing?tab=newsletter', icon: Mail },
+];
+
+const adminNavigation = [
+  { name: 'Equipo', href: '/despacho/equipo', icon: Users },
+  { name: 'Sucursales', href: '/despacho/sucursales', icon: Building },
 ];
 
 const configNavigation = [
@@ -47,17 +61,6 @@ const configNavigation = [
   { name: 'Datos fiscales', href: '/despacho/facturacion', icon: CreditCard },
   { name: 'Precios por área', href: '/despacho/precios', icon: Euro },
   { name: 'LeadsMarket', href: '/despacho/configuracion-marketplace', icon: ShoppingCart },
-];
-
-const advertisingNavigation = [
-  { name: 'Web', href: '/despacho/publicidad', icon: Globe },
-  { name: 'Asistente Amara', href: '/despacho/publicidad?tab=amara', icon: Bot },
-  { name: 'Newsletters', href: '/despacho/publicidad?tab=newsletter', icon: Mail },
-];
-
-const adminNavigation = [
-  { name: 'Equipo', href: '/despacho/equipo', icon: Users },
-  { name: 'Sucursales', href: '/despacho/sucursales', icon: Building },
 ];
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
