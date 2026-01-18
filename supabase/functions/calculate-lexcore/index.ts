@@ -212,7 +212,8 @@ Devuelve SOLO un JSON válido:
   "score_final": X (0-100, mínimo 0),
   "price_before_caps": X,
   "price_final": X,
-  "conclusion": "2-4 líneas resumiendo el lead y el scoring"
+  "conclusion": "2-4 líneas resumiendo el lead y el scoring",
+  "marketplace_summary": "Un párrafo de 3-5 frases que describa de qué trata este caso legal de forma clara y atractiva para abogados. Debe explicar: el tipo de problema legal, la situación del cliente, qué busca conseguir y por qué es un caso interesante. NO incluir datos personales (nombre, teléfono, email). Redactar en tercera persona."
 }`;
 
     console.log("Calling OpenAI for scoring...");
@@ -303,13 +304,21 @@ Devuelve SOLO un JSON válido:
       });
     }
 
-    // Update the lead with score and price
+    // Update the lead with score, price, and marketplace summary
+    const updateData: Record<string, any> = {
+      score_final: scoringResult.score_final,
+      price_final: scoringResult.price_final,
+    };
+    
+    // Add marketplace summary if generated
+    if (scoringResult.marketplace_summary) {
+      updateData.marketplace_summary = scoringResult.marketplace_summary;
+      updateData.marketplace_price = scoringResult.price_final;
+    }
+
     const { error: updateError } = await supabase
       .from("leads")
-      .update({
-        score_final: scoringResult.score_final,
-        price_final: scoringResult.price_final,
-      })
+      .update(updateData)
       .eq("id", lead_id);
 
     if (updateError) {
