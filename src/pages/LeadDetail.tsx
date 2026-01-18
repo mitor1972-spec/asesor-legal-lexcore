@@ -256,15 +256,37 @@ export default function LeadDetail() {
             <CardContent className="py-2 px-3">
               {history?.length === 0 ? <p className="text-muted-foreground text-sm">Sin historial</p> : (
                 <div className="space-y-3">
-                  {history?.map((h: { id: string; action: string; created_at: string; details?: { note?: string; author_name?: string } }) => (
-                    <div key={h.id} className="flex gap-3 pb-3 border-b last:border-0">
-                      <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-primary" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium capitalize">{h.action === 'note_added' ? `📝 Nota: "${h.details?.note?.substring(0, 50)}..."` : h.action}</p>
-                        <p className="text-xs text-muted-foreground">{format(new Date(h.created_at), "dd MMM yyyy 'a las' HH:mm", { locale: es })}</p>
+                  {history?.map((h) => {
+                    const detailsObj =
+                      h.details && typeof h.details === 'object' && !Array.isArray(h.details)
+                        ? (h.details as Record<string, unknown>)
+                        : null;
+
+                    const note = detailsObj && typeof detailsObj.note === 'string'
+                      ? detailsObj.note
+                      : undefined;
+
+                    const createdAt = h.created_at ? new Date(h.created_at) : null;
+
+                    const title =
+                      h.action === 'note_added' && note
+                        ? `📝 Nota: "${note.substring(0, 50)}..."`
+                        : h.action;
+
+                    return (
+                      <div key={h.id} className="flex gap-3 pb-3 border-b last:border-0">
+                        <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-primary" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium capitalize">{title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {createdAt
+                              ? format(createdAt, "dd MMM yyyy 'a las' HH:mm", { locale: es })
+                              : ''}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
