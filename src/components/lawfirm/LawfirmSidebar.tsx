@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
 import {
   LayoutDashboard,
   Briefcase,
@@ -17,6 +19,15 @@ import {
   X,
   Megaphone,
   HelpCircle,
+  Building,
+  ChevronDown,
+  Euro,
+  CreditCard,
+  Brain,
+  Globe,
+  Bot,
+  Mail,
+  BarChart3,
 } from 'lucide-react';
 
 interface LawfirmSidebarProps {
@@ -28,17 +39,32 @@ const navigation = [
   { name: 'Dashboard', href: '/despacho/dashboard', icon: LayoutDashboard },
   { name: 'Mis Casos', href: '/despacho/casos', icon: Briefcase },
   { name: 'LeadsMarket', href: '/despacho/leadsmarket', icon: ShoppingCart, hasBadge: true },
+  { name: 'Informes', href: '/despacho/informes', icon: BarChart3, disabled: true },
+];
+
+const configNavigation = [
+  { name: 'Datos del despacho', href: '/despacho/configuracion', icon: Settings },
+  { name: 'Datos fiscales', href: '/despacho/facturacion', icon: CreditCard },
+  { name: 'Precios por área', href: '/despacho/precios', icon: Euro },
+  { name: 'LeadsMarket', href: '/despacho/configuracion-marketplace', icon: ShoppingCart },
+];
+
+const advertisingNavigation = [
+  { name: 'Web', href: '/despacho/publicidad', icon: Globe },
+  { name: 'Asistente Amara', href: '/despacho/publicidad?tab=amara', icon: Bot },
+  { name: 'Newsletters', href: '/despacho/publicidad?tab=newsletter', icon: Mail },
 ];
 
 const adminNavigation = [
   { name: 'Equipo', href: '/despacho/equipo', icon: Users },
-  { name: 'Anuncios', href: '/despacho/anuncios', icon: Megaphone },
-  { name: 'Configuración', href: '/despacho/configuracion', icon: Settings },
+  { name: 'Sucursales', href: '/despacho/sucursales', icon: Building },
 ];
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
   const { user } = useAuthContext();
+  const [configOpen, setConfigOpen] = useState(location.pathname.includes('/configuracion') || location.pathname.includes('/facturacion') || location.pathname.includes('/precios'));
+  const [adsOpen, setAdsOpen] = useState(location.pathname.includes('/publicidad'));
   
   const isLawfirmAdmin = user?.role === 'lawfirm_admin';
 
@@ -55,6 +81,14 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     },
     refetchInterval: 60000, // Refetch every minute
   });
+
+  const isActive = (href: string) => {
+    if (href.includes('?')) {
+      return location.pathname + location.search === href;
+    }
+    return location.pathname === href || 
+           (href !== '/despacho/dashboard' && location.pathname.startsWith(href) && !location.pathname.startsWith(href + '-'));
+  };
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
@@ -82,18 +116,18 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="space-y-1">
           {navigation.map((item) => {
-            const isActive = location.pathname === item.href || 
-                           (item.href !== '/despacho/dashboard' && location.pathname.startsWith(item.href));
+            const active = isActive(item.href);
             return (
               <Link
                 key={item.name}
-                to={item.href}
-                onClick={onClose}
+                to={item.disabled ? '#' : item.href}
+                onClick={item.disabled ? (e) => e.preventDefault() : onClose}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  isActive
+                  active
                     ? 'bg-lawfirm-primary text-white'
-                    : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                    : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground',
+                  item.disabled && 'opacity-50 cursor-not-allowed'
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -102,6 +136,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   <Badge variant="secondary" className="ml-auto text-xs">
                     {marketplaceCount}
                   </Badge>
+                )}
+                {item.disabled && (
+                  <Badge variant="secondary" className="ml-auto text-xs">Pronto</Badge>
                 )}
               </Link>
             );
@@ -119,7 +156,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             </div>
             <nav className="space-y-1">
               {adminNavigation.map((item) => {
-                const isActive = location.pathname.startsWith(item.href);
+                const active = isActive(item.href);
                 return (
                   <Link
                     key={item.name}
@@ -127,7 +164,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                     onClick={onClose}
                     className={cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                      isActive
+                      active
                         ? 'bg-lawfirm-primary text-white'
                         : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                     )}
@@ -137,6 +174,99 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   </Link>
                 );
               })}
+              
+              {/* Configuration Collapsible */}
+              <Collapsible open={configOpen} onOpenChange={setConfigOpen}>
+                <CollapsibleTrigger asChild>
+                  <button
+                    className={cn(
+                      'flex items-center justify-between w-full gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Settings className="h-5 w-5" />
+                      Configuración
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', configOpen && 'rotate-180')} />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                  {configNavigation.map((item) => {
+                    const active = isActive(item.href);
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        onClick={onClose}
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                          active
+                            ? 'bg-lawfirm-primary/20 text-lawfirm-primary'
+                            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Advertising Collapsible */}
+              <Collapsible open={adsOpen} onOpenChange={setAdsOpen}>
+                <CollapsibleTrigger asChild>
+                  <button
+                    className={cn(
+                      'flex items-center justify-between w-full gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Megaphone className="h-5 w-5" />
+                      Publicidad
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', adsOpen && 'rotate-180')} />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                  {advertisingNavigation.map((item) => {
+                    const active = isActive(item.href);
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        onClick={onClose}
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                          active
+                            ? 'bg-lawfirm-primary/20 text-lawfirm-primary'
+                            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* IA for Law Firms */}
+              <Link
+                to="/despacho/ia-servicios"
+                onClick={onClose}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  isActive('/despacho/ia-servicios')
+                    ? 'bg-lawfirm-primary text-white'
+                    : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                )}
+              >
+                <Brain className="h-5 w-5" />
+                IA para Despachos
+              </Link>
             </nav>
           </>
         )}
