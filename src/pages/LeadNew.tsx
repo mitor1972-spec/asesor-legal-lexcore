@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreateLead, useUpdateLead } from '@/hooks/useLeads';
 import { useExtractLeadData, useCalculateLexcore } from '@/hooks/useLexcoreRuns';
+import { useGenerateCaseSummary } from '@/hooks/useCaseSummary';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,9 +14,9 @@ import { Progress } from '@/components/ui/progress';
 import { AREAS_LEGALES, PROVINCIAS_ESPANA, SOURCE_CHANNELS, URGENCY_LEVELS, type SourceChannel, type AreaLegal, type Provincia, type UrgencyLevel } from '@/lib/constants';
 import type { StructuredFields } from '@/types';
 import { toast } from 'sonner';
-import { ArrowLeft, Save, Sparkles, Loader2, Check, Circle } from 'lucide-react';
+import { ArrowLeft, Save, Sparkles, Loader2, Check, Circle, FileText } from 'lucide-react';
 
-type ProcessStep = 'idle' | 'saving' | 'extracting' | 'scoring' | 'done';
+type ProcessStep = 'idle' | 'saving' | 'extracting' | 'scoring' | 'summarizing' | 'done';
 
 export default function LeadNew() {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export default function LeadNew() {
   const updateMutation = useUpdateLead();
   const extractMutation = useExtractLeadData();
   const scoreMutation = useCalculateLexcore();
+  const summaryMutation = useGenerateCaseSummary();
   
   const [leadText, setLeadText] = useState('');
   const [sourceChannel, setSourceChannel] = useState<SourceChannel>('Web chat');
@@ -119,16 +121,33 @@ export default function LeadNew() {
 
       // Step 3: Calculate scoring
       setProcessStep('scoring');
+      let scoringData = null;
       try {
-        await scoreMutation.mutateAsync({
+        const scoreResult = await scoreMutation.mutateAsync({
           leadId,
           leadText,
           structuredFields: extractedFields as unknown as Record<string, unknown>,
           sourceChannel,
         });
+        scoringData = scoreResult;
       } catch (scoreError) {
         console.error('Scoring error:', scoreError);
         toast.warning('No se pudo calcular el scoring');
+      }
+
+      // Step 4: Generate case summary
+      setProcessStep('summarizing');
+      try {
+        await summaryMutation.mutateAsync({
+          leadId,
+          leadText,
+          structuredFields: extractedFields as unknown as Record<string, unknown>,
+          scoringData,
+          sourceChannel,
+        });
+      } catch (summaryError) {
+        console.error('Summary error:', summaryError);
+        toast.warning('No se pudo generar el resumen');
       }
 
       setProcessStep('done');
@@ -156,16 +175,17 @@ export default function LeadNew() {
 
   const getProgressPercent = () => {
     switch (processStep) {
-      case 'saving': return 25;
-      case 'extracting': return 50;
-      case 'scoring': return 75;
+      case 'saving': return 20;
+      case 'extracting': return 40;
+      case 'scoring': return 60;
+      case 'summarizing': return 80;
       case 'done': return 100;
       default: return 0;
     }
   };
 
   const StepIndicator = ({ step, label, currentStep }: { step: ProcessStep; label: string; currentStep: ProcessStep }) => {
-    const steps: ProcessStep[] = ['saving', 'extracting', 'scoring', 'done'];
+    const steps: ProcessStep[] = ['saving', 'extracting', 'scoring', 'summarizing', 'done'];
     const stepIndex = steps.indexOf(step);
     const currentIndex = steps.indexOf(currentStep);
     const isComplete = currentIndex > stepIndex;
@@ -209,10 +229,11 @@ export default function LeadNew() {
                 Procesando lead con IA...
               </div>
               <Progress value={getProgressPercent()} className="h-2" />
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <StepIndicator step="saving" label="Guardando lead" currentStep={processStep} />
                 <StepIndicator step="extracting" label="Extrayendo datos" currentStep={processStep} />
                 <StepIndicator step="scoring" label="Calculando scoring" currentStep={processStep} />
+                <StepIndicator step="summarizing" label="Generando resumen" currentStep={processStep} />
                 <StepIndicator step="done" label="Completado" currentStep={processStep} />
               </div>
             </div>
