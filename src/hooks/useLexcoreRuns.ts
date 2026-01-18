@@ -23,6 +23,7 @@ export interface Adjustment {
 export interface VJ {
   value: number;
   reason: string;
+  key_phrases?: string[];
 }
 
 export interface LexcoreRun {

@@ -13,20 +13,21 @@ import { Progress } from '@/components/ui/progress';
 import { LEAD_STATUSES, type LeadStatus } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2, Eye, Euro, Scale, Zap, Inbox } from 'lucide-react';
+import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2, Eye, Euro, Scale, Zap, Inbox, Building2, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LexcoreScoring } from '@/components/scoring/LexcoreScoring';
 import { ScoringHeader } from '@/components/lead/ScoringHeader';
 import { CaseSummaryView } from '@/components/lead/CaseSummaryView';
 import { ConversationView } from '@/components/lead/ConversationView';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
+import { LeadNotesTab } from '@/components/lead/LeadNotesTab';
+import { AssignToLawfirmDialog } from '@/components/lead/AssignToLawfirmDialog';
 import { formatLocation } from '@/lib/cityProvinceMapping';
 
 const statusColors: Record<LeadStatus, string> = {
   'Pendiente': 'bg-warning/10 text-warning border-warning/20',
-  'Derivado': 'bg-primary/10 text-primary border-primary/20',
-  'Facturado': 'bg-success/10 text-success border-success/20',
-  'Cerrado': 'bg-muted text-muted-foreground border-border',
+  'Enviado': 'bg-primary/10 text-primary border-primary/20',
+  'Aceptado': 'bg-success/10 text-success border-success/20',
 };
 
 export default function LeadDetail() {
@@ -43,6 +44,7 @@ export default function LeadDetail() {
 
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [recalcStep, setRecalcStep] = useState(0);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
   const latestRun = lexcoreRuns?.[0];
 
@@ -94,21 +96,15 @@ export default function LeadDetail() {
     setRecalcStep(0);
     
     try {
-      // Step 1: Extract data with AI
       setRecalcStep(0);
       const extractedData = await extractMutation.mutateAsync(lead.lead_text);
       
-      // Update lead with new extracted data
       const newStructuredFields = { 
         ...lead.structured_fields as Record<string, unknown>, 
         ...extractedData.extracted_data 
       };
-      await updateMutation.mutateAsync({ 
-        id, 
-        structured_fields: newStructuredFields 
-      });
+      await updateMutation.mutateAsync({ id, structured_fields: newStructuredFields });
       
-      // Step 2: Calculate Lexcore scoring
       setRecalcStep(1);
       const scoringResult = await calculateMutation.mutateAsync({
         leadId: id,
@@ -117,7 +113,6 @@ export default function LeadDetail() {
         sourceChannel: lead.source_channel || 'Web chat',
       });
       
-      // Step 3: Generate case summary
       setRecalcStep(2);
       await summaryMutation.mutateAsync({
         leadId: id,
@@ -131,13 +126,9 @@ export default function LeadDetail() {
         sourceChannel: lead.source_channel || undefined,
       });
       
-      // Step 4: Complete
       setRecalcStep(3);
-      
-      // Refresh data
       await refetchLead();
       await refetchRuns();
-      
       toast.success('Recálculo completado correctamente');
     } catch (error) {
       toast.error('Error al recalcular: ' + (error instanceof Error ? error.message : 'Error desconocido'));
@@ -154,8 +145,6 @@ export default function LeadDetail() {
 
   const f = lead.structured_fields as Record<string, unknown> | null;
   const caseSummary = (lead as { case_summary?: string }).case_summary;
-  
-  // Location with auto-province detection
   const ciudad = f?.ciudad as string | undefined;
   const provincia = f?.provincia as string | undefined;
   const location = formatLocation(ciudad, provincia);
@@ -170,48 +159,31 @@ export default function LeadDetail() {
             <p className="text-sm text-muted-foreground">{format(new Date(lead.created_at), "dd MMM yyyy 'a las' HH:mm", { locale: es })}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Select value={lead.status_internal} onValueChange={v => handleStatusChange(v as LeadStatus)}>
             <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
             <SelectContent>{LEAD_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
           </Select>
           {lead.score_final !== null && (
             <div className="flex items-center gap-3">
-              <LeadTemperature 
-                score={lead.score_final} 
-                variant="mini" 
-              />
-              <Badge variant="outline" className="font-mono bg-green-500/10 text-green-600 border-green-500/20">
-                {lead.price_final}€
-              </Badge>
+              <LeadTemperature score={lead.score_final} variant="mini" />
+              <Badge variant="outline" className="font-mono bg-green-500/10 text-green-600 border-green-500/20">{lead.price_final}€</Badge>
             </div>
           )}
+          <Button onClick={() => setAssignDialogOpen(true)} className="bg-primary">
+            <Building2 className="mr-2 h-4 w-4" />Asignar a despacho
+          </Button>
           <Button asChild variant="outline"><Link to={`/leads/${id}/edit`}><Pencil className="mr-2 h-4 w-4" />Editar</Link></Button>
-          <Button 
-            variant="outline" 
-            onClick={handleRecalculateFull}
-            disabled={isRecalculating}
-          >
-            {isRecalculating ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="mr-2 h-4 w-4" />
-            )}
+          <Button variant="outline" onClick={handleRecalculateFull} disabled={isRecalculating}>
+            {isRecalculating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Recalcular Lexcore
           </Button>
           {isInternal && (
-            <Button 
-              variant="secondary"
-              onClick={handleViewAsLawyer}
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              Ver como abogado
-            </Button>
+            <Button variant="secondary" onClick={handleViewAsLawyer}><Eye className="mr-2 h-4 w-4" />Ver como abogado</Button>
           )}
         </div>
       </div>
 
-      {/* Recalculating Progress */}
       {isRecalculating && (
         <Card className="border-primary/50 bg-primary/5">
           <CardContent className="py-3">
@@ -226,155 +198,69 @@ export default function LeadDetail() {
         </Card>
       )}
 
-      {/* ROW 1: TEMPERATURA DEL LEAD */}
-      <LeadTemperature 
-        score={lead.score_final}
-        structuredFields={f}
-        variant="full"
-      />
+      <LeadTemperature score={lead.score_final} structuredFields={f} variant="full" />
+      <ScoringHeader scoreFinal={lead.score_final} priceFinal={lead.price_final} latestRun={latestRun} sourceChannel={lead.source_channel || undefined} />
 
-      {/* ROW 2: VALORACIÓN DEL LEAD - LEXCORE™ */}
-      <ScoringHeader 
-        scoreFinal={lead.score_final}
-        priceFinal={lead.price_final}
-        latestRun={latestRun}
-        sourceChannel={lead.source_channel || undefined}
-      />
-
-      {/* ROW 3: CONTACTO + CASO (side by side) */}
       <div className="grid md:grid-cols-2 gap-3">
         <Card className="shadow-soft">
-          <CardHeader className="py-2 px-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <User className="h-3.5 w-3.5" />
-              Contacto
-            </CardTitle>
-          </CardHeader>
+          <CardHeader className="py-2 px-3"><CardTitle className="flex items-center gap-2 text-sm"><User className="h-3.5 w-3.5" />Contacto</CardTitle></CardHeader>
           <CardContent className="space-y-1 text-sm py-2 px-3">
-            <p className="flex items-center gap-2">
-              <User className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Nombre:</strong> {(f?.nombre as string) || ''} {(f?.apellidos as string) || ''}
-            </p>
-            <p className="flex items-center gap-2">
-              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Teléfono:</strong> {(f?.telefono as string) || ''}
-            </p>
-            <p className="flex items-center gap-2">
-              <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Email:</strong> {(f?.email as string) || ''}
-            </p>
-            <p className="flex items-center gap-2">
-              <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Ubicación:</strong> {location}
-            </p>
+            <p className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /><strong>Nombre:</strong> {(f?.nombre as string) || ''} {(f?.apellidos as string) || ''}</p>
+            <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><strong>Teléfono:</strong> {(f?.telefono as string) || ''}</p>
+            <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><strong>Email:</strong> {(f?.email as string) || ''}</p>
+            <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /><strong>Ubicación:</strong> {location}</p>
           </CardContent>
         </Card>
         <Card className="shadow-soft">
-          <CardHeader className="py-2 px-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <FileText className="h-3.5 w-3.5" />
-              Caso
-            </CardTitle>
-          </CardHeader>
+          <CardHeader className="py-2 px-3"><CardTitle className="flex items-center gap-2 text-sm"><FileText className="h-3.5 w-3.5" />Caso</CardTitle></CardHeader>
           <CardContent className="space-y-1 text-sm py-2 px-3">
-            <p className="flex items-center gap-2">
-              <Scale className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Área:</strong> {(f?.area_legal as string) || ''}
-            </p>
-            <p className="flex items-center gap-2">
-              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Subárea:</strong> {(f?.subarea as string) || ''}
-            </p>
-            <p className="flex items-center gap-2">
-              <Euro className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Cuantía:</strong> {(f?.cuantia as number) ? `${(f.cuantia as number).toLocaleString()}€` : ''}
-            </p>
-            <p className="flex items-center gap-2">
-              <Zap className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Urgencia:</strong> {(f?.urgencia_aplica as boolean) ? <Badge variant="outline" className="bg-destructive/10 text-destructive text-xs py-0">{(f?.urgencia_nivel as string) || 'Sí'}</Badge> : ''}
-            </p>
-            <p className="flex items-center gap-2">
-              <Inbox className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Canal:</strong> {lead.source_channel ? <Badge variant="outline" className="text-xs py-0">{lead.source_channel}</Badge> : ''}
-            </p>
+            <p className="flex items-center gap-2"><Scale className="h-3.5 w-3.5 text-muted-foreground" /><strong>Área:</strong> {(f?.area_legal as string) || ''}</p>
+            <p className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-muted-foreground" /><strong>Subárea:</strong> {(f?.subarea as string) || ''}</p>
+            <p className="flex items-center gap-2"><Euro className="h-3.5 w-3.5 text-muted-foreground" /><strong>Cuantía:</strong> {(f?.cuantia as number) ? `${(f.cuantia as number).toLocaleString()}€` : ''}</p>
+            <p className="flex items-center gap-2"><Zap className="h-3.5 w-3.5 text-muted-foreground" /><strong>Urgencia:</strong> {(f?.urgencia_aplica as boolean) ? <Badge variant="outline" className="bg-destructive/10 text-destructive text-xs py-0">{(f?.urgencia_nivel as string) || 'Sí'}</Badge> : ''}</p>
+            <p className="flex items-center gap-2"><Inbox className="h-3.5 w-3.5 text-muted-foreground" /><strong>Canal:</strong> {lead.source_channel ? <Badge variant="outline" className="text-xs py-0">{lead.source_channel}</Badge> : ''}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* ROW 4: RESUMEN ESTRUCTURADO (with tabs) */}
       <Tabs defaultValue="resumen" className="space-y-3">
         <TabsList>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
-          <TabsTrigger value="ayuda-legal" className="flex items-center gap-1">
-            <Sparkles className="h-3 w-3" />
-            Ayuda Legal
-          </TabsTrigger>
-          <TabsTrigger value="notas">
-            <MessageSquare className="h-3 w-3 mr-1" />
-            Notas
-          </TabsTrigger>
+          <TabsTrigger value="scoring" className="flex items-center gap-1"><BarChart3 className="h-3 w-3" />Scoring</TabsTrigger>
+          <TabsTrigger value="ayuda-legal" className="flex items-center gap-1"><Sparkles className="h-3 w-3" />Ayuda Legal</TabsTrigger>
+          <TabsTrigger value="notas"><MessageSquare className="h-3 w-3 mr-1" />Notas</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
-          <TabsTrigger value="conversacion" className="flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" />
-            Conversación
-          </TabsTrigger>
+          <TabsTrigger value="conversacion" className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />Conversación original</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumen" className="space-y-3">
-          {/* Case Summary */}
-          <CaseSummaryView 
-            summary={caseSummary || null}
-            isGenerating={summaryMutation.isPending}
-            onGenerate={handleGenerateSummary}
-          />
-
-          {(f?.notas_operador as string) && (
-            <Card className="shadow-soft">
-              <CardHeader className="py-2 px-3">
-                <CardTitle className="text-sm">Notas del Operador</CardTitle>
-              </CardHeader>
-              <CardContent className="py-2 px-3">
-                <p className="whitespace-pre-wrap text-sm">{(f.notas_operador as string)}</p>
-              </CardContent>
-            </Card>
-          )}
+          <CaseSummaryView summary={caseSummary || null} isGenerating={summaryMutation.isPending} onGenerate={handleGenerateSummary} />
         </TabsContent>
+
+        <TabsContent value="scoring"><LexcoreScoring lead={lead} /></TabsContent>
 
         <TabsContent value="ayuda-legal">
-          <LexcoreScoring lead={lead} />
-        </TabsContent>
-
-        <TabsContent value="notas">
           <Card className="shadow-soft">
-            <CardHeader className="py-2 px-3">
-              <CardTitle className="text-sm">Notas internas</CardTitle>
-            </CardHeader>
+            <CardHeader className="py-2 px-3"><CardTitle className="flex items-center gap-2 text-sm"><Sparkles className="h-3.5 w-3.5 text-primary" />Orientación Legal</CardTitle></CardHeader>
             <CardContent className="py-2 px-3">
-              {(f?.notas_operador as string) ? (
-                <p className="whitespace-pre-wrap text-sm">{(f.notas_operador as string)}</p>
-              ) : (
-                <p className="text-muted-foreground text-sm">Sin notas</p>
-              )}
+              <p className="text-muted-foreground text-sm">La ayuda legal se genera al asignar el lead a un despacho. Puedes verla en la vista del abogado.</p>
             </CardContent>
           </Card>
         </TabsContent>
 
+        <TabsContent value="notas">{id && <LeadNotesTab leadId={id} />}</TabsContent>
+
         <TabsContent value="historial">
           <Card className="shadow-soft">
-            <CardHeader className="py-2 px-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Clock className="h-3.5 w-3.5" />
-                Historial de cambios
-              </CardTitle>
-            </CardHeader>
+            <CardHeader className="py-2 px-3"><CardTitle className="flex items-center gap-2 text-sm"><Clock className="h-3.5 w-3.5" />Historial de cambios</CardTitle></CardHeader>
             <CardContent className="py-2 px-3">
               {history?.length === 0 ? <p className="text-muted-foreground text-sm">Sin historial</p> : (
                 <div className="space-y-3">
-                  {history?.map((h: { id: string; action: string; created_at: string }) => (
+                  {history?.map((h: { id: string; action: string; created_at: string; details?: { note?: string; author_name?: string } }) => (
                     <div key={h.id} className="flex gap-3 pb-3 border-b last:border-0">
                       <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-primary" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium capitalize">{h.action}</p>
+                        <p className="text-sm font-medium capitalize">{h.action === 'note_added' ? `📝 Nota: "${h.details?.note?.substring(0, 50)}..."` : h.action}</p>
                         <p className="text-xs text-muted-foreground">{format(new Date(h.created_at), "dd MMM yyyy 'a las' HH:mm", { locale: es })}</p>
                       </div>
                     </div>
@@ -385,10 +271,10 @@ export default function LeadDetail() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="conversacion">
-          <ConversationView leadText={lead.lead_text} />
-        </TabsContent>
+        <TabsContent value="conversacion"><ConversationView leadText={lead.lead_text} /></TabsContent>
       </Tabs>
+
+      <AssignToLawfirmDialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen} leadId={id || ''} leadArea={f?.area_legal as string | undefined} leadProvince={f?.provincia as string | undefined} onSuccess={() => refetchLead()} />
     </div>
   );
 }

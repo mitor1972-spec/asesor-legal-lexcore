@@ -105,9 +105,8 @@ export const SOURCE_CHANNELS = [
 
 export const LEAD_STATUSES = [
   "Pendiente",
-  "Derivado",
-  "Facturado",
-  "Cerrado"
+  "Enviado",
+  "Aceptado"
 ] as const;
 
 export const URGENCY_LEVELS = [

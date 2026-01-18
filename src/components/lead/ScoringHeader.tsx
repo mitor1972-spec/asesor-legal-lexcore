@@ -16,7 +16,14 @@ export function ScoringHeader({ scoreFinal, priceFinal, latestRun, sourceChannel
 
   const vj = latestRun?.vj_json;
   const vjScore = vj?.value ?? 0;
-  const vjConclusion = vj?.reason || '';
+  
+  // Support for multiple key phrases (array) or single reason (string)
+  const vjPhrases: string[] = [];
+  if (vj?.key_phrases && Array.isArray(vj.key_phrases)) {
+    vjPhrases.push(...vj.key_phrases);
+  } else if (vj?.reason) {
+    vjPhrases.push(vj.reason);
+  }
 
   const nDespachos = 1; // Default
 
@@ -85,12 +92,18 @@ export function ScoringHeader({ scoreFinal, priceFinal, latestRun, sourceChannel
           </div>
         </div>
 
-        {/* VJ Conclusion - only if exists */}
-        {vjConclusion && (
-          <div className="pt-1 border-t">
-            <div className="flex items-start gap-1.5">
-              <MessageSquare className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-muted-foreground italic">"{vjConclusion}"</p>
+        {/* VJ Key Phrases - MORE VISIBLE with larger text */}
+        {vjPhrases.length > 0 && (
+          <div className="pt-2 border-t">
+            <div className="flex items-start gap-2">
+              <MessageSquare className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+              <div className="space-y-1">
+                {vjPhrases.map((phrase, idx) => (
+                  <p key={idx} className="text-sm text-foreground italic">
+                    💬 "{phrase}"
+                  </p>
+                ))}
+              </div>
             </div>
           </div>
         )}

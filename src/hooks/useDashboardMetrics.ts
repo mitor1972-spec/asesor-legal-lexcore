@@ -198,7 +198,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
           dailyStats[date] = { total: 0, derived: 0, won: 0 };
         }
         dailyStats[date].total += 1;
-        if (l.status_internal === 'Derivado') {
+        if (l.status_internal === 'Enviado') {
           dailyStats[date].derived += 1;
         }
         const assignments = l.lead_assignments as any[];
