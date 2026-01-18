@@ -6,13 +6,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useLawfirmCase, useUpdateCaseStatus, useUpdateCaseNotes, useCloseCaseResult } from '@/hooks/useLawfirmCases';
+import { useLawfirmCase, useUpdateCaseStatus, useUpdateCaseNotes } from '@/hooks/useLawfirmCases';
 import { useLegalHelp, useGenerateLegalHelp } from '@/hooks/useLegalHelp';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
 import { ScoringHeader } from '@/components/lead/ScoringHeader';
+import { CaseTrackingTab } from '@/components/lawfirm/CaseTrackingTab';
+import { CaseResultDialog } from '@/components/lawfirm/CaseResultDialog';
 import { processAndSanitize } from '@/lib/sanitize';
 import { formatLocation } from '@/lib/cityProvinceMapping';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { 
@@ -34,13 +36,18 @@ import {
   Scale,
   Euro,
   Zap,
-  Inbox
+  Inbox,
+  ClipboardList,
+  Calendar
 } from 'lucide-react';
 
+// More detailed status labels for lawyers
 const statusLabels: Record<string, string> = {
-  received: 'Recibido',
+  received: 'Nuevo',
   reviewing: 'Revisando',
   contacted: 'Contactado',
+  negotiation: 'En negociación',
+  pending_docs: 'Documentación pendiente',
   in_progress: 'En curso',
   won: 'Ganado',
   lost: 'Perdido',
@@ -55,10 +62,11 @@ export default function LawfirmCaseDetail() {
   const generateLegalHelp = useGenerateLegalHelp();
   const updateStatus = useUpdateCaseStatus();
   const updateNotes = useUpdateCaseNotes();
-  const closeCase = useCloseCaseResult();
 
   const [notes, setNotes] = useState('');
   const [isNotesLoaded, setIsNotesLoaded] = useState(false);
+  const [resultDialogOpen, setResultDialogOpen] = useState(false);
+  const [resultType, setResultType] = useState<'won' | 'lost'>('won');
 
   // Load notes when case data arrives
   if (caseData && !isNotesLoaded) {
@@ -107,26 +115,9 @@ export default function LawfirmCaseDetail() {
     }
   };
 
-  const handleCloseWon = async () => {
-    if (!id) return;
-    
-    try {
-      await closeCase.mutateAsync({ assignmentId: id, firmStatus: 'won' });
-      toast.success('Caso cerrado como ganado');
-    } catch (error) {
-      toast.error('Error al cerrar caso');
-    }
-  };
-
-  const handleReject = async () => {
-    if (!id) return;
-    
-    try {
-      await closeCase.mutateAsync({ assignmentId: id, firmStatus: 'rejected' });
-      toast.success('Caso rechazado');
-    } catch (error) {
-      toast.error('Error al rechazar caso');
-    }
+  const handleOpenResult = (type: 'won' | 'lost') => {
+    setResultType(type);
+    setResultDialogOpen(true);
   };
 
   const handleGenerateLegalHelp = async () => {
@@ -315,6 +306,10 @@ ${legalHelp.estimated_complexity}
             <Sparkles className="h-4 w-4 mr-2" />
             Ayuda Legal
           </TabsTrigger>
+          <TabsTrigger value="tracking">
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Seguimiento
+          </TabsTrigger>
           <TabsTrigger value="notes">
             <MessageSquare className="h-4 w-4 mr-2" />
             Notas
@@ -460,6 +455,11 @@ ${legalHelp.estimated_complexity}
           </Card>
         </TabsContent>
 
+        {/* Tracking Tab */}
+        <TabsContent value="tracking" className="mt-3">
+          {caseData.lead_id && <CaseTrackingTab leadId={caseData.lead_id} />}
+        </TabsContent>
+
         {/* Notes Tab */}
         <TabsContent value="notes" className="mt-3">
           <Card className="shadow-soft">
@@ -540,8 +540,7 @@ ${legalHelp.estimated_complexity}
               variant="outline" 
               size="sm"
               className="text-green-600 border-green-600 hover:bg-green-50"
-              onClick={handleCloseWon}
-              disabled={closeCase.isPending}
+              onClick={() => handleOpenResult('won')}
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
               Cerrar ganado
@@ -551,15 +550,24 @@ ${legalHelp.estimated_complexity}
               variant="outline" 
               size="sm"
               className="text-destructive border-destructive hover:bg-destructive/10"
-              onClick={handleReject}
-              disabled={closeCase.isPending}
+              onClick={() => handleOpenResult('lost')}
             >
               <XCircle className="h-4 w-4 mr-2" />
-              Rechazar
+              Perdido
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Result Dialog */}
+      {id && (
+        <CaseResultDialog
+          open={resultDialogOpen}
+          onOpenChange={setResultDialogOpen}
+          assignmentId={id}
+          type={resultType}
+        />
+      )}
     </div>
   );
 }

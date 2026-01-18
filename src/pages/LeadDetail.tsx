@@ -251,7 +251,10 @@ export default function LeadDetail() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1 text-sm py-2 px-3">
-            <p><strong>Nombre:</strong> {(f?.nombre as string) || ''} {(f?.apellidos as string) || ''}</p>
+            <p className="flex items-center gap-2">
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Nombre:</strong> {(f?.nombre as string) || ''} {(f?.apellidos as string) || ''}
+            </p>
             <p className="flex items-center gap-2">
               <Phone className="h-3.5 w-3.5 text-muted-foreground" />
               <strong>Teléfono:</strong> {(f?.telefono as string) || ''}
@@ -278,7 +281,10 @@ export default function LeadDetail() {
               <Scale className="h-3.5 w-3.5 text-muted-foreground" />
               <strong>Área:</strong> {(f?.area_legal as string) || ''}
             </p>
-            <p><strong>Subárea:</strong> {(f?.subarea as string) || ''}</p>
+            <p className="flex items-center gap-2">
+              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+              <strong>Subárea:</strong> {(f?.subarea as string) || ''}
+            </p>
             <p className="flex items-center gap-2">
               <Euro className="h-3.5 w-3.5 text-muted-foreground" />
               <strong>Cuantía:</strong> {(f?.cuantia as number) ? `${(f.cuantia as number).toLocaleString()}€` : ''}
