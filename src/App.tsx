@@ -13,6 +13,7 @@ import Leads from "@/pages/Leads";
 import LeadNew from "@/pages/LeadNew";
 import LeadDetail from "@/pages/LeadDetail";
 import LeadEdit from "@/pages/LeadEdit";
+import LeadPreviewAsLawyer from "@/pages/LeadPreviewAsLawyer";
 import Users from "@/pages/Users";
 import ApiKeys from "@/pages/settings/ApiKeys";
 import LexcoreConfig from "@/pages/settings/LexcoreConfig";
@@ -42,6 +43,7 @@ const App = () => (
                 <Route path="leads/new" element={<LeadNew />} />
                 <Route path="leads/:id" element={<LeadDetail />} />
                 <Route path="leads/:id/edit" element={<LeadEdit />} />
+                <Route path="leads/:id/preview" element={<LeadPreviewAsLawyer />} />
                 <Route path="users" element={<Users />} />
                 <Route path="settings/api-keys" element={<ApiKeys />} />
                 <Route path="settings/lexcore" element={<LexcoreConfig />} />
