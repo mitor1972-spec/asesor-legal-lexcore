@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useLead, useUpdateLead, useLeadHistory } from '@/hooks/useLeads';
 import { useLexcoreRuns, useExtractLeadData, useCalculateLexcore } from '@/hooks/useLexcoreRuns';
 import { useGenerateCaseSummary } from '@/hooks/useCaseSummary';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { LEAD_STATUSES, type LeadStatus } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { LexcoreScoring } from '@/components/scoring/LexcoreScoring';
 import { ScoringHeader } from '@/components/lead/ScoringHeader';
@@ -29,6 +30,7 @@ const statusColors: Record<LeadStatus, string> = {
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isInternal } = useAuthContext();
   const { data: lead, isLoading, refetch: refetchLead } = useLead(id);
   const { data: history } = useLeadHistory(id);
   const { data: lexcoreRuns, refetch: refetchRuns } = useLexcoreRuns(id);
@@ -41,6 +43,10 @@ export default function LeadDetail() {
   const [recalcStep, setRecalcStep] = useState(0);
 
   const latestRun = lexcoreRuns?.[0];
+
+  const handleViewAsLawyer = () => {
+    navigate(`/leads/${id}/preview`);
+  };
 
   const recalcSteps = [
     'Extrayendo datos con IA...',
@@ -186,6 +192,15 @@ export default function LeadDetail() {
             )}
             Recalcular Lexcore
           </Button>
+          {isInternal && (
+            <Button 
+              variant="secondary"
+              onClick={handleViewAsLawyer}
+            >
+              <Eye className="mr-2 h-4 w-4" />
+              Ver como abogado
+            </Button>
+          )}
         </div>
       </div>
 
