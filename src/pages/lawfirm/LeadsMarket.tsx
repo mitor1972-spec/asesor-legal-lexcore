@@ -2,17 +2,17 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { ShoppingCart, MapPin, Scale, TrendingUp, Clock, Loader2, AlertCircle, Wallet, Filter } from 'lucide-react';
+import { ShoppingCart, MapPin, Scale, TrendingUp, Clock, Loader2, AlertCircle, Wallet, Filter, Zap, Euro, MessageSquareQuote, BarChart3 } from 'lucide-react';
 import { LEGAL_AREAS, PROVINCES } from '@/lib/constants';
-import { LeadTemperature } from '@/components/lead/LeadTemperature';
 
 interface MarketplaceLead {
   id: string;
@@ -23,10 +23,22 @@ interface MarketplaceLead {
   created_at: string;
   structured_fields: {
     legal_area?: string;
+    area_legal?: string;
     province?: string;
+    provincia?: string;
+    city?: string;
+    ciudad?: string;
     urgency?: string;
+    urgencia?: string;
     complexity?: string;
+    complejidad?: string;
+    estimated_amount?: number;
+    cuantia_estimada?: number;
+    key_phrases?: string[];
+    frases_clave?: string[];
   };
+  vj_value?: number;
+  vj_key_phrases?: string[];
 }
 
 export default function LeadsMarket() {
@@ -55,7 +67,7 @@ export default function LeadsMarket() {
     enabled: !!user?.profile?.lawfirm_id,
   });
 
-  // Fetch marketplace leads - show all pending leads not yet assigned
+  // Fetch marketplace leads with lexcore data
   const { data: leads, isLoading } = useQuery({
     queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore],
     queryFn: async () => {
@@ -72,7 +84,11 @@ export default function LeadsMarket() {
           source_channel, 
           created_at, 
           structured_fields,
-          lead_assignments!left(id)
+          lead_assignments!left(id),
+          lexcore_runs(
+            vj_json,
+            llm_response_json
+          )
         `)
         .is('archived_at', null)
         .eq('status_internal', 'Pendiente')
@@ -104,15 +120,24 @@ export default function LeadsMarket() {
         });
       }
       
-      return filtered.map(l => ({
-        id: l.id,
-        marketplace_summary: l.marketplace_summary || l.case_summary?.substring(0, 200) || 'Lead disponible para compra',
-        marketplace_price: l.marketplace_price || l.price_final || 25,
-        score_final: l.score_final || 0,
-        source_channel: l.source_channel,
-        created_at: l.created_at,
-        structured_fields: l.structured_fields || {},
-      })) as MarketplaceLead[];
+      return filtered.map(l => {
+        // Get latest lexcore run
+        const latestRun = l.lexcore_runs?.[0];
+        const vjData = latestRun?.vj_json as any;
+        const llmResponse = latestRun?.llm_response_json as any;
+        
+        return {
+          id: l.id,
+          marketplace_summary: l.marketplace_summary || l.case_summary?.substring(0, 300) || 'Lead disponible para compra',
+          marketplace_price: l.marketplace_price || l.price_final || 25,
+          score_final: l.score_final || 0,
+          source_channel: l.source_channel,
+          created_at: l.created_at,
+          structured_fields: l.structured_fields || {},
+          vj_value: vjData?.vj ?? vjData?.VJ ?? null,
+          vj_key_phrases: vjData?.key_phrases || llmResponse?.key_phrases || [],
+        };
+      }) as MarketplaceLead[];
     },
   });
 
@@ -255,57 +280,133 @@ export default function LeadsMarket() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-2">
           {leads?.map((lead) => {
             const fields = lead.structured_fields || {};
+            const legalArea = fields.legal_area || fields.area_legal || 'Sin área';
+            const province = fields.province || fields.provincia || 'Sin provincia';
+            const city = fields.city || fields.ciudad;
+            const location = city ? `${province} (${city})` : province;
+            const urgency = fields.urgency || fields.urgencia;
+            const complexity = fields.complexity || fields.complejidad || 'Media';
+            const estimatedAmount = fields.estimated_amount || fields.cuantia_estimada;
+            const keyPhrases = lead.vj_key_phrases || fields.key_phrases || fields.frases_clave || [];
+            
+            // Score color based on value
+            const getScoreColor = (score: number) => {
+              if (score >= 70) return 'text-success bg-success/10 border-success/30';
+              if (score >= 40) return 'text-warning bg-warning/10 border-warning/30';
+              return 'text-muted-foreground bg-muted border-border';
+            };
             
             return (
-              <Card key={lead.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Scale className="h-4 w-4 text-lawfirm-primary" />
-                      <CardTitle className="text-base">
-                        {fields.legal_area || 'Sin área'}
-                      </CardTitle>
-                    </div>
-                    <LeadTemperature score={lead.score_final} variant="mini" />
+              <Card key={lead.id} className="overflow-hidden hover:shadow-lg transition-all duration-200 border-2">
+                {/* Header: Área + Score */}
+                <div className="flex items-center justify-between p-4 bg-muted/30 border-b">
+                  <div className="flex items-center gap-2">
+                    <Scale className="h-5 w-5 text-lawfirm-primary" />
+                    <span className="font-semibold text-base">{legalArea}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-3 w-3" />
-                    {fields.province || 'Sin provincia'}
-                  </div>
-                </CardHeader>
+                  <Badge 
+                    variant="outline" 
+                    className={`text-sm font-bold px-3 py-1 ${getScoreColor(lead.score_final)}`}
+                  >
+                    🟢 {lead.score_final} pts
+                  </Badge>
+                </div>
                 
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground line-clamp-3">
-                    {lead.marketplace_summary || 'Resumen no disponible'}
-                  </p>
-                  
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <Badge variant="outline" className="gap-1">
-                      <TrendingUp className="h-3 w-3" />
-                      {fields.complexity || 'Media'}
-                    </Badge>
-                    {fields.urgency && (
-                      <Badge variant="outline" className="gap-1 text-warning border-warning/30">
-                        <Clock className="h-3 w-3" />
-                        Urgente
-                      </Badge>
-                    )}
-                    <Badge variant="outline">
-                      {lead.source_channel || 'Web'}
-                    </Badge>
+                <CardContent className="p-4 space-y-4">
+                  {/* Location */}
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>{location}</span>
                   </div>
                   
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <div className="text-lg font-bold text-lawfirm-primary">
-                      {lead.marketplace_price?.toFixed(2) || '0.00'}€
+                  {/* AI Summary */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Resumen del caso:
+                    </p>
+                    <p className="text-sm leading-relaxed line-clamp-4">
+                      "{lead.marketplace_summary}"
+                    </p>
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Scoring Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-lawfirm-primary" />
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Scoring LEXCORE™
+                      </span>
+                    </div>
+                    
+                    {/* Scoring Grid */}
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="flex items-center gap-1.5 p-2 rounded-md bg-muted/50">
+                        <span className="text-muted-foreground">📊 Score:</span>
+                        <span className="font-bold">{lead.score_final}/100</span>
+                      </div>
+                      {lead.vj_value !== null && lead.vj_value !== undefined && (
+                        <div className="flex items-center gap-1.5 p-2 rounded-md bg-muted/50">
+                          <span className="text-muted-foreground">📈 VJ:</span>
+                          <span className={`font-bold ${lead.vj_value > 0 ? 'text-success' : lead.vj_value < 0 ? 'text-destructive' : ''}`}>
+                            {lead.vj_value > 0 ? '+' : ''}{lead.vj_value}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 p-2 rounded-md bg-muted/50">
+                        <span className="text-muted-foreground">🎯 Comp.:</span>
+                        <span className="font-medium">{complexity}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Second row */}
+                    <div className="flex flex-wrap gap-2">
+                      {urgency && (
+                        <Badge variant="outline" className="gap-1 text-warning border-warning/30 bg-warning/10">
+                          <Zap className="h-3 w-3" />
+                          Urgente
+                        </Badge>
+                      )}
+                      {estimatedAmount && (
+                        <Badge variant="outline" className="gap-1">
+                          <Euro className="h-3 w-3" />
+                          {estimatedAmount.toLocaleString('es-ES')}€
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="gap-1">
+                        📥 {lead.source_channel || 'Web'}
+                      </Badge>
+                    </div>
+                    
+                    {/* Key Phrases */}
+                    {keyPhrases.length > 0 && (
+                      <div className="flex items-start gap-2 p-2 rounded-md bg-lawfirm-primary/5 border border-lawfirm-primary/20">
+                        <MessageSquareQuote className="h-4 w-4 text-lawfirm-primary mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-muted-foreground italic line-clamp-2">
+                          "{keyPhrases.slice(0, 3).join('", "')}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Footer: Price + Buy */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold text-lawfirm-primary">
+                        {lead.marketplace_price?.toFixed(0) || '0'}€
+                      </span>
                     </div>
                     <Button 
                       onClick={() => handlePurchaseClick(lead)}
                       disabled={balance < (lead.marketplace_price || 0)}
                       className="gap-2"
+                      size="lg"
                     >
                       <ShoppingCart className="h-4 w-4" />
                       Comprar lead
@@ -338,15 +439,17 @@ export default function LeadsMarket() {
                   <div className="flex items-center gap-2">
                     <Scale className="h-4 w-4 text-lawfirm-primary" />
                     <span className="font-medium">
-                      {selectedLead.structured_fields?.legal_area || 'Sin área'}
+                      {selectedLead.structured_fields?.legal_area || selectedLead.structured_fields?.area_legal || 'Sin área'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <MapPin className="h-3 w-3" />
-                    {selectedLead.structured_fields?.province || 'Sin provincia'}
+                    {selectedLead.structured_fields?.province || selectedLead.structured_fields?.provincia || 'Sin provincia'}
                   </div>
                   <div className="flex items-center gap-2">
-                    <LeadTemperature score={selectedLead.score_final} variant="mini" />
+                    <Badge variant="outline" className="text-success bg-success/10 border-success/30">
+                      🟢 {selectedLead.score_final} pts
+                    </Badge>
                     <span className="text-sm text-muted-foreground">
                       Score: {selectedLead.score_final}/100
                     </span>
