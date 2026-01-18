@@ -30,7 +30,7 @@ serve(async (req) => {
     
     // Create user client to check authorization
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    if (!authHeader?.startsWith('Bearer ')) {
       throw new Error('Authorization header is required');
     }
     
@@ -41,17 +41,19 @@ serve(async (req) => {
     // Get current user
     const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
     if (authError || !user) {
+      console.error('Auth error:', authError);
       throw new Error('Unauthorized: Invalid token');
     }
     
-    console.log('Authenticated user:', user.id);
+    const userId = user.id;
+    console.log('Authenticated user:', userId);
     
     // Check if user has access to this lead
     // Option 1: Internal user (admin/operator) - can access any lead
     const { data: userRoles } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
     
     const isInternal = userRoles?.some(r => r.role === 'admin' || r.role === 'operator');
     
@@ -59,7 +61,7 @@ serve(async (req) => {
     const { data: userProfile } = await supabaseAdmin
       .from('profiles')
       .select('lawfirm_id, is_active')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
     
     if (!userProfile?.is_active) {
