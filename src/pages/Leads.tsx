@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { LEAD_STATUSES, SOURCE_CHANNELS, AREAS_LEGALES, type LeadStatus, type SourceChannel } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Search, Pencil, Archive, Thermometer, FileDown, Building2, X, Trash2, RotateCcw, RefreshCw, Loader2 } from 'lucide-react';
+import { Plus, Search, Pencil, Archive, Thermometer, FileDown, Building2, X, Trash2, RotateCcw, RefreshCw, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
 import { BulkAssignDialog } from '@/components/lead/BulkAssignDialog';
@@ -46,6 +46,7 @@ export default function Leads() {
   const deleteMutation = useDeleteLead();
   const calculateLexcore = useCalculateLexcore();
   const [isRecalculating, setIsRecalculating] = useState(false);
+  const [recalcProgress, setRecalcProgress] = useState({ current: 0, total: 0 });
 
   const handleArchive = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -136,10 +137,14 @@ export default function Leads() {
     if (!confirmed) return;
 
     setIsRecalculating(true);
+    setRecalcProgress({ current: 0, total: selectedLeads.length });
     let successCount = 0;
     let errorCount = 0;
 
-    for (const leadId of selectedLeads) {
+    for (let i = 0; i < selectedLeads.length; i++) {
+      const leadId = selectedLeads[i];
+      setRecalcProgress({ current: i + 1, total: selectedLeads.length });
+      
       try {
         // Get lead data
         const { data: lead, error: fetchError } = await supabase
@@ -149,6 +154,13 @@ export default function Leads() {
           .single();
 
         if (fetchError || !lead) {
+          console.error(`Error fetching lead ${leadId}:`, fetchError);
+          errorCount++;
+          continue;
+        }
+
+        if (!lead.lead_text || lead.lead_text.trim() === '') {
+          console.warn(`Lead ${leadId} has no lead_text, skipping`);
           errorCount++;
           continue;
         }
@@ -169,12 +181,14 @@ export default function Leads() {
     }
 
     setIsRecalculating(false);
+    setRecalcProgress({ current: 0, total: 0 });
     setSelectedLeads([]);
 
-    if (successCount > 0) {
-      toast.success(`${successCount} lead(s) recalculados correctamente`);
-    }
-    if (errorCount > 0) {
+    if (successCount > 0 && errorCount === 0) {
+      toast.success(`✅ ${successCount} lead(s) recalculados correctamente`);
+    } else if (successCount > 0 && errorCount > 0) {
+      toast.warning(`${successCount} lead(s) OK, ${errorCount} con errores`);
+    } else if (errorCount > 0) {
       toast.error(`${errorCount} lead(s) con errores`);
     }
   };
@@ -243,33 +257,56 @@ export default function Leads() {
 
       {/* Bulk actions bar */}
       {selectedLeads.length > 0 && (
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="py-3 flex items-center justify-between">
-            <span className="text-sm font-medium">
-              ☑️ {selectedLeads.length} leads seleccionados
-            </span>
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                variant="outline"
-                onClick={handleRecalculateLexcore}
-                disabled={isRecalculating}
-                className="bg-amber-500/10 border-amber-500/30 text-amber-600 hover:bg-amber-500/20"
-              >
+        <Card className={isRecalculating ? "bg-amber-500/10 border-amber-500/30" : "bg-primary/5 border-primary/20"}>
+          <CardContent className="py-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
                 {isRecalculating ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
+                    Procesando {recalcProgress.current} de {recalcProgress.total}...
+                  </span>
                 ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
+                  `☑️ ${selectedLeads.length} leads seleccionados`
                 )}
-                {isRecalculating ? 'Recalculando...' : 'Re-ejecutar Lexcore'}
-              </Button>
-              <Button size="sm" onClick={() => setShowBulkAssign(true)}>
-                <Building2 className="mr-2 h-4 w-4" />Asignar a despacho
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setSelectedLeads([])}>
-                <X className="h-4 w-4" />
-              </Button>
+              </span>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={handleRecalculateLexcore}
+                  disabled={isRecalculating}
+                  className="bg-amber-500/10 border-amber-500/30 text-amber-600 hover:bg-amber-500/20"
+                >
+                  {isRecalculating ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  {isRecalculating ? `${recalcProgress.current}/${recalcProgress.total}` : 'Re-ejecutar Lexcore'}
+                </Button>
+                <Button size="sm" onClick={() => setShowBulkAssign(true)} disabled={isRecalculating}>
+                  <Building2 className="mr-2 h-4 w-4" />Asignar a despacho
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelectedLeads([])} disabled={isRecalculating}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
+            {/* Progress bar */}
+            {isRecalculating && recalcProgress.total > 0 && (
+              <div className="space-y-1">
+                <div className="h-2 bg-amber-200/50 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-amber-500 rounded-full transition-all duration-300"
+                    style={{ width: `${(recalcProgress.current / recalcProgress.total) * 100}%` }}
+                  />
+                </div>
+                <p className="text-xs text-amber-600 text-center">
+                  {Math.round((recalcProgress.current / recalcProgress.total) * 100)}% completado
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

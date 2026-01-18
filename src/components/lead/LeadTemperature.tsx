@@ -88,7 +88,7 @@ export function LeadTemperature({ score, structuredFields, variant = 'full' }: L
   const cuantia = f.cuantia as number | undefined;
   const hasCuantia = cuantia !== null && cuantia !== undefined && cuantia !== 0;
 
-  // Mini variant - badge style for the leads list
+  // Mini variant - badge style with thermometer bar for the leads list
   if (variant === 'mini') {
     const bgColorClass = score <= 30 
       ? 'bg-red-500' 
@@ -103,15 +103,33 @@ export function LeadTemperature({ score, structuredFields, variant = 'full' }: L
       : score <= 50 
         ? 'text-white' 
         : 'text-gray-900'; // yellow needs dark text
+
+    const barBgColor = score <= 30 
+      ? 'bg-red-500' 
+      : score <= 50 
+        ? 'bg-orange-500' 
+        : score <= 70 
+          ? 'bg-yellow-400' 
+          : 'bg-green-500';
     
     return (
-      <span className={cn(
-        "inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded text-xs font-bold",
-        bgColorClass,
-        textColorClass
-      )}>
-        {score}
-      </span>
+      <div className="flex items-center gap-2">
+        {/* Mini thermometer bar */}
+        <div className="relative w-12 h-2 bg-muted rounded-full overflow-hidden">
+          <div 
+            className={cn("absolute left-0 top-0 h-full rounded-full transition-all", barBgColor)}
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+        {/* Score badge */}
+        <span className={cn(
+          "inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded text-xs font-bold",
+          bgColorClass,
+          textColorClass
+        )}>
+          {score}
+        </span>
+      </div>
     );
   }
 

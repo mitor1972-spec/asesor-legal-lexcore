@@ -41,6 +41,13 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
     return 'text-muted-foreground bg-muted border-border';
   };
 
+  const getScoreBarColor = (score: number) => {
+    if (score <= 30) return 'bg-red-500';
+    if (score <= 50) return 'bg-orange-500';
+    if (score <= 70) return 'bg-yellow-400';
+    return 'bg-green-500';
+  };
+
   const renderScoreBar = (key: string) => {
     const group = SCORING_GROUPS.find(g => g.key === key);
     if (!group) return null;
@@ -73,12 +80,21 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
           <Scale className="h-5 w-5 text-lawfirm-primary flex-shrink-0" />
           <span className="font-semibold text-base truncate">{legalArea}</span>
         </div>
-        <Badge 
-          variant="outline" 
-          className={`text-lg font-bold px-3 py-1.5 flex-shrink-0 ${getScoreColor(lead.score_final)}`}
-        >
-          {lead.score_final}/100
-        </Badge>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Mini thermometer bar */}
+          <div className="relative w-16 h-2.5 bg-muted rounded-full overflow-hidden">
+            <div 
+              className={`absolute left-0 top-0 h-full rounded-full transition-all ${getScoreBarColor(lead.score_final)}`}
+              style={{ width: `${Math.min(Math.max(lead.score_final, 0), 100)}%` }}
+            />
+          </div>
+          <Badge 
+            variant="outline" 
+            className={`text-lg font-bold px-3 py-1.5 ${getScoreColor(lead.score_final)}`}
+          >
+            {lead.score_final}
+          </Badge>
+        </div>
       </div>
 
       <CardContent className="p-0 flex-1 flex flex-col">
