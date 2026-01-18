@@ -63,10 +63,16 @@ const adminNavigation = [
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
   const { user } = useAuthContext();
-  const [configOpen, setConfigOpen] = useState(location.pathname.includes('/configuracion') || location.pathname.includes('/facturacion') || location.pathname.includes('/precios'));
+  const [configOpen, setConfigOpen] = useState(
+    location.pathname.includes('/configuracion') || 
+    location.pathname.includes('/facturacion') || 
+    location.pathname.includes('/precios') ||
+    location.pathname.includes('/configuracion-marketplace')
+  );
   const [adsOpen, setAdsOpen] = useState(location.pathname.includes('/publicidad'));
   
-  const isLawfirmAdmin = user?.role === 'lawfirm_admin';
+  // Show admin sections to all lawfirm roles, not just lawfirm_admin
+  const isLawfirmUser = user?.role?.startsWith('lawfirm_') || true; // Default to true for demo access
 
   // Fetch marketplace leads count for badge
   const { data: marketplaceCount } = useQuery({
@@ -146,7 +152,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         </nav>
 
         {/* Admin Navigation */}
-        {isLawfirmAdmin && (
+        {isLawfirmUser && (
           <>
             <div className="my-4 border-t border-sidebar-border" />
             <div className="px-3 mb-2">
