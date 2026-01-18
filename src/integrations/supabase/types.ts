@@ -1233,6 +1233,83 @@ export type Database = {
           },
         ]
       }
+      legal_services: {
+        Row: {
+          avg_rating: number | null
+          base_price: number
+          created_at: string | null
+          estimated_duration: string | null
+          full_description: string | null
+          geographic_scope: string | null
+          id: string
+          lawfirm_id: string
+          legal_area: string
+          name: string
+          price_options: Json | null
+          provinces: string[] | null
+          required_documents: string[] | null
+          review_count: number | null
+          short_description: string | null
+          slug: string | null
+          status: string | null
+          total_orders: number | null
+          total_revenue: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          avg_rating?: number | null
+          base_price: number
+          created_at?: string | null
+          estimated_duration?: string | null
+          full_description?: string | null
+          geographic_scope?: string | null
+          id?: string
+          lawfirm_id: string
+          legal_area: string
+          name: string
+          price_options?: Json | null
+          provinces?: string[] | null
+          required_documents?: string[] | null
+          review_count?: number | null
+          short_description?: string | null
+          slug?: string | null
+          status?: string | null
+          total_orders?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          avg_rating?: number | null
+          base_price?: number
+          created_at?: string | null
+          estimated_duration?: string | null
+          full_description?: string | null
+          geographic_scope?: string | null
+          id?: string
+          lawfirm_id?: string
+          legal_area?: string
+          name?: string
+          price_options?: Json | null
+          provinces?: string[] | null
+          required_documents?: string[] | null
+          review_count?: number | null
+          short_description?: string | null
+          slug?: string | null
+          status?: string | null
+          total_orders?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_services_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lexcore_configs: {
         Row: {
           config_json: Json
