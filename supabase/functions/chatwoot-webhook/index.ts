@@ -24,25 +24,42 @@ interface ChatwootMessage {
   };
 }
 
-interface ChatwootConversation {
-  id: number;
-  account_id: number;
-  inbox_id: number;
-  status: string;
-  messages?: ChatwootMessage[];
+// Chatwoot sends payload with conversation data at ROOT level for some events
+interface ChatwootWebhookPayload {
+  event: string;
+  // Root level fields (when conversation data is at root)
+  id?: number;
+  status?: string;
   meta?: {
     sender?: ChatwootContact;
   };
-  contact?: ChatwootContact;
-}
-
-interface ChatwootWebhookPayload {
-  event: string;
-  id?: number;
-  account?: { id: number };
-  conversation?: ChatwootConversation;
-  contact?: ChatwootContact;
   messages?: ChatwootMessage[];
+  contact_inbox?: {
+    id: number;
+    contact_id: number;
+    source_id?: string;
+  };
+  changed_attributes?: {
+    status?: {
+      previous_value?: string;
+      current_value?: string;
+    };
+    [key: string]: any;
+  };
+  // Nested structure (for some event types)
+  account?: { id: number };
+  conversation?: {
+    id: number;
+    account_id: number;
+    inbox_id: number;
+    status: string;
+    messages?: ChatwootMessage[];
+    meta?: {
+      sender?: ChatwootContact;
+    };
+    contact?: ChatwootContact;
+  };
+  contact?: ChatwootContact;
 }
 
 // Log to webhook_logs table - captures ALL requests
@@ -93,7 +110,7 @@ async function logWebhookRequest(
   }
 }
 
-// Log to chatwoot_import_logs table - for successful imports
+// Log to chatwoot_import_logs table - for import tracking
 async function logImport(
   supabase: any,
   conversationId: number | null,
@@ -113,6 +130,61 @@ async function logImport(
   } catch (e) {
     console.error('[IMPORT_LOG] Error logging import:', e);
   }
+}
+
+// Extract status from various locations in the payload
+function extractStatus(payload: ChatwootWebhookPayload): string | null {
+  // Try different locations where status might be
+  
+  // 1. Root level status (most common for conversation_status_changed)
+  if (payload.status) {
+    console.log('[EXTRACT_STATUS] Found at root: ', payload.status);
+    return payload.status;
+  }
+  
+  // 2. In changed_attributes (for status change events)
+  if (payload.changed_attributes?.status?.current_value) {
+    console.log('[EXTRACT_STATUS] Found in changed_attributes: ', payload.changed_attributes.status.current_value);
+    return payload.changed_attributes.status.current_value;
+  }
+  
+  // 3. Nested in conversation object
+  if (payload.conversation?.status) {
+    console.log('[EXTRACT_STATUS] Found in conversation: ', payload.conversation.status);
+    return payload.conversation.status;
+  }
+  
+  console.log('[EXTRACT_STATUS] Status not found in payload');
+  return null;
+}
+
+// Extract conversation ID from various locations
+function extractConversationId(payload: ChatwootWebhookPayload): number | null {
+  // Root level id
+  if (payload.id) return payload.id;
+  // Nested conversation id
+  if (payload.conversation?.id) return payload.conversation.id;
+  return null;
+}
+
+// Extract contact info from various locations
+function extractContact(payload: ChatwootWebhookPayload): ChatwootContact | null {
+  // Try meta.sender first (common location)
+  if (payload.meta?.sender) return payload.meta.sender;
+  // Try conversation.meta.sender
+  if (payload.conversation?.meta?.sender) return payload.conversation.meta.sender;
+  // Try conversation.contact
+  if (payload.conversation?.contact) return payload.conversation.contact;
+  // Try root contact
+  if (payload.contact) return payload.contact;
+  return null;
+}
+
+// Extract messages from various locations
+function extractMessages(payload: ChatwootWebhookPayload): ChatwootMessage[] {
+  if (payload.messages && payload.messages.length > 0) return payload.messages;
+  if (payload.conversation?.messages && payload.conversation.messages.length > 0) return payload.conversation.messages;
+  return [];
 }
 
 Deno.serve(async (req) => {
@@ -201,52 +273,67 @@ Deno.serve(async (req) => {
 
     // Parse webhook payload
     rawBody = await req.text();
-    console.log('[CHATWOOT_WEBHOOK] Raw body length:', rawBody.length);
-    console.log('[CHATWOOT_WEBHOOK] Raw body preview:', rawBody.substring(0, 500));
+    console.log('[CHATWOOT_WEBHOOK] ========== FULL RAW PAYLOAD ==========');
+    console.log(rawBody);
+    console.log('[CHATWOOT_WEBHOOK] ======================================');
     
     try {
       payload = JSON.parse(rawBody);
     } catch (parseError) {
       console.error('[CHATWOOT_WEBHOOK] ERROR: Failed to parse JSON:', parseError);
-      await logWebhookRequest(supabase, req, null, { raw: rawBody.substring(0, 1000) }, 'error', `JSON parse error: ${parseError}`, startTime);
+      await logWebhookRequest(supabase, req, null, { raw: rawBody.substring(0, 2000) }, 'error', `JSON parse error: ${parseError}`, startTime);
       return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // Log full payload structure
     console.log('[CHATWOOT_WEBHOOK] Event type:', payload?.event);
     console.log('[CHATWOOT_WEBHOOK] Payload keys:', Object.keys(payload || {}));
+    console.log('[CHATWOOT_WEBHOOK] Full payload:', JSON.stringify(payload, null, 2));
     
-    if (payload?.conversation) {
-      console.log('[CHATWOOT_WEBHOOK] Conversation ID:', payload.conversation.id);
-      console.log('[CHATWOOT_WEBHOOK] Conversation status:', payload.conversation.status);
-      console.log('[CHATWOOT_WEBHOOK] Contact info:', JSON.stringify({
-        contact: payload.conversation.contact,
-        meta_sender: payload.conversation.meta?.sender,
-        top_contact: payload.contact,
-      }));
-    }
-
-    const conversationId = payload?.conversation?.id || payload?.id || null;
+    // Extract key information
+    const conversationId = extractConversationId(payload!);
+    const status = extractStatus(payload!);
+    const contact = extractContact(payload!);
+    
+    console.log('[CHATWOOT_WEBHOOK] Extracted data:', {
+      conversationId,
+      status,
+      contactName: contact?.name,
+      contactEmail: contact?.email,
+      contactPhone: contact?.phone_number,
+    });
 
     // Handle different event types
     if (payload?.event === 'conversation_status_changed' || payload?.event === 'conversation_resolved') {
       console.log('[CHATWOOT_WEBHOOK] Processing conversation status change...');
+      console.log(`[CHATWOOT_WEBHOOK] Status extracted: "${status}"`);
+      
+      // Check if status is "resolved" OR if the event specifically says resolved
+      const isResolved = status === 'resolved' || payload.event === 'conversation_resolved';
       
       // Only process resolved conversations if setting is enabled
-      if (settings.only_resolved_conversations && payload.conversation?.status !== 'resolved') {
-        console.log(`[CHATWOOT_WEBHOOK] Skipping - not resolved (status: ${payload.conversation?.status})`);
-        await logImport(supabase, conversationId, payload.event, 'skipped', 'Not a resolved conversation', { event: payload.event, status: payload.conversation?.status });
-        await logWebhookRequest(supabase, req, payload.event, payload, 'ignored', `Not resolved (status: ${payload.conversation?.status})`, startTime);
-        return new Response(JSON.stringify({ message: 'Skipped - not resolved' }), {
+      if (settings.only_resolved_conversations && !isResolved) {
+        const msg = `Not resolved (status: ${status}, event: ${payload.event})`;
+        console.log(`[CHATWOOT_WEBHOOK] Skipping - ${msg}`);
+        await logImport(supabase, conversationId, payload.event, 'skipped', msg, { 
+          event: payload.event, 
+          status,
+          changed_attributes: payload.changed_attributes 
+        });
+        await logWebhookRequest(supabase, req, payload.event, payload, 'ignored', msg, startTime);
+        return new Response(JSON.stringify({ message: 'Skipped - not resolved', status }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
+      console.log('[CHATWOOT_WEBHOOK] Status is resolved or setting allows all - processing...');
+      
       // Process the conversation
-      const result = await processConversation(supabase, payload, settings);
+      const result = await processConversation(supabase, payload, settings, conversationId, contact);
       const logResult = result.error ? 'error' : 'success';
       await logWebhookRequest(supabase, req, payload.event, payload, logResult, result.error || null, startTime);
       
@@ -260,7 +347,7 @@ Deno.serve(async (req) => {
       // If only_resolved_conversations is false, process new conversations too
       if (!settings.only_resolved_conversations) {
         console.log('[CHATWOOT_WEBHOOK] Processing new conversation (only_resolved disabled)');
-        const result = await processConversation(supabase, payload, settings);
+        const result = await processConversation(supabase, payload, settings, conversationId, contact);
         const logResult = result.error ? 'error' : 'success';
         await logWebhookRequest(supabase, req, payload.event, payload, logResult, result.error || null, startTime);
         
@@ -295,7 +382,7 @@ Deno.serve(async (req) => {
     }
   } catch (error) {
     console.error('[CHATWOOT_WEBHOOK] UNHANDLED ERROR:', error);
-    await logWebhookRequest(supabase, req, payload?.event || null, payload || { raw: rawBody?.substring(0, 1000) }, 'error', `Unhandled error: ${error}`, startTime);
+    await logWebhookRequest(supabase, req, payload?.event || null, payload || { raw: rawBody?.substring(0, 2000) }, 'error', `Unhandled error: ${error}`, startTime);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -306,19 +393,17 @@ Deno.serve(async (req) => {
 async function processConversation(
   supabase: any,
   payload: ChatwootWebhookPayload,
-  settings: any
+  settings: any,
+  conversationId: number | null,
+  contact: ChatwootContact | null
 ) {
   console.log('[PROCESS_CONVERSATION] Starting...');
   
-  const conversation = payload.conversation;
-  if (!conversation) {
-    console.log('[PROCESS_CONVERSATION] ERROR: No conversation data in payload');
-    await logImport(supabase, null, payload.event, 'error', 'No conversation data', payload);
-    return { error: 'No conversation data' };
+  if (!conversationId) {
+    console.log('[PROCESS_CONVERSATION] ERROR: No conversation ID');
+    await logImport(supabase, null, payload.event, 'error', 'No conversation ID', payload);
+    return { error: 'No conversation ID' };
   }
-
-  const conversationId = conversation.id;
-  const accountId = conversation.account_id || payload.account?.id;
 
   console.log(`[PROCESS_CONVERSATION] Conversation ID: ${conversationId}`);
 
@@ -336,7 +421,6 @@ async function processConversation(
   }
 
   // Extract contact info
-  const contact = conversation.contact || conversation.meta?.sender || payload.contact;
   const contactName = contact?.name || 'Sin nombre';
   const contactEmail = contact?.email || null;
   const contactPhone = contact?.phone_number || null;
@@ -351,10 +435,12 @@ async function processConversation(
   }
 
   // Build conversation content from messages
+  const messages = extractMessages(payload);
   let conversationContent = '';
-  if (conversation.messages && conversation.messages.length > 0) {
-    console.log(`[PROCESS_CONVERSATION] Found ${conversation.messages.length} messages`);
-    conversationContent = conversation.messages
+  
+  if (messages.length > 0) {
+    console.log(`[PROCESS_CONVERSATION] Found ${messages.length} messages`);
+    conversationContent = messages
       .filter(m => m.message_type === 'incoming' || m.message_type === 'outgoing')
       .map(m => {
         const sender = m.sender?.type === 'contact' ? contactName : 'Agente';
@@ -381,7 +467,7 @@ Conversación:
 ${conversationContent}
   `.trim();
 
-  console.log('[PROCESS_CONVERSATION] Lead text preview:', leadText.substring(0, 200));
+  console.log('[PROCESS_CONVERSATION] Lead text preview:', leadText.substring(0, 300));
 
   // Build structured fields
   const structuredFields = {
@@ -413,6 +499,9 @@ ${conversationContent}
 
   console.log(`[PROCESS_CONVERSATION] Lead created: ${lead.id}`);
 
+  // Get account ID from various places
+  const accountId = payload.conversation?.account_id || payload.account?.id || null;
+
   // Save conversation record
   const { error: convError } = await supabase.from('chatwoot_conversations').insert({
     chatwoot_conversation_id: conversationId,
@@ -422,8 +511,8 @@ ${conversationContent}
     contact_name: contactName,
     contact_email: contactEmail,
     contact_phone: contactPhone,
-    status: conversation.status,
-    messages_count: conversation.messages?.length || 0,
+    status: extractStatus(payload),
+    messages_count: messages.length,
     conversation_content: conversationContent,
   });
 
