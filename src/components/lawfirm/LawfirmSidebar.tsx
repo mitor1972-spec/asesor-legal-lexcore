@@ -75,8 +75,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <X className="h-5 w-5" />
           </Button>
         )}
-          </Button>
-        )}
       </div>
 
       {/* Navigation */}
