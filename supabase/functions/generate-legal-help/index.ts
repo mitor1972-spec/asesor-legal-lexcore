@@ -15,18 +15,83 @@ serve(async (req) => {
   try {
     const { lead_id, lawfirm_id } = await req.json();
     
-    if (!lead_id || !lawfirm_id) {
-      throw new Error('lead_id and lawfirm_id are required');
+    if (!lead_id) {
+      throw new Error('lead_id is required');
     }
 
     console.log('Generating legal help for lead:', lead_id, 'lawfirm:', lawfirm_id);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    // Create admin client for data operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Create user client to check authorization
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Authorization header is required');
+    }
+    
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    
+    // Get current user
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
+    if (authError || !user) {
+      throw new Error('Unauthorized: Invalid token');
+    }
+    
+    console.log('Authenticated user:', user.id);
+    
+    // Check if user has access to this lead
+    // Option 1: Internal user (admin/operator) - can access any lead
+    const { data: userRoles } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+    
+    const isInternal = userRoles?.some(r => r.role === 'admin' || r.role === 'operator');
+    
+    // Option 2: Lawfirm user - can only access leads assigned to their lawfirm
+    const { data: userProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('lawfirm_id, is_active')
+      .eq('id', user.id)
+      .single();
+    
+    if (!userProfile?.is_active) {
+      throw new Error('Unauthorized: User account is inactive');
+    }
+    
+    const userLawfirmId = userProfile?.lawfirm_id;
+    
+    // Verify authorization
+    if (!isInternal) {
+      // For lawfirm users, check if lead is assigned to their lawfirm
+      const { data: assignment, error: assignmentError } = await supabaseAdmin
+        .from('lead_assignments')
+        .select('id')
+        .eq('lead_id', lead_id)
+        .eq('lawfirm_id', userLawfirmId)
+        .maybeSingle();
+      
+      if (assignmentError || !assignment) {
+        throw new Error('Unauthorized: Lead not assigned to your lawfirm');
+      }
+      
+      // Also verify the lawfirm_id matches if provided
+      if (lawfirm_id && lawfirm_id !== userLawfirmId) {
+        throw new Error('Unauthorized: Cannot generate help for other lawfirms');
+      }
+    }
+    
+    console.log('Authorization verified - isInternal:', isInternal, 'userLawfirmId:', userLawfirmId);
 
-    // Fetch lead data
-    const { data: lead, error: leadError } = await supabase
+    // Fetch lead data using admin client
+    const { data: lead, error: leadError } = await supabaseAdmin
       .from('leads')
       .select('*')
       .eq('id', lead_id)
@@ -36,12 +101,22 @@ serve(async (req) => {
       throw new Error(`Lead not found: ${leadError?.message || 'Unknown error'}`);
     }
 
-    // Fetch lawfirm to check for custom API key
-    const { data: lawfirm } = await supabase
-      .from('lawfirms')
-      .select('openai_api_key, name')
-      .eq('id', lawfirm_id)
-      .single();
+    // Determine which lawfirm_id to use
+    const targetLawfirmId = lawfirm_id || userLawfirmId || '00000000-0000-0000-0000-000000000000';
+
+    // Fetch lawfirm to check for custom API key (if lawfirm_id provided)
+    let lawfirmName = 'Asesor.Legal';
+    if (targetLawfirmId && targetLawfirmId !== '00000000-0000-0000-0000-000000000000') {
+      const { data: lawfirm } = await supabaseAdmin
+        .from('lawfirms')
+        .select('name')
+        .eq('id', targetLawfirmId)
+        .single();
+      
+      if (lawfirm) {
+        lawfirmName = lawfirm.name;
+      }
+    }
 
     // Prepare case context
     const structuredFields = lead.structured_fields || {};
@@ -164,11 +239,11 @@ Genera una guía práctica para el abogado que va a llevar este caso.`;
     const legalHelp = JSON.parse(toolCall.function.arguments);
 
     // Save to database
-    const { data: insertedHelp, error: insertError } = await supabase
+    const { data: insertedHelp, error: insertError } = await supabaseAdmin
       .from('lead_legal_help')
       .insert({
         lead_id,
-        lawfirm_id,
+        lawfirm_id: targetLawfirmId,
         legal_orientation: legalHelp.legal_orientation,
         documentation_needed: legalHelp.documentation_needed,
         commercial_next_steps: legalHelp.commercial_next_steps,
@@ -199,7 +274,7 @@ Genera una guía práctica para el abogado que va a llevar este caso.`;
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Unknown error' 
     }), {
-      status: 500,
+      status: error instanceof Error && error.message.includes('Unauthorized') ? 403 : 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
