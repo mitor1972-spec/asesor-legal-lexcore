@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Users as UsersIcon, Shield, ShieldCheck, Building2, Briefcase, Scale } from 'lucide-react';
+import { CreateUserDialog } from '@/components/users/CreateUserDialog';
 import type { AppRole } from '@/types';
 
 const ROLE_LABELS: Record<AppRole, { label: string; icon: typeof Shield; color: string }> = {
@@ -114,12 +115,15 @@ export default function Users() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-display font-bold flex items-center gap-2">
-          <UsersIcon className="h-6 w-6" />
-          Usuarios
-        </h1>
-        <p className="text-muted-foreground">Gestiona los usuarios y sus roles</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display font-bold flex items-center gap-2">
+            <UsersIcon className="h-6 w-6" />
+            Usuarios
+          </h1>
+          <p className="text-muted-foreground">Gestiona los usuarios y sus roles</p>
+        </div>
+        <CreateUserDialog />
       </div>
 
       <Card className="shadow-soft">
