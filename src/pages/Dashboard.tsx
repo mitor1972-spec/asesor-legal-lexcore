@@ -55,6 +55,9 @@ export default function Dashboard() {
         isLoading={isLoading}
       />
 
+      {/* Recent Leads - justo debajo de KPIs */}
+      <RecentLeadsTable leads={metrics?.recentLeads ?? []} />
+
       {/* Charts Row 1 */}
       <div className="grid gap-4 lg:grid-cols-2">
         <EvolutionChart data={metrics?.dailyEvolution ?? []} />
@@ -72,9 +75,6 @@ export default function Dashboard() {
         <ChannelChart data={metrics?.leadsByChannel ?? []} />
         <ScoreDistributionChart data={metrics?.scoreDistribution ?? []} />
       </div>
-
-      {/* Recent Leads */}
-      <RecentLeadsTable leads={metrics?.recentLeads ?? []} />
     </div>
   );
 }
