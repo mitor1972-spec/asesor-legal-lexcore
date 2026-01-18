@@ -9,6 +9,7 @@ import { useLead } from '@/hooks/useLeads';
 import { useLexcoreRuns } from '@/hooks/useLexcoreRuns';
 import { useLegalHelp, useGenerateLegalHelp } from '@/hooks/useLegalHelp';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
+import { processAndSanitize } from '@/lib/sanitize';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -225,9 +226,7 @@ ${legalHelp.estimated_complexity}
                 {caseSummary ? (
                   <div 
                     className="whitespace-pre-wrap" 
-                    dangerouslySetInnerHTML={{ 
-                      __html: caseSummary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') 
-                    }} 
+                    dangerouslySetInnerHTML={{ __html: processAndSanitize(caseSummary) }} 
                   />
                 ) : (
                   <p className="text-muted-foreground">No hay resumen disponible</p>
@@ -279,9 +278,7 @@ ${legalHelp.estimated_complexity}
                         1) Orientación Legal
                       </h3>
                       <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert">
-                        <div dangerouslySetInnerHTML={{ 
-                          __html: (legalHelp.legal_orientation || '').replace(/\n/g, '<br/>').replace(/•/g, '&#8226;') 
-                        }} />
+                        <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.legal_orientation) }} />
                       </div>
                     </section>
 
@@ -291,9 +288,7 @@ ${legalHelp.estimated_complexity}
                         2) Documentación a Solicitar
                       </h3>
                       <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert">
-                        <div dangerouslySetInnerHTML={{ 
-                          __html: (legalHelp.documentation_needed || '').replace(/\n/g, '<br/>').replace(/•/g, '&#8226;') 
-                        }} />
+                        <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.documentation_needed) }} />
                       </div>
                     </section>
 
@@ -303,9 +298,7 @@ ${legalHelp.estimated_complexity}
                         3) Próximos Pasos Comerciales
                       </h3>
                       <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert">
-                        <div dangerouslySetInnerHTML={{ 
-                          __html: (legalHelp.commercial_next_steps || '').replace(/\n/g, '<br/>').replace(/•/g, '&#8226;') 
-                        }} />
+                        <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.commercial_next_steps) }} />
                       </div>
                     </section>
 
@@ -315,9 +308,7 @@ ${legalHelp.estimated_complexity}
                         4) Próximos Pasos Jurídicos
                       </h3>
                       <div className="bg-muted/50 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert">
-                        <div dangerouslySetInnerHTML={{ 
-                          __html: (legalHelp.legal_next_steps || '').replace(/\n/g, '<br/>').replace(/•/g, '&#8226;') 
-                        }} />
+                        <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.legal_next_steps) }} />
                       </div>
                     </section>
 
@@ -328,9 +319,7 @@ ${legalHelp.estimated_complexity}
                         5) Riesgos y Alertas
                       </h3>
                       <div className="bg-warning/10 border border-warning/30 rounded-lg p-4 prose prose-sm max-w-none dark:prose-invert">
-                        <div dangerouslySetInnerHTML={{ 
-                          __html: (legalHelp.risks_alerts || '').replace(/\n/g, '<br/>').replace(/⚠️/g, '⚠️ ') 
-                        }} />
+                        <div dangerouslySetInnerHTML={{ __html: processAndSanitize(legalHelp.risks_alerts) }} />
                       </div>
                     </section>
 
