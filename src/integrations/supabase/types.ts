@@ -1099,7 +1099,7 @@ export type Database = {
         | "rejected"
         | "archived"
       lawfirm_status: "active" | "inactive"
-      lead_status: "Pendiente" | "Derivado" | "Facturado" | "Cerrado"
+      lead_status: "Pendiente" | "Enviado" | "Aceptado"
       source_channel: "Teléfono" | "Web chat" | "WhatsApp" | "Email"
       theme_pref: "light" | "dark" | "system"
     }
@@ -1249,7 +1249,7 @@ export const Constants = {
         "archived",
       ],
       lawfirm_status: ["active", "inactive"],
-      lead_status: ["Pendiente", "Derivado", "Facturado", "Cerrado"],
+      lead_status: ["Pendiente", "Enviado", "Aceptado"],
       source_channel: ["Teléfono", "Web chat", "WhatsApp", "Email"],
       theme_pref: ["light", "dark", "system"],
     },

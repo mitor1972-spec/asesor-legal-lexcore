@@ -26,9 +26,8 @@ interface RecentLeadsTableProps {
 
 const statusColors: Record<LeadStatus, string> = {
   'Pendiente': 'bg-warning/10 text-warning border-warning/20',
-  'Derivado': 'bg-primary/10 text-primary border-primary/20',
-  'Facturado': 'bg-success/10 text-success border-success/20',
-  'Cerrado': 'bg-muted text-muted-foreground border-border',
+  'Enviado': 'bg-primary/10 text-primary border-primary/20',
+  'Aceptado': 'bg-success/10 text-success border-success/20',
 };
 
 export function RecentLeadsTable({ leads }: RecentLeadsTableProps) {

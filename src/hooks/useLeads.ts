@@ -114,7 +114,7 @@ export function useLeadStats() {
           .from('leads')
           .select('id', { count: 'exact', head: true })
           .is('archived_at', null)
-          .eq('status_internal', 'Derivado'),
+          .eq('status_internal', 'Enviado'),
         supabase
           .from('leads')
           .select('id', { count: 'exact', head: true })
