@@ -120,3 +120,7 @@ export type Provincia = typeof PROVINCIAS_ESPANA[number];
 export type SourceChannel = typeof SOURCE_CHANNELS[number];
 export type LeadStatus = typeof LEAD_STATUSES[number];
 export type UrgencyLevel = typeof URGENCY_LEVELS[number];
+
+// Alias for consistency
+export const LEGAL_AREAS = AREAS_LEGALES;
+export const PROVINCES = PROVINCIAS_ESPANA;

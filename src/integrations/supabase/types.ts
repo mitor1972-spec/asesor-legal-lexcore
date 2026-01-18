@@ -14,6 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      advertisements: {
+        Row: {
+          areas: string[] | null
+          clicks: number | null
+          created_at: string | null
+          ends_at: string
+          id: string
+          impressions: number | null
+          lawfirm_id: string | null
+          plan: string | null
+          price_monthly: number | null
+          provinces: string[] | null
+          starts_at: string
+          status: string | null
+          total_paid: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          areas?: string[] | null
+          clicks?: number | null
+          created_at?: string | null
+          ends_at: string
+          id?: string
+          impressions?: number | null
+          lawfirm_id?: string | null
+          plan?: string | null
+          price_monthly?: number | null
+          provinces?: string[] | null
+          starts_at: string
+          status?: string | null
+          total_paid?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          areas?: string[] | null
+          clicks?: number | null
+          created_at?: string | null
+          ends_at?: string
+          id?: string
+          impressions?: number | null
+          lawfirm_id?: string | null
+          plan?: string | null
+          price_monthly?: number | null
+          provinces?: string[] | null
+          starts_at?: string
+          status?: string | null
+          total_paid?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advertisements_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_settings: {
         Row: {
           created_at: string | null
@@ -48,6 +107,60 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      balance_transactions: {
+        Row: {
+          amount: number
+          balance_after: number | null
+          balance_before: number | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          lawfirm_id: string | null
+          reference_id: string | null
+          type: string | null
+        }
+        Insert: {
+          amount: number
+          balance_after?: number | null
+          balance_before?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lawfirm_id?: string | null
+          reference_id?: string | null
+          type?: string | null
+        }
+        Update: {
+          amount?: number
+          balance_after?: number | null
+          balance_before?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lawfirm_id?: string | null
+          reference_id?: string | null
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "balance_transactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "balance_transactions_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
             referencedColumns: ["id"]
           },
         ]
@@ -358,9 +471,136 @@ export type Database = {
         }
         Relationships: []
       }
+      lawfirm_applications: {
+        Row: {
+          accepts_marketing: boolean | null
+          accepts_privacy: boolean | null
+          accepts_terms: boolean | null
+          address: string
+          all_spain: boolean | null
+          areas_selected: string[] | null
+          cif: string
+          city: string
+          comments: string | null
+          contact_email: string
+          contact_name: string
+          contact_phone: string | null
+          contact_role: string | null
+          created_at: string | null
+          email: string
+          has_multiple_offices: boolean | null
+          id: string
+          lawfirm_id: string | null
+          max_price_per_lead: number | null
+          min_score: number | null
+          monthly_capacity: number | null
+          name: string
+          num_lawyers: string | null
+          phone: string
+          postal_code: string
+          province: string
+          provinces_selected: string[] | null
+          referral_source: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          website: string | null
+        }
+        Insert: {
+          accepts_marketing?: boolean | null
+          accepts_privacy?: boolean | null
+          accepts_terms?: boolean | null
+          address: string
+          all_spain?: boolean | null
+          areas_selected?: string[] | null
+          cif: string
+          city: string
+          comments?: string | null
+          contact_email: string
+          contact_name: string
+          contact_phone?: string | null
+          contact_role?: string | null
+          created_at?: string | null
+          email: string
+          has_multiple_offices?: boolean | null
+          id?: string
+          lawfirm_id?: string | null
+          max_price_per_lead?: number | null
+          min_score?: number | null
+          monthly_capacity?: number | null
+          name: string
+          num_lawyers?: string | null
+          phone: string
+          postal_code: string
+          province: string
+          provinces_selected?: string[] | null
+          referral_source?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          website?: string | null
+        }
+        Update: {
+          accepts_marketing?: boolean | null
+          accepts_privacy?: boolean | null
+          accepts_terms?: boolean | null
+          address?: string
+          all_spain?: boolean | null
+          areas_selected?: string[] | null
+          cif?: string
+          city?: string
+          comments?: string | null
+          contact_email?: string
+          contact_name?: string
+          contact_phone?: string | null
+          contact_role?: string | null
+          created_at?: string | null
+          email?: string
+          has_multiple_offices?: boolean | null
+          id?: string
+          lawfirm_id?: string | null
+          max_price_per_lead?: number | null
+          min_score?: number | null
+          monthly_capacity?: number | null
+          name?: string
+          num_lawyers?: string | null
+          phone?: string
+          postal_code?: string
+          province?: string
+          provinces_selected?: string[] | null
+          referral_source?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lawfirm_applications_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lawfirm_applications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lawfirms: {
         Row: {
           address: string | null
+          alert_filter_by_areas: boolean | null
+          alert_filter_by_provinces: boolean | null
+          alert_frequency: string | null
+          alert_min_score: number | null
           areas_accepted: string[] | null
           cif: string | null
           city: string | null
@@ -376,6 +616,8 @@ export type Database = {
           initial_credit: number | null
           is_active: boolean | null
           logo_url: string | null
+          marketplace_alerts_enabled: boolean | null
+          marketplace_balance: number | null
           max_lead_price: number | null
           min_lead_score: number | null
           monthly_capacity: number | null
@@ -392,6 +634,10 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          alert_filter_by_areas?: boolean | null
+          alert_filter_by_provinces?: boolean | null
+          alert_frequency?: string | null
+          alert_min_score?: number | null
           areas_accepted?: string[] | null
           cif?: string | null
           city?: string | null
@@ -407,6 +653,8 @@ export type Database = {
           initial_credit?: number | null
           is_active?: boolean | null
           logo_url?: string | null
+          marketplace_alerts_enabled?: boolean | null
+          marketplace_balance?: number | null
           max_lead_price?: number | null
           min_lead_score?: number | null
           monthly_capacity?: number | null
@@ -423,6 +671,10 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          alert_filter_by_areas?: boolean | null
+          alert_filter_by_provinces?: boolean | null
+          alert_frequency?: string | null
+          alert_min_score?: number | null
           areas_accepted?: string[] | null
           cif?: string | null
           city?: string | null
@@ -438,6 +690,8 @@ export type Database = {
           initial_credit?: number | null
           is_active?: boolean | null
           logo_url?: string | null
+          marketplace_alerts_enabled?: boolean | null
+          marketplace_balance?: number | null
           max_lead_price?: number | null
           min_lead_score?: number | null
           monthly_capacity?: number | null
@@ -713,6 +967,61 @@ export type Database = {
           },
         ]
       }
+      lead_purchases: {
+        Row: {
+          id: string
+          lawfirm_id: string | null
+          lead_id: string | null
+          new_balance: number | null
+          previous_balance: number | null
+          price_paid: number
+          purchased_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          lawfirm_id?: string | null
+          lead_id?: string | null
+          new_balance?: number | null
+          previous_balance?: number | null
+          price_paid: number
+          purchased_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          lawfirm_id?: string | null
+          lead_id?: string | null
+          new_balance?: number | null
+          previous_balance?: number | null
+          price_paid?: number
+          purchased_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_purchases_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_purchases_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           archived_at: string | null
@@ -720,7 +1029,11 @@ export type Database = {
           created_at: string | null
           created_by_user_id: string | null
           id: string
+          is_in_marketplace: boolean | null
           lead_text: string
+          marketplace_added_at: string | null
+          marketplace_price: number | null
+          marketplace_summary: string | null
           price_final: number | null
           score_final: number | null
           source_channel: Database["public"]["Enums"]["source_channel"] | null
@@ -734,7 +1047,11 @@ export type Database = {
           created_at?: string | null
           created_by_user_id?: string | null
           id?: string
+          is_in_marketplace?: boolean | null
           lead_text: string
+          marketplace_added_at?: string | null
+          marketplace_price?: number | null
+          marketplace_summary?: string | null
           price_final?: number | null
           score_final?: number | null
           source_channel?: Database["public"]["Enums"]["source_channel"] | null
@@ -748,7 +1065,11 @@ export type Database = {
           created_at?: string | null
           created_by_user_id?: string | null
           id?: string
+          is_in_marketplace?: boolean | null
           lead_text?: string
+          marketplace_added_at?: string | null
+          marketplace_price?: number | null
+          marketplace_summary?: string | null
           price_final?: number | null
           score_final?: number | null
           source_channel?: Database["public"]["Enums"]["source_channel"] | null
@@ -888,6 +1209,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      marketplace_settings: {
+        Row: {
+          auto_publish_enabled: boolean | null
+          evening_publish_time: string | null
+          id: string
+          morning_publish_time: string | null
+          price_markup_percent: number | null
+          send_evening_email: boolean | null
+          send_morning_email: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_publish_enabled?: boolean | null
+          evening_publish_time?: string | null
+          id?: string
+          morning_publish_time?: string | null
+          price_markup_percent?: number | null
+          send_evening_email?: boolean | null
+          send_morning_email?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_publish_enabled?: boolean | null
+          evening_publish_time?: string | null
+          id?: string
+          morning_publish_time?: string | null
+          price_markup_percent?: number | null
+          send_evening_email?: boolean | null
+          send_morning_email?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       notifications: {
         Row: {

@@ -3,14 +3,19 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   LayoutDashboard,
   Briefcase,
+  ShoppingCart,
   Users,
   Settings,
   Scale,
   X,
+  Megaphone,
 } from 'lucide-react';
 
 interface LawfirmSidebarProps {
@@ -20,11 +25,13 @@ interface LawfirmSidebarProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/despacho/dashboard', icon: LayoutDashboard },
-  { name: 'Casos', href: '/despacho/casos', icon: Briefcase },
+  { name: 'Mis Casos', href: '/despacho/casos', icon: Briefcase },
+  { name: 'LeadsMarket', href: '/despacho/leadsmarket', icon: ShoppingCart, hasBadge: true },
 ];
 
 const adminNavigation = [
   { name: 'Equipo', href: '/despacho/equipo', icon: Users },
+  { name: 'Anuncios', href: '/despacho/anuncios', icon: Megaphone },
   { name: 'Configuración', href: '/despacho/configuracion', icon: Settings },
 ];
 
@@ -33,6 +40,20 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuthContext();
   
   const isLawfirmAdmin = user?.role === 'lawfirm_admin';
+
+  // Fetch marketplace leads count for badge
+  const { data: marketplaceCount } = useQuery({
+    queryKey: ['marketplace-leads-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_in_marketplace', true);
+      if (error) return 0;
+      return count || 0;
+    },
+    refetchInterval: 60000, // Refetch every minute
+  });
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
@@ -52,6 +73,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             className="lg:hidden text-sidebar-foreground hover:bg-sidebar-accent"
           >
             <X className="h-5 w-5" />
+          </Button>
+        )}
           </Button>
         )}
       </div>
@@ -76,6 +99,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               >
                 <item.icon className="h-5 w-5" />
                 {item.name}
+                {item.hasBadge && marketplaceCount && marketplaceCount > 0 && (
+                  <Badge variant="secondary" className="ml-auto text-xs">
+                    {marketplaceCount}
+                  </Badge>
+                )}
               </Link>
             );
           })}
