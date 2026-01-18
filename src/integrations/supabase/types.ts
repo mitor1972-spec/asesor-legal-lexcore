@@ -716,11 +716,18 @@ export type Database = {
       lawfirms: {
         Row: {
           address: string | null
+          alert_email_daily_summary: boolean | null
+          alert_email_new_leads: boolean | null
           alert_filter_by_areas: boolean | null
           alert_filter_by_provinces: boolean | null
           alert_frequency: string | null
           alert_min_score: number | null
+          alert_push_enabled: boolean | null
           areas_accepted: string[] | null
+          auto_purchase_areas: string[] | null
+          auto_purchase_enabled: boolean | null
+          auto_purchase_max_price: number | null
+          auto_purchase_min_score: number | null
           cif: string | null
           city: string | null
           commercial_notes: string | null
@@ -734,6 +741,7 @@ export type Database = {
           id: string
           initial_credit: number | null
           is_active: boolean | null
+          leadsmarket_enabled: boolean | null
           logo_url: string | null
           marketplace_alerts_enabled: boolean | null
           marketplace_balance: number | null
@@ -745,6 +753,7 @@ export type Database = {
           payment_model: string | null
           phone: string | null
           postal_code: string | null
+          price_per_area: Json | null
           province: string | null
           provinces_accepted: string[] | null
           settings_json: Json | null
@@ -753,11 +762,18 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          alert_email_daily_summary?: boolean | null
+          alert_email_new_leads?: boolean | null
           alert_filter_by_areas?: boolean | null
           alert_filter_by_provinces?: boolean | null
           alert_frequency?: string | null
           alert_min_score?: number | null
+          alert_push_enabled?: boolean | null
           areas_accepted?: string[] | null
+          auto_purchase_areas?: string[] | null
+          auto_purchase_enabled?: boolean | null
+          auto_purchase_max_price?: number | null
+          auto_purchase_min_score?: number | null
           cif?: string | null
           city?: string | null
           commercial_notes?: string | null
@@ -771,6 +787,7 @@ export type Database = {
           id?: string
           initial_credit?: number | null
           is_active?: boolean | null
+          leadsmarket_enabled?: boolean | null
           logo_url?: string | null
           marketplace_alerts_enabled?: boolean | null
           marketplace_balance?: number | null
@@ -782,6 +799,7 @@ export type Database = {
           payment_model?: string | null
           phone?: string | null
           postal_code?: string | null
+          price_per_area?: Json | null
           province?: string | null
           provinces_accepted?: string[] | null
           settings_json?: Json | null
@@ -790,11 +808,18 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          alert_email_daily_summary?: boolean | null
+          alert_email_new_leads?: boolean | null
           alert_filter_by_areas?: boolean | null
           alert_filter_by_provinces?: boolean | null
           alert_frequency?: string | null
           alert_min_score?: number | null
+          alert_push_enabled?: boolean | null
           areas_accepted?: string[] | null
+          auto_purchase_areas?: string[] | null
+          auto_purchase_enabled?: boolean | null
+          auto_purchase_max_price?: number | null
+          auto_purchase_min_score?: number | null
           cif?: string | null
           city?: string | null
           commercial_notes?: string | null
@@ -808,6 +833,7 @@ export type Database = {
           id?: string
           initial_credit?: number | null
           is_active?: boolean | null
+          leadsmarket_enabled?: boolean | null
           logo_url?: string | null
           marketplace_alerts_enabled?: boolean | null
           marketplace_balance?: number | null
@@ -819,6 +845,7 @@ export type Database = {
           payment_model?: string | null
           phone?: string | null
           postal_code?: string | null
+          price_per_area?: Json | null
           province?: string | null
           provinces_accepted?: string[] | null
           settings_json?: Json | null
