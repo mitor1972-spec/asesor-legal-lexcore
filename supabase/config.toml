@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.calculate-lexcore]
 verify_jwt = false
+
+[functions.generate-case-summary]
+verify_jwt = false
