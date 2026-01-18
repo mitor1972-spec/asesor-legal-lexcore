@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_settings: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          key_name: string
+          key_value: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_name: string
+          key_value: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_name?: string
+          key_value?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_settings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           created_at: string | null
@@ -281,6 +319,129 @@ export type Database = {
             columns: ["created_by_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lexcore_configs: {
+        Row: {
+          config_json: Json
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          version_name: string
+        }
+        Insert: {
+          config_json: Json
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          version_name: string
+        }
+        Update: {
+          config_json?: Json
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          version_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lexcore_configs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lexcore_runs: {
+        Row: {
+          adjustments_json: Json | null
+          audit_table_json: Json | null
+          computed_at: string | null
+          conclusion_text: string | null
+          config_id: string | null
+          executed_by: string | null
+          flags_json: Json | null
+          id: string
+          lead_id: string | null
+          llm_response_json: Json | null
+          mode_used: string | null
+          penalties_json: Json | null
+          potential_internal: number | null
+          price_after_caps: number | null
+          price_lexcore: number
+          raw_scores_json: Json | null
+          score_final: number
+          vj_json: Json | null
+          weighted_scores_json: Json | null
+        }
+        Insert: {
+          adjustments_json?: Json | null
+          audit_table_json?: Json | null
+          computed_at?: string | null
+          conclusion_text?: string | null
+          config_id?: string | null
+          executed_by?: string | null
+          flags_json?: Json | null
+          id?: string
+          lead_id?: string | null
+          llm_response_json?: Json | null
+          mode_used?: string | null
+          penalties_json?: Json | null
+          potential_internal?: number | null
+          price_after_caps?: number | null
+          price_lexcore: number
+          raw_scores_json?: Json | null
+          score_final: number
+          vj_json?: Json | null
+          weighted_scores_json?: Json | null
+        }
+        Update: {
+          adjustments_json?: Json | null
+          audit_table_json?: Json | null
+          computed_at?: string | null
+          conclusion_text?: string | null
+          config_id?: string | null
+          executed_by?: string | null
+          flags_json?: Json | null
+          id?: string
+          lead_id?: string | null
+          llm_response_json?: Json | null
+          mode_used?: string | null
+          penalties_json?: Json | null
+          potential_internal?: number | null
+          price_after_caps?: number | null
+          price_lexcore?: number
+          raw_scores_json?: Json | null
+          score_final?: number
+          vj_json?: Json | null
+          weighted_scores_json?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lexcore_runs_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "lexcore_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lexcore_runs_executed_by_fkey"
+            columns: ["executed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lexcore_runs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
