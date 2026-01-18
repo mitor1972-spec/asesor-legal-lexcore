@@ -5,7 +5,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 export interface LegalHelp {
   id: string;
   lead_id: string;
-  lawfirm_id: string;
+  lawfirm_id: string | null;
   generated_at: string;
   legal_orientation: string | null;
   documentation_needed: string | null;
@@ -46,9 +46,6 @@ export function useLegalHelp(leadId: string | undefined) {
   });
 }
 
-// Preview lawfirm ID for generating legal help in preview mode
-const PREVIEW_LAWFIRM_ID = '00000000-0000-0000-0000-000000000000';
-
 export function useGenerateLegalHelp() {
   const queryClient = useQueryClient();
   const { user, isInternal } = useAuthContext();
@@ -56,13 +53,11 @@ export function useGenerateLegalHelp() {
 
   return useMutation({
     mutationFn: async ({ leadId }: { leadId: string }) => {
-      // Use actual lawfirm ID or preview ID for internal users
-      const targetLawfirmId = lawfirmId || (isInternal ? PREVIEW_LAWFIRM_ID : null);
-      
-      if (!targetLawfirmId) throw new Error('No lawfirm ID found');
+      // Internal users in preview may not belong to a lawfirm; store legal help with lawfirm_id = null
+      if (!lawfirmId && !isInternal) throw new Error('No lawfirm ID found');
 
       const { data, error } = await supabase.functions.invoke('generate-legal-help', {
-        body: { lead_id: leadId, lawfirm_id: targetLawfirmId }
+        body: { lead_id: leadId, lawfirm_id: lawfirmId ?? null },
       });
 
       if (error) throw error;
