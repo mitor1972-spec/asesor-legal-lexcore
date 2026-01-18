@@ -10,9 +10,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { ShoppingCart, MapPin, Scale, TrendingUp, Clock, Loader2, AlertCircle, Wallet, Filter, Zap, Euro, MessageSquareQuote, BarChart3 } from 'lucide-react';
+import { ShoppingCart, MapPin, Scale, Loader2, AlertCircle, Wallet, Filter, Zap, MessageSquareQuote, TrendingUp, Phone, User, FileText, Gavel, Target } from 'lucide-react';
 import { LEGAL_AREAS, PROVINCES } from '@/lib/constants';
+
+interface RawScore {
+  score: number;
+  max: number;
+  breakdown?: string;
+}
+
+interface RawScores {
+  contactability?: RawScore;
+  intent?: RawScore;
+  urgency?: RawScore;
+  case_quality?: RawScore;
+  evidence?: RawScore;
+  clarity?: RawScore;
+}
 
 interface MarketplaceLead {
   id: string;
@@ -28,18 +44,22 @@ interface MarketplaceLead {
     provincia?: string;
     city?: string;
     ciudad?: string;
-    urgency?: string;
-    urgencia?: string;
-    complexity?: string;
-    complejidad?: string;
-    estimated_amount?: number;
-    cuantia_estimada?: number;
-    key_phrases?: string[];
-    frases_clave?: string[];
+    urgencia_aplica?: boolean;
   };
   vj_value?: number;
   vj_key_phrases?: string[];
+  raw_scores?: RawScores;
 }
+
+// Mapping for scoring group display
+const SCORING_GROUPS = [
+  { key: 'contactability', label: 'Contactabilidad', icon: Phone, maxDefault: 8 },
+  { key: 'intent', label: 'Intención', icon: Target, maxDefault: 20 },
+  { key: 'urgency', label: 'Urgencia', icon: Zap, maxDefault: 10 },
+  { key: 'case_quality', label: 'Calidad del Caso', icon: FileText, maxDefault: 25 },
+  { key: 'evidence', label: 'Evidencia', icon: Gavel, maxDefault: 10 },
+  { key: 'clarity', label: 'Claridad', icon: User, maxDefault: 10 },
+] as const;
 
 export default function LeadsMarket() {
   const { user } = useAuthContext();
@@ -71,7 +91,6 @@ export default function LeadsMarket() {
   const { data: leads, isLoading } = useQuery({
     queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore],
     queryFn: async () => {
-      // Get leads that are pending and not archived
       let query = supabase
         .from('leads')
         .select(`
@@ -87,6 +106,7 @@ export default function LeadsMarket() {
           lead_assignments!left(id),
           lexcore_runs(
             vj_json,
+            raw_scores_json,
             llm_response_json
           )
         `)
@@ -124,6 +144,7 @@ export default function LeadsMarket() {
         // Get latest lexcore run
         const latestRun = l.lexcore_runs?.[0];
         const vjData = latestRun?.vj_json as any;
+        const rawScores = latestRun?.raw_scores_json as RawScores | null;
         const llmResponse = latestRun?.llm_response_json as any;
         
         return {
@@ -134,8 +155,9 @@ export default function LeadsMarket() {
           source_channel: l.source_channel,
           created_at: l.created_at,
           structured_fields: l.structured_fields || {},
-          vj_value: vjData?.vj ?? vjData?.VJ ?? null,
-          vj_key_phrases: vjData?.key_phrases || llmResponse?.key_phrases || [],
+          vj_value: vjData?.value ?? vjData?.vj ?? null,
+          vj_key_phrases: llmResponse?.key_phrases || [],
+          raw_scores: rawScores || llmResponse?.raw_scores || null,
         };
       }) as MarketplaceLead[];
     },
@@ -181,6 +203,41 @@ export default function LeadsMarket() {
   const balance = lawfirm?.marketplace_balance || 0;
   const canAfford = selectedLead ? balance >= (selectedLead.marketplace_price || 0) : false;
   const newBalance = selectedLead ? balance - (selectedLead.marketplace_price || 0) : balance;
+
+  // Helper to render score bar
+  const renderScoreBar = (key: string, rawScores: RawScores | undefined | null, showLabel = true) => {
+    const group = SCORING_GROUPS.find(g => g.key === key);
+    if (!group) return null;
+    
+    const data = rawScores?.[key as keyof RawScores];
+    const score = data?.score ?? 0;
+    const max = data?.max ?? group.maxDefault;
+    const percent = max > 0 ? (score / max) * 100 : 0;
+    const Icon = group.icon;
+    
+    return (
+      <div key={key} className="flex items-center gap-2">
+        <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+        {showLabel && (
+          <span className="text-xs text-muted-foreground w-24 truncate">{group.label}</span>
+        )}
+        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-lawfirm-primary rounded-full transition-all"
+            style={{ width: `${Math.min(100, percent)}%` }}
+          />
+        </div>
+        <span className="text-xs font-medium w-12 text-right">{score}/{max}</span>
+      </div>
+    );
+  };
+
+  // Score color helper
+  const getScoreColor = (score: number) => {
+    if (score >= 70) return 'text-success bg-success/10 border-success/30';
+    if (score >= 40) return 'text-warning bg-warning/10 border-warning/30';
+    return 'text-muted-foreground bg-muted border-border';
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -264,9 +321,9 @@ export default function LeadsMarket() {
 
       {/* Leads Grid */}
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-2">
           {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-[200px]" />
+            <Skeleton key={i} className="h-[400px]" />
           ))}
         </div>
       ) : leads?.length === 0 ? (
@@ -287,107 +344,90 @@ export default function LeadsMarket() {
             const province = fields.province || fields.provincia || 'Sin provincia';
             const city = fields.city || fields.ciudad;
             const location = city ? `${province} (${city})` : province;
-            const urgency = fields.urgency || fields.urgencia;
-            const complexity = fields.complexity || fields.complejidad || 'Media';
-            const estimatedAmount = fields.estimated_amount || fields.cuantia_estimada;
-            const keyPhrases = lead.vj_key_phrases || fields.key_phrases || fields.frases_clave || [];
-            
-            // Score color based on value
-            const getScoreColor = (score: number) => {
-              if (score >= 70) return 'text-success bg-success/10 border-success/30';
-              if (score >= 40) return 'text-warning bg-warning/10 border-warning/30';
-              return 'text-muted-foreground bg-muted border-border';
-            };
+            const isUrgent = fields.urgencia_aplica === true;
             
             return (
-              <Card key={lead.id} className="overflow-hidden hover:shadow-lg transition-all duration-200 border-2">
+              <Card key={lead.id} className="overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col">
                 {/* Header: Área + Score */}
-                <div className="flex items-center justify-between p-4 bg-muted/30 border-b">
-                  <div className="flex items-center gap-2">
-                    <Scale className="h-5 w-5 text-lawfirm-primary" />
-                    <span className="font-semibold text-base">{legalArea}</span>
+                <div className="flex items-center justify-between p-4 bg-muted/40 border-b">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Scale className="h-5 w-5 text-lawfirm-primary flex-shrink-0" />
+                    <span className="font-semibold text-base truncate">{legalArea}</span>
                   </div>
                   <Badge 
                     variant="outline" 
-                    className={`text-sm font-bold px-3 py-1 ${getScoreColor(lead.score_final)}`}
+                    className={`text-sm font-bold px-3 py-1 flex-shrink-0 ${getScoreColor(lead.score_final)}`}
                   >
-                    🟢 {lead.score_final} pts
+                    {lead.score_final >= 70 ? '🟢' : lead.score_final >= 40 ? '🟡' : '🔴'} {lead.score_final}/100
                   </Badge>
                 </div>
                 
-                <CardContent className="p-4 space-y-4">
-                  {/* Location */}
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
+                {/* Subheader: Location + Channel + Urgency */}
+                <div className="px-4 py-2 flex flex-wrap items-center gap-2 text-sm border-b bg-muted/20">
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5" />
                     <span>{location}</span>
                   </div>
-                  
+                  <span className="text-muted-foreground">•</span>
+                  <span className="text-muted-foreground">📥 {lead.source_channel || 'Web'}</span>
+                  {isUrgent && (
+                    <>
+                      <span className="text-muted-foreground">•</span>
+                      <Badge variant="outline" className="gap-1 text-warning border-warning/30 bg-warning/10 text-xs py-0">
+                        <Zap className="h-3 w-3" />
+                        URGENTE
+                      </Badge>
+                    </>
+                  )}
+                </div>
+                
+                <CardContent className="p-4 space-y-4 flex-1 flex flex-col">
                   {/* AI Summary */}
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Resumen del caso:
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                      📝 Resumen del caso:
                     </p>
-                    <p className="text-sm leading-relaxed line-clamp-4">
+                    <p className="text-sm leading-relaxed line-clamp-4 bg-muted/30 p-3 rounded-lg italic">
                       "{lead.marketplace_summary}"
                     </p>
                   </div>
                   
                   <Separator />
                   
-                  {/* Scoring Section */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4 text-lawfirm-primary" />
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Scoring LEXCORE™
-                      </span>
+                  {/* Scoring Section with Progress Bars */}
+                  <div className="space-y-3 flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-lawfirm-primary" />
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          Valoración LEXCORE™
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold">SCORE: {lead.score_final}/100</span>
                     </div>
                     
-                    {/* Scoring Grid */}
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div className="flex items-center gap-1.5 p-2 rounded-md bg-muted/50">
-                        <span className="text-muted-foreground">📊 Score:</span>
-                        <span className="font-bold">{lead.score_final}/100</span>
-                      </div>
-                      {lead.vj_value !== null && lead.vj_value !== undefined && (
-                        <div className="flex items-center gap-1.5 p-2 rounded-md bg-muted/50">
-                          <span className="text-muted-foreground">📈 VJ:</span>
-                          <span className={`font-bold ${lead.vj_value > 0 ? 'text-success' : lead.vj_value < 0 ? 'text-destructive' : ''}`}>
-                            {lead.vj_value > 0 ? '+' : ''}{lead.vj_value}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1.5 p-2 rounded-md bg-muted/50">
-                        <span className="text-muted-foreground">🎯 Comp.:</span>
-                        <span className="font-medium">{complexity}</span>
-                      </div>
+                    {/* Scoring Bars */}
+                    <div className="space-y-2">
+                      {SCORING_GROUPS.map(group => renderScoreBar(group.key, lead.raw_scores))}
                     </div>
                     
-                    {/* Second row */}
-                    <div className="flex flex-wrap gap-2">
-                      {urgency && (
-                        <Badge variant="outline" className="gap-1 text-warning border-warning/30 bg-warning/10">
-                          <Zap className="h-3 w-3" />
-                          Urgente
-                        </Badge>
-                      )}
-                      {estimatedAmount && (
-                        <Badge variant="outline" className="gap-1">
-                          <Euro className="h-3 w-3" />
-                          {estimatedAmount.toLocaleString('es-ES')}€
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="gap-1">
-                        📥 {lead.source_channel || 'Web'}
-                      </Badge>
-                    </div>
+                    {/* VJ */}
+                    {lead.vj_value !== null && lead.vj_value !== undefined && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground w-24">Viabilidad (VJ)</span>
+                        <span className={`text-sm font-bold ${lead.vj_value > 0 ? 'text-success' : lead.vj_value < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                          {lead.vj_value > 0 ? '+' : ''}{lead.vj_value}
+                        </span>
+                      </div>
+                    )}
                     
                     {/* Key Phrases */}
-                    {keyPhrases.length > 0 && (
-                      <div className="flex items-start gap-2 p-2 rounded-md bg-lawfirm-primary/5 border border-lawfirm-primary/20">
+                    {lead.vj_key_phrases && lead.vj_key_phrases.length > 0 && (
+                      <div className="flex items-start gap-2 p-2 rounded-md bg-lawfirm-primary/5 border border-lawfirm-primary/20 mt-2">
                         <MessageSquareQuote className="h-4 w-4 text-lawfirm-primary mt-0.5 flex-shrink-0" />
                         <p className="text-xs text-muted-foreground italic line-clamp-2">
-                          "{keyPhrases.slice(0, 3).join('", "')}"
+                          "{lead.vj_key_phrases.slice(0, 3).join('", "')}"
                         </p>
                       </div>
                     )}
@@ -396,8 +436,9 @@ export default function LeadsMarket() {
                   <Separator />
                   
                   {/* Footer: Price + Buy */}
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">PRECIO</span>
                       <span className="text-2xl font-bold text-lawfirm-primary">
                         {lead.marketplace_price?.toFixed(0) || '0'}€
                       </span>
@@ -447,8 +488,8 @@ export default function LeadsMarket() {
                     {selectedLead.structured_fields?.province || selectedLead.structured_fields?.provincia || 'Sin provincia'}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-success bg-success/10 border-success/30">
-                      🟢 {selectedLead.score_final} pts
+                    <Badge variant="outline" className={getScoreColor(selectedLead.score_final)}>
+                      {selectedLead.score_final >= 70 ? '🟢' : selectedLead.score_final >= 40 ? '🟡' : '🔴'} {selectedLead.score_final} pts
                     </Badge>
                     <span className="text-sm text-muted-foreground">
                       Score: {selectedLead.score_final}/100
