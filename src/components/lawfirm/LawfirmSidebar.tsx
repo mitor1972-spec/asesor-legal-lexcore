@@ -46,9 +46,9 @@ const navigation = [
 ];
 
 const marketingNavigation = [
-  { name: 'Web', href: '/despacho/marketing', icon: Globe },
-  { name: 'Asistente Amara', href: '/despacho/marketing?tab=amara', icon: Bot },
-  { name: 'Newsletters', href: '/despacho/marketing?tab=newsletter', icon: Mail },
+  { name: 'Web', href: '/despacho/publicidad', icon: Globe },
+  { name: 'Asistente Amara', href: '/despacho/publicidad?tab=amara', icon: Bot },
+  { name: 'Newsletters', href: '/despacho/publicidad?tab=newsletter', icon: Mail },
 ];
 
 const adminNavigation = [
@@ -129,14 +129,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             return (
               <Link
                 key={item.name}
-                to={item.disabled ? '#' : item.href}
-                onClick={item.disabled ? (e) => e.preventDefault() : onClose}
+                to={item.href}
+                onClick={onClose}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                   active
                     ? 'bg-lawfirm-primary text-white'
-                    : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground',
-                  item.disabled && 'opacity-50 cursor-not-allowed'
+                    : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -145,9 +144,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   <Badge variant="secondary" className="ml-auto text-xs">
                     {marketplaceCount}
                   </Badge>
-                )}
-                {item.disabled && (
-                  <Badge variant="secondary" className="ml-auto text-xs">Pronto</Badge>
                 )}
               </Link>
             );
@@ -223,7 +219,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                 </CollapsibleContent>
               </Collapsible>
 
-              {/* Advertising Collapsible */}
+              {/* Marketing Collapsible */}
               <Collapsible open={adsOpen} onOpenChange={setAdsOpen}>
                 <CollapsibleTrigger asChild>
                   <button
@@ -234,13 +230,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   >
                     <div className="flex items-center gap-3">
                       <Megaphone className="h-5 w-5" />
-                      Publicidad
+                      Marketing
                     </div>
                     <ChevronDown className={cn('h-4 w-4 transition-transform', adsOpen && 'rotate-180')} />
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                  {advertisingNavigation.map((item) => {
+                  {marketingNavigation.map((item) => {
                     const active = isActive(item.href);
                     return (
                       <Link
@@ -275,6 +271,21 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               >
                 <Brain className="h-5 w-5" />
                 IA para Despachos
+              </Link>
+
+              {/* Outsourcing Comercial */}
+              <Link
+                to="/despacho/outsourcing"
+                onClick={onClose}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  isActive('/despacho/outsourcing')
+                    ? 'bg-lawfirm-primary text-white'
+                    : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                )}
+              >
+                <Handshake className="h-5 w-5" />
+                Outsourcing Comercial
               </Link>
             </nav>
           </>
