@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LawfirmLayout } from "@/components/lawfirm/LawfirmLayout";
 import Login from "@/pages/Login";
@@ -36,9 +37,10 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
+        <ImpersonationProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
@@ -71,13 +73,14 @@ const App = () => (
                 <Route path="leadsmarket" element={<LeadsMarket />} />
                 <Route path="anuncios" element={<LawfirmAnuncios />} />
               </Route>
-              <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+      </ImpersonationProvider>
+    </AuthProvider>
+  </ThemeProvider>
+</QueryClientProvider>
 );
 
 export default App;

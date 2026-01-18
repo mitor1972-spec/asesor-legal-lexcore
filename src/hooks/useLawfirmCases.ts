@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 export interface LawfirmCase {
   id: string;
@@ -32,7 +33,10 @@ export interface LawfirmCase {
 
 export function useLawfirmCases() {
   const { user } = useAuthContext();
-  const lawfirmId = user?.profile?.lawfirm_id;
+  const { impersonatedLawfirm, isImpersonating } = useImpersonation();
+  
+  // Use impersonated lawfirm ID if impersonating
+  const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
 
   return useQuery({
     queryKey: ['lawfirm-cases', lawfirmId],
@@ -71,7 +75,10 @@ export function useLawfirmCases() {
 
 export function useLawfirmCase(assignmentId: string | undefined) {
   const { user } = useAuthContext();
-  const lawfirmId = user?.profile?.lawfirm_id;
+  const { impersonatedLawfirm, isImpersonating } = useImpersonation();
+  
+  // Use impersonated lawfirm ID if impersonating
+  const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
 
   return useQuery({
     queryKey: ['lawfirm-case', assignmentId],
