@@ -98,9 +98,9 @@ Extrae y devuelve SOLO un JSON válido con esta estructura (usa null si no encue
   "telefono": "string o null",
   "email": "string o null",
   "ciudad": "string o null",
-  "provincia": "string o null",
+  "provincia": "string o null - SIEMPRE incluir aunque debas inferirla",
   "area_legal": "una de la lista o null",
-  "subarea": "string o null",
+  "subarea": "string o null - especificar si se puede determinar",
   "cuantia": "número o null",
   "cuantia_texto": "string original si aparece",
   "urgencia_aplica": true/false,
@@ -121,6 +121,8 @@ REGLAS:
 - Si hay teléfono, normalízalo a formato español (9 dígitos)
 - Si hay fechas límite, plazos o riesgo inmediato: urgencia_aplica = true
 - NO inventes datos que no estén en el texto
+- MUY IMPORTANTE: Si el usuario menciona una ciudad pero NO la provincia, DEBES inferir la provincia correcta. Por ejemplo: "Salou" → provincia: "Tarragona", "Marbella" → provincia: "Málaga", "Benidorm" → provincia: "Alicante"
+- Siempre devuelve CIUDAD y PROVINCIA como campos separados
 - Devuelve SOLO el JSON, sin explicaciones`;
 
     console.log("Calling OpenAI for extraction...");
