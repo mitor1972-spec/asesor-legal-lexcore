@@ -10,8 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LEAD_STATUSES, SOURCE_CHANNELS, AREAS_LEGALES, type LeadStatus, type SourceChannel } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, Search, Eye, Pencil, Archive, Sparkles } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Archive, Thermometer } from 'lucide-react';
 import { toast } from 'sonner';
+import { LeadTemperature } from '@/components/lead/LeadTemperature';
 
 const statusColors: Record<LeadStatus, string> = {
   'Pendiente': 'bg-warning/10 text-warning border-warning/20',
@@ -102,8 +103,8 @@ export default function Leads() {
               <TableHead>Área</TableHead>
               <TableHead className="text-center">
                 <span className="flex items-center justify-center gap-1">
-                  <Sparkles className="h-3 w-3" />
-                  Score
+                  <Thermometer className="h-3 w-3" />
+                  Temperatura
                 </span>
               </TableHead>
               <TableHead className="text-center">Precio</TableHead>
@@ -125,9 +126,7 @@ export default function Leads() {
                   <TableCell className="text-sm text-muted-foreground">{lead.structured_fields?.area_legal || '-'}</TableCell>
                   <TableCell className="text-center">
                     {lead.score_final !== null ? (
-                      <Badge variant="outline" className="font-mono bg-primary/10 text-primary border-primary/20">
-                        {lead.score_final}
-                      </Badge>
+                      <LeadTemperature score={lead.score_final} variant="mini" />
                     ) : (
                       <span className="text-muted-foreground">--</span>
                     )}
