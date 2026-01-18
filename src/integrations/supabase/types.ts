@@ -1530,6 +1530,51 @@ export type Database = {
           },
         ]
       }
+      webhook_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string | null
+          headers: Json | null
+          id: string
+          method: string | null
+          path: string | null
+          payload: Json | null
+          processing_time_ms: number | null
+          query_params: Json | null
+          result: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string | null
+          headers?: Json | null
+          id?: string
+          method?: string | null
+          path?: string | null
+          payload?: Json | null
+          processing_time_ms?: number | null
+          query_params?: Json | null
+          result?: string
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string | null
+          headers?: Json | null
+          id?: string
+          method?: string | null
+          path?: string | null
+          payload?: Json | null
+          processing_time_ms?: number | null
+          query_params?: Json | null
+          result?: string
+          source?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
