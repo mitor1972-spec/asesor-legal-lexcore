@@ -122,9 +122,11 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
                 📝 Resumen:
               </p>
-              <p className="text-sm leading-relaxed line-clamp-4 bg-muted/30 p-2 rounded-lg italic text-muted-foreground">
-                "{lead.marketplace_summary}"
-              </p>
+              <div className="bg-muted/30 p-3 rounded-lg border">
+                <p className="text-sm leading-relaxed text-foreground">
+                  {lead.marketplace_summary || 'Sin resumen disponible'}
+                </p>
+              </div>
             </div>
 
             {/* Key Phrases */}
