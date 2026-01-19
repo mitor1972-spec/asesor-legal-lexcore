@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLawfirmCases } from '@/hooks/useLawfirmCases';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useLawfirmProfile } from '@/hooks/useLawfirmProfile';
+import { useLawfirmProfile, useLawfirmTeam, useLawfirmBranches } from '@/hooks/useLawfirmProfile';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
 import { Link } from 'react-router-dom';
 import { format, subDays, startOfMonth } from 'date-fns';
@@ -22,6 +22,13 @@ import {
   ResponsiveContainer,
   Cell 
 } from 'recharts';
+import { 
+  CasesByAreaWidget, 
+  CasesByProvinceWidget, 
+  CasesByBranchWidget, 
+  CasesByLawyerWidget, 
+  WonCasesTable 
+} from '@/components/lawfirm/DashboardWidgets';
 
 const statusLabels: Record<string, string> = {
   received: 'Recibido',
@@ -49,6 +56,8 @@ export default function LawfirmDashboard() {
   const { user } = useAuthContext();
   const { data: lawfirm } = useLawfirmProfile();
   const { data: cases = [], isLoading } = useLawfirmCases();
+  const { data: team = [] } = useLawfirmTeam();
+  const { data: branches = [] } = useLawfirmBranches();
 
   const now = new Date();
   const sevenDaysAgo = subDays(now, 7);
@@ -81,6 +90,9 @@ export default function LawfirmDashboard() {
 
   // Recent cases
   const recentCases = cases.slice(0, 5);
+
+  // Team lawyers (for widgets)
+  const lawyers = team.map(m => ({ id: m.id, full_name: m.full_name, email: m.email }));
 
   if (isLoading) {
     return (
@@ -185,6 +197,17 @@ export default function LawfirmDashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Widgets Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <CasesByAreaWidget cases={cases} />
+        <CasesByProvinceWidget cases={cases} />
+        <CasesByBranchWidget cases={cases} branches={branches} />
+        <CasesByLawyerWidget cases={cases} lawyers={lawyers} />
+      </div>
+
+      {/* Won Cases Table */}
+      <WonCasesTable cases={cases} />
 
       {/* Recent Cases */}
       <Card className="shadow-soft">

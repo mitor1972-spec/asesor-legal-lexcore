@@ -94,11 +94,13 @@ interface TeamMember {
   is_active: boolean | null;
   created_at: string | null;
   role: string;
+  branch_id: string | null;
 }
 
 export function useLawfirmTeam() {
   const { user } = useAuthContext();
-  const lawfirmId = user?.profile?.lawfirm_id;
+  const { impersonatedLawfirm, isImpersonating } = useImpersonation();
+  const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
 
   return useQuery({
     queryKey: ['lawfirm-team', lawfirmId],
@@ -112,7 +114,8 @@ export function useLawfirmTeam() {
           email,
           full_name,
           is_active,
-          created_at
+          created_at,
+          branch_id
         `)
         .eq('lawfirm_id', lawfirmId);
 
@@ -131,6 +134,36 @@ export function useLawfirmTeam() {
         ...profile,
         role: rolesMap.get(profile.id) || 'lawfirm_lawyer'
       })) as TeamMember[];
+    },
+    enabled: !!lawfirmId,
+  });
+}
+
+interface Branch {
+  id: string;
+  name: string;
+  province: string | null;
+  email_derivations: string | null;
+}
+
+export function useLawfirmBranches() {
+  const { user } = useAuthContext();
+  const { impersonatedLawfirm, isImpersonating } = useImpersonation();
+  const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
+
+  return useQuery({
+    queryKey: ['lawfirm-branches', lawfirmId],
+    queryFn: async () => {
+      if (!lawfirmId) return [];
+
+      const { data, error } = await supabase
+        .from('branches')
+        .select('id, name, province, email_derivations')
+        .eq('lawfirm_id', lawfirmId)
+        .order('name');
+
+      if (error) throw error;
+      return data as Branch[];
     },
     enabled: !!lawfirmId,
   });
