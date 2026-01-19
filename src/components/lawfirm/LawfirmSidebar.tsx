@@ -66,16 +66,30 @@ const configNavigation = [
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
   const { user } = useAuthContext();
-  const [configOpen, setConfigOpen] = useState(
-    location.pathname.includes('/configuracion') || 
-    location.pathname.includes('/facturacion') || 
-    location.pathname.includes('/precios') ||
-    location.pathname.includes('/configuracion-marketplace')
-  );
-  const [adsOpen, setAdsOpen] = useState(location.pathname.includes('/publicidad'));
   
-  // Show admin sections to all lawfirm roles, not just lawfirm_admin
-  const isLawfirmUser = user?.role?.startsWith('lawfirm_') || true; // Default to true for demo access
+  // Keep menus expanded by default - read from localStorage for persistence
+  const [configOpen, setConfigOpen] = useState(() => {
+    const stored = localStorage.getItem('sidebar_config_open');
+    return stored !== null ? stored === 'true' : true; // Default to true (expanded)
+  });
+  const [adsOpen, setAdsOpen] = useState(() => {
+    const stored = localStorage.getItem('sidebar_ads_open');
+    return stored !== null ? stored === 'true' : true; // Default to true (expanded)
+  });
+
+  // Persist menu state to localStorage
+  const handleConfigToggle = (open: boolean) => {
+    setConfigOpen(open);
+    localStorage.setItem('sidebar_config_open', String(open));
+  };
+
+  const handleAdsToggle = (open: boolean) => {
+    setAdsOpen(open);
+    localStorage.setItem('sidebar_ads_open', String(open));
+  };
+  
+  // Show admin sections to all lawfirm roles
+  const isLawfirmUser = user?.role?.startsWith('lawfirm_') || true;
 
   // Fetch marketplace leads count for badge
   const { data: marketplaceCount } = useQuery({
@@ -181,7 +195,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               })}
               
               {/* Configuration Collapsible */}
-              <Collapsible open={configOpen} onOpenChange={setConfigOpen}>
+              <Collapsible open={configOpen} onOpenChange={handleConfigToggle}>
                 <CollapsibleTrigger asChild>
                   <button
                     className={cn(
@@ -220,7 +234,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               </Collapsible>
 
               {/* Marketing Collapsible */}
-              <Collapsible open={adsOpen} onOpenChange={setAdsOpen}>
+              <Collapsible open={adsOpen} onOpenChange={handleAdsToggle}>
                 <CollapsibleTrigger asChild>
                   <button
                     className={cn(

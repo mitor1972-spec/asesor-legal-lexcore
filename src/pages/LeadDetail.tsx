@@ -13,7 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { LEAD_STATUSES, type LeadStatus } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2, Eye, Euro, Scale, Zap, Inbox, Building2, BarChart3, Plus } from 'lucide-react';
+import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2, Eye, Euro, Scale, Zap, Inbox, Building2, BarChart3, Plus, Trash2 } from 'lucide-react';
 import { NewLeadButton } from '@/components/lead/NewLeadButton';
 import { toast } from 'sonner';
 import { LexcoreScoring } from '@/components/scoring/LexcoreScoring';
@@ -23,6 +23,9 @@ import { ConversationView } from '@/components/lead/ConversationView';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
 import { LeadNotesTab } from '@/components/lead/LeadNotesTab';
 import { AssignToLawfirmDialog } from '@/components/lead/AssignToLawfirmDialog';
+import { EditContactDialog } from '@/components/lead/EditContactDialog';
+import { EditCaseDialog } from '@/components/lead/EditCaseDialog';
+import { DeleteLeadDialog } from '@/components/lead/DeleteLeadDialog';
 import { formatLocation } from '@/lib/cityProvinceMapping';
 
 const statusColors: Record<LeadStatus, string> = {
@@ -46,6 +49,9 @@ export default function LeadDetail() {
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [recalcStep, setRecalcStep] = useState(0);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [editContactOpen, setEditContactOpen] = useState(false);
+  const [editCaseOpen, setEditCaseOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const latestRun = lexcoreRuns?.[0];
 
@@ -205,16 +211,26 @@ export default function LeadDetail() {
 
       <div className="grid md:grid-cols-2 gap-3">
         <Card className="shadow-soft">
-          <CardHeader className="py-2 px-3"><CardTitle className="flex items-center gap-2 text-sm"><User className="h-3.5 w-3.5" />Contacto</CardTitle></CardHeader>
+          <CardHeader className="py-2 px-3 flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-sm"><User className="h-3.5 w-3.5" />Contacto</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => setEditContactOpen(true)} className="h-7 px-2">
+              <Pencil className="h-3 w-3 mr-1" />Editar
+            </Button>
+          </CardHeader>
           <CardContent className="space-y-1 text-sm py-2 px-3">
-            <p className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /><strong>Nombre:</strong> {(f?.nombre as string) || ''} {(f?.apellidos as string) || ''}</p>
-            <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><strong>Teléfono:</strong> {(f?.telefono as string) || ''}</p>
-            <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><strong>Email:</strong> {(f?.email as string) || ''}</p>
+            <p className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /><strong>Nombre:</strong> {(f?.nombre as string) || (f?.contact_name as string) || ''} {(f?.apellidos as string) || ''}</p>
+            <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><strong>Teléfono:</strong> {(f?.telefono as string) || (f?.contact_phone as string) || ''}</p>
+            <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><strong>Email:</strong> {(f?.email as string) || (f?.contact_email as string) || ''}</p>
             <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /><strong>Ubicación:</strong> {location}</p>
           </CardContent>
         </Card>
         <Card className="shadow-soft">
-          <CardHeader className="py-2 px-3"><CardTitle className="flex items-center gap-2 text-sm"><FileText className="h-3.5 w-3.5" />Caso</CardTitle></CardHeader>
+          <CardHeader className="py-2 px-3 flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-sm"><FileText className="h-3.5 w-3.5" />Caso</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => setEditCaseOpen(true)} className="h-7 px-2">
+              <Pencil className="h-3 w-3 mr-1" />Editar
+            </Button>
+          </CardHeader>
           <CardContent className="space-y-1 text-sm py-2 px-3">
             <p className="flex items-center gap-2"><Scale className="h-3.5 w-3.5 text-muted-foreground" /><strong>Área:</strong> {(f?.area_legal as string) || ''}</p>
             <p className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-muted-foreground" /><strong>Subárea:</strong> {(f?.subarea as string) || ''}</p>
@@ -299,6 +315,40 @@ export default function LeadDetail() {
       </Tabs>
 
       <AssignToLawfirmDialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen} leadId={id || ''} leadArea={f?.area_legal as string | undefined} leadProvince={f?.provincia as string | undefined} onSuccess={() => refetchLead()} />
+      
+      <EditContactDialog 
+        open={editContactOpen} 
+        onOpenChange={setEditContactOpen} 
+        leadId={id || ''} 
+        structuredFields={f} 
+        onSuccess={() => refetchLead()} 
+      />
+      
+      <EditCaseDialog 
+        open={editCaseOpen} 
+        onOpenChange={setEditCaseOpen} 
+        leadId={id || ''} 
+        structuredFields={f} 
+        onSuccess={() => refetchLead()} 
+      />
+      
+      <DeleteLeadDialog 
+        open={deleteDialogOpen} 
+        onOpenChange={setDeleteDialogOpen} 
+        leadId={id || ''} 
+      />
+
+      {/* Delete button at bottom */}
+      <div className="flex justify-end pt-6 border-t">
+        <Button 
+          variant="destructive" 
+          onClick={() => setDeleteDialogOpen(true)}
+          className="gap-2"
+        >
+          <Trash2 className="h-4 w-4" />
+          Eliminar lead
+        </Button>
+      </div>
     </div>
   );
 }

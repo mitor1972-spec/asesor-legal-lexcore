@@ -125,6 +125,42 @@ export default function Leads() {
     setSelectedLeads([]);
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedLeads.length === 0) {
+      toast.error('Selecciona al menos un lead');
+      return;
+    }
+
+    const confirmed = confirm(
+      `¿Eliminar ${selectedLeads.length} lead(s)?\n\nLos leads se archivarán y podrás restaurarlos después si es necesario.`
+    );
+
+    if (!confirmed) return;
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const leadId of selectedLeads) {
+      try {
+        await archiveMutation.mutateAsync(leadId);
+        successCount++;
+      } catch (error) {
+        console.error(`Error archiving lead ${leadId}:`, error);
+        errorCount++;
+      }
+    }
+
+    setSelectedLeads([]);
+
+    if (successCount > 0 && errorCount === 0) {
+      toast.success(`✅ ${successCount} lead(s) eliminados`);
+    } else if (successCount > 0 && errorCount > 0) {
+      toast.warning(`${successCount} lead(s) eliminados, ${errorCount} con errores`);
+    } else if (errorCount > 0) {
+      toast.error(`${errorCount} lead(s) con errores`);
+    }
+  };
+
   const handleRecalculateLexcore = async () => {
     if (selectedLeads.length === 0) {
       toast.error('Selecciona al menos un lead');
@@ -289,6 +325,14 @@ export default function Leads() {
                 </Button>
                 <Button size="sm" onClick={() => setShowBulkAssign(true)} disabled={isRecalculating}>
                   <Building2 className="mr-2 h-4 w-4" />Asignar a despacho
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="destructive"
+                  onClick={handleBulkDelete}
+                  disabled={isRecalculating}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />Eliminar
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setSelectedLeads([])} disabled={isRecalculating}>
                   <X className="h-4 w-4" />
