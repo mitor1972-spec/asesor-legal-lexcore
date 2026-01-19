@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useLawfirmCases } from '@/hooks/useLawfirmCases';
+import { useLawfirmBranches, useLawfirmTeam } from '@/hooks/useLawfirmProfile';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Search, Briefcase, ArrowRight, Plus } from 'lucide-react';
+import { Search, Briefcase, ArrowRight, Plus, ChevronDown, Building2, User } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { NewCaseDialog } from '@/components/lawfirm/NewCaseDialog';
 
@@ -36,10 +38,13 @@ const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | '
 
 export default function LawfirmCases() {
   const { data: cases = [], isLoading } = useLawfirmCases();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { data: branches = [] } = useLawfirmBranches();
+  const { data: team = [] } = useLawfirmTeam();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'all');
   const [showNewCase, setShowNewCase] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grouped'>('grouped');
 
   // Sync tab from URL
   useEffect(() => {
@@ -67,6 +72,72 @@ export default function LawfirmCases() {
 
     return matchesSearch && matchesTab;
   });
+
+  // Group cases by branch and lawyer
+  const groupedByBranch = filteredCases.reduce((acc, c) => {
+    const branchId = (c as any).branch_id || 'sin_sede';
+    if (!acc[branchId]) acc[branchId] = [];
+    acc[branchId].push(c);
+    return acc;
+  }, {} as Record<string, typeof filteredCases>);
+
+  // Further group by lawyer within each branch
+  const groupedByBranchAndLawyer = Object.entries(groupedByBranch).map(([branchId, branchCases]) => {
+    const branch = branches.find(b => b.id === branchId);
+    const byLawyer = branchCases.reduce((acc, c) => {
+      const lawyerId = c.assigned_lawyer_id || 'sin_asignar';
+      if (!acc[lawyerId]) acc[lawyerId] = [];
+      acc[lawyerId].push(c);
+      return acc;
+    }, {} as Record<string, typeof branchCases>);
+
+    return {
+      branchId,
+      branchName: branch?.name || 'Sin sede asignada',
+      branchProvince: branch?.province,
+      caseCount: branchCases.length,
+      lawyers: Object.entries(byLawyer).map(([lawyerId, lawyerCases]) => {
+        const lawyer = team.find(t => t.id === lawyerId);
+        return {
+          lawyerId,
+          lawyerName: lawyer?.full_name || lawyer?.email || 'Sin asignar',
+          cases: lawyerCases
+        };
+      })
+    };
+  });
+
+  const renderCaseRow = (caseItem: typeof cases[0]) => {
+    const fields = caseItem.lead?.structured_fields as Record<string, string> | null;
+    const score = caseItem.lead?.score_final || 0;
+
+    return (
+      <Link
+        key={caseItem.id}
+        to={`/despacho/casos/${caseItem.id}`}
+        className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+      >
+        <div className="flex items-center gap-4 flex-1">
+          <LeadTemperature score={score} variant="mini" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold">
+                {fields?.nombre || 'Cliente'} — {fields?.area_legal || 'Caso legal'}
+              </h3>
+              <Badge variant={statusVariants[caseItem.firm_status] || 'secondary'}>
+                {statusLabels[caseItem.firm_status] || caseItem.firm_status}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground truncate">
+              {fields?.provincia || 'España'} • {caseItem.lead?.source_channel || 'Web'} • 
+              Recibido {format(new Date(caseItem.assigned_at), "dd MMM yyyy", { locale: es })}
+            </p>
+          </div>
+        </div>
+        <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
+      </Link>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -99,6 +170,14 @@ export default function LawfirmCases() {
               className="pl-9"
             />
           </div>
+          <Button 
+            variant={viewMode === 'grouped' ? 'secondary' : 'outline'} 
+            size="icon"
+            onClick={() => setViewMode(viewMode === 'grouped' ? 'list' : 'grouped')}
+            title={viewMode === 'grouped' ? 'Vista lista' : 'Vista agrupada'}
+          >
+            <Building2 className="h-4 w-4" />
+          </Button>
           <Button onClick={() => setShowNewCase(true)}>
             <Plus className="mr-2 h-4 w-4" />Nuevo Caso
           </Button>
@@ -130,47 +209,58 @@ export default function LawfirmCases() {
                 <p className="text-muted-foreground">No se encontraron casos</p>
               </CardContent>
             </Card>
-          ) : (
+          ) : viewMode === 'list' ? (
+            // Simple list view
             <div className="space-y-3">
-              {filteredCases.map((caseItem) => {
-                const fields = caseItem.lead?.structured_fields as Record<string, string> | null;
-                const score = caseItem.lead?.score_final || 0;
-
-                return (
-                  <Card key={caseItem.id} className="shadow-soft hover:shadow-medium transition-shadow">
-                    <CardContent className="p-4">
-                      <Link
-                        to={`/despacho/casos/${caseItem.id}`}
-                        className="flex flex-col sm:flex-row sm:items-center gap-4"
-                      >
-                        <div className="flex items-center gap-4 flex-1">
-                          <LeadTemperature score={score} variant="mini" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-semibold">
-                                {fields?.nombre || 'Cliente'} — {fields?.area_legal || 'Caso legal'}
-                              </h3>
-                              <Badge variant={statusVariants[caseItem.firm_status] || 'secondary'}>
-                                {statusLabels[caseItem.firm_status] || caseItem.firm_status}
-                              </Badge>
+              {filteredCases.map((caseItem) => (
+                <Card key={caseItem.id} className="shadow-soft hover:shadow-medium transition-shadow">
+                  <CardContent className="p-0">
+                    {renderCaseRow(caseItem)}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            // Grouped view by branch and lawyer
+            <div className="space-y-4">
+              {groupedByBranchAndLawyer.map(({ branchId, branchName, branchProvince, caseCount, lawyers }) => (
+                <Collapsible key={branchId} defaultOpen className="border rounded-lg bg-card">
+                  <CollapsibleTrigger className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors rounded-t-lg">
+                    <div className="flex items-center gap-3">
+                      <Building2 className="h-5 w-5 text-lawfirm-primary" />
+                      <div className="text-left">
+                        <span className="font-semibold">{branchName}</span>
+                        {branchProvince && (
+                          <span className="text-sm text-muted-foreground ml-2">({branchProvince})</span>
+                        )}
+                      </div>
+                      <Badge variant="secondary">{caseCount} casos</Badge>
+                    </div>
+                    <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="px-4 pb-4 space-y-4">
+                      {lawyers.map(({ lawyerId, lawyerName, cases: lawyerCases }) => (
+                        <Collapsible key={lawyerId} defaultOpen>
+                          <CollapsibleTrigger className="w-full px-3 py-2 flex items-center justify-between hover:bg-muted/30 transition-colors rounded-md border-l-2 border-lawfirm-primary/30">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium text-sm">{lawyerName}</span>
+                              <Badge variant="outline" className="text-xs">{lawyerCases.length}</Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground truncate">
-                              {fields?.provincia || 'España'} • {caseItem.lead?.source_channel || 'Web'} • 
-                              Recibido {format(new Date(caseItem.assigned_at), "dd MMM yyyy 'a las' HH:mm", { locale: es })}
-                            </p>
-                            {caseItem.assigned_lawyer && (
-                              <p className="text-sm text-muted-foreground">
-                                Abogado: {caseItem.assigned_lawyer.full_name || caseItem.assigned_lawyer.email}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
-                      </Link>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="mt-2 space-y-2 pl-6">
+                              {lawyerCases.map(renderCaseRow)}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
             </div>
           )}
         </TabsContent>
