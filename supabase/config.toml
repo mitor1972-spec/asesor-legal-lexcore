@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.purchase-lead]
 verify_jwt = false
+
+[functions.repair-leads]
+verify_jwt = false

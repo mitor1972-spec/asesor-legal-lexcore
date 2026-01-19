@@ -13,6 +13,11 @@ const CHATWOOT_API_TOKEN = Deno.env.get("CHATWOOT_API_TOKEN") || "2GmoSRCQ9v71Jh
 // Regex para detectar alias automáticos tipo "lively-frog-81"
 const ALIAS_REGEX = /^[a-z]+-[a-z]+-\d+$/i;
 
+// Regex para extracción de datos
+const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+const PHONE_REGEX_ES = /(?:\+34\s?)?(?:6|7|8|9)\d{8}/;
+const NAME_REGEX = /(?:me llamo|soy|mi nombre es|llamo)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+){0,3})/i;
+
 interface ChatwootMessage {
   id: number;
   content: string | null;
@@ -78,6 +83,23 @@ async function getConversationMessages(conversationId: number): Promise<Chatwoot
 function isAutoAlias(name: string | null | undefined): boolean {
   if (!name) return true;
   return ALIAS_REGEX.test(name.trim());
+}
+
+// Extraer datos de contacto de un texto individual (regex fallback)
+function extractContactFromText(text: string): {
+  email: string | null;
+  phone: string | null;
+  name: string | null;
+} {
+  const emailMatch = text.match(EMAIL_REGEX);
+  const phoneMatch = text.match(PHONE_REGEX_ES);
+  const nameMatch = text.match(NAME_REGEX);
+  
+  return {
+    email: emailMatch ? emailMatch[0].toLowerCase() : null,
+    phone: phoneMatch ? phoneMatch[0].replace(/[\s.-]/g, "") : null,
+    name: nameMatch ? nameMatch[1].trim() : null,
+  };
 }
 
 // Extraer datos del lead de los mensajes
@@ -238,7 +260,7 @@ serve(async (req) => {
     
     // Extraer conversation correctamente
     const conversation = payload.conversation ?? payload;
-    const conversationId = conversation?.id;
+    const conversationId = conversation?.id ?? payload.conversation_id ?? conversation?.conversation_id;
     
     console.log(`[Webhook] Received event: ${eventType}, conversation: ${conversationId}`);
     
@@ -307,6 +329,131 @@ serve(async (req) => {
     console.log(`[Webhook] Contact extracted: name=${contactName}, email=${contactEmail}, phone=${contactPhone}`);
 
     // ==========================================
+    // PASO 2: VERIFICAR SI YA EXISTE LEAD PARA ACTUALIZAR
+    // ==========================================
+    const { data: existingConv } = await supabase
+      .from("chatwoot_conversations")
+      .select("id, lead_id")
+      .eq("chatwoot_conversation_id", conversationId)
+      .maybeSingle();
+
+    // Si ya existe un lead para esta conversación, intentar actualizar con nuevos datos
+    if (existingConv?.lead_id) {
+      console.log(`[Webhook] Lead exists for conversation ${conversationId}: ${existingConv.lead_id} - checking for new data`);
+      
+      // Extraer datos del mensaje incoming actual
+      const incomingContent = payload.content || "";
+      const extractedFromIncoming = extractContactFromText(incomingContent);
+      
+      console.log(`[Webhook] Incoming parsed: email=${extractedFromIncoming.email}, phone=${extractedFromIncoming.phone}, name=${extractedFromIncoming.name}`);
+      
+      // Si hay nuevos datos, actualizar el lead
+      if (extractedFromIncoming.email || extractedFromIncoming.phone || extractedFromIncoming.name) {
+        // Obtener el lead actual
+        const { data: existingLead } = await supabase
+          .from("leads")
+          .select("id, structured_fields, lead_text")
+          .eq("id", existingConv.lead_id)
+          .single();
+        
+        if (existingLead) {
+          const currentFields = existingLead.structured_fields as Record<string, unknown> || {};
+          
+          // Solo actualizar campos que están vacíos o son alias
+          const updates: Record<string, unknown> = {};
+          let hasUpdates = false;
+          
+          // Actualizar email si el actual está vacío y encontramos uno nuevo
+          if (!currentFields.contact_email && extractedFromIncoming.email) {
+            updates.contact_email = extractedFromIncoming.email;
+            hasUpdates = true;
+          }
+          
+          // Actualizar teléfono si el actual está vacío y encontramos uno nuevo
+          if (!currentFields.contact_phone && extractedFromIncoming.phone) {
+            updates.contact_phone = extractedFromIncoming.phone;
+            hasUpdates = true;
+          }
+          
+          // Actualizar nombre si el actual está vacío o es un alias
+          const currentName = currentFields.contact_name as string || "";
+          if ((!currentName || isAutoAlias(currentName)) && extractedFromIncoming.name) {
+            updates.contact_name = extractedFromIncoming.name;
+            hasUpdates = true;
+          }
+          
+          if (hasUpdates) {
+            // Merge con campos existentes
+            const newStructuredFields = { ...currentFields, ...updates };
+            
+            // Actualizar también el lead_text con el nuevo contenido
+            const newLeadText = existingLead.lead_text 
+              ? `${existingLead.lead_text}\n\n${incomingContent}`
+              : incomingContent;
+            
+            await supabase
+              .from("leads")
+              .update({
+                structured_fields: newStructuredFields,
+                lead_text: newLeadText,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", existingConv.lead_id);
+            
+            // Actualizar también chatwoot_conversations
+            await supabase
+              .from("chatwoot_conversations")
+              .update({
+                contact_name: (newStructuredFields.contact_name as string) || contactName,
+                contact_email: (newStructuredFields.contact_email as string) || contactEmail,
+                contact_phone: (newStructuredFields.contact_phone as string) || contactPhone,
+                processed_at: new Date().toISOString(),
+              })
+              .eq("id", existingConv.id);
+            
+            console.log(`[Webhook] Lead updated from incoming - conversation_id=${conversationId}, lead_id=${existingConv.lead_id}, updates=${JSON.stringify(updates)}`);
+            
+            if (logData?.id) {
+              await supabase.from("webhook_logs").update({
+                result: "success",
+                error_message: `Updated existing lead with: ${Object.keys(updates).join(", ")}`,
+                processing_time_ms: Date.now() - startTime,
+              }).eq("id", logData.id);
+            }
+            
+            return new Response(JSON.stringify({ 
+              status: "updated", 
+              lead_id: existingConv.lead_id,
+              conversation_id: conversationId,
+              updates: updates,
+            }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+      }
+      
+      // No hay nuevos datos, solo registrar y salir
+      console.log(`[Webhook] No new contact data in incoming message for conversation ${conversationId}`);
+      
+      if (logData?.id) {
+        await supabase.from("webhook_logs").update({
+          result: "skipped",
+          error_message: "Lead exists, no new contact data",
+          processing_time_ms: Date.now() - startTime,
+        }).eq("id", logData.id);
+      }
+      
+      return new Response(JSON.stringify({ 
+        status: "skipped", 
+        reason: "Lead exists, no new data",
+        lead_id: existingConv.lead_id 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ==========================================
     // FILTRO 3: Gate anti-lead-vacío
     // ==========================================
     // No crear lead si: no hay email, no hay phone, y el nombre es un alias
@@ -347,35 +494,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         status: "skipped", 
         reason: "Conversation before cutoff date 17/01/2026" 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // ==========================================
-    // DEDUPLICACIÓN: Verificar si ya existe lead para esta conversación
-    // ==========================================
-    const { data: existingConv } = await supabase
-      .from("chatwoot_conversations")
-      .select("id, lead_id")
-      .eq("chatwoot_conversation_id", conversationId)
-      .maybeSingle();
-
-    if (existingConv?.lead_id) {
-      console.log(`[Webhook] Lead already exists for conversation ${conversationId}: ${existingConv.lead_id}`);
-      
-      if (logData?.id) {
-        await supabase.from("webhook_logs").update({
-          result: "skipped",
-          error_message: "Lead already exists",
-          processing_time_ms: Date.now() - startTime,
-        }).eq("id", logData.id);
-      }
-      
-      return new Response(JSON.stringify({ 
-        status: "skipped", 
-        reason: "Lead already exists",
-        lead_id: existingConv.lead_id 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
