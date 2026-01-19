@@ -42,6 +42,12 @@ export function useLeads(filters?: LeadFilters, page = 1, pageSize = 20) {
         query = query.is('archived_at', null);
       }
 
+      // Filter out incomplete leads (marked by repair function) from main view
+      // Only show incomplete leads if explicitly viewing archived
+      if (!filters?.showArchived) {
+        query = query.or('structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false');
+      }
+
       if (filters?.status) {
         query = query.eq('status_internal', filters.status);
       }
