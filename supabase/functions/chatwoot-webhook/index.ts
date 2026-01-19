@@ -718,21 +718,42 @@ function isConversationValid(
 
   // Check 1: Must have at least one client message (but be lenient if API failed)
   if (clientMessages.length === 0) {
-    // If API failed, check if conversation text contains meaningful content
+    // If API failed, check if conversation text contains meaningful legal content
     // The agent might be responding to client messages we didn't receive
     if (apiFallbackUsed) {
-      console.log('[VALIDATION] API failed, checking conversation text for clues...');
-      // Check if agent messages reference client data (names, cases, etc.)
-      const hasClientDataInConversation = 
-        extractedContact.phone || 
-        extractedContact.email || 
-        /(?:llamo|soy|mi nombre es|le llamo|contacto)/i.test(fullConversationText);
+      console.log('[VALIDATION] API failed, checking conversation text for legal case clues...');
       
-      if (hasClientDataInConversation) {
-        console.log('[VALIDATION] Found client data in conversation despite API failure');
-        // Continue with relaxed validation
+      // Legal keywords that indicate a valid case was discussed
+      const legalKeywords = [
+        // Personal names being addressed
+        /(?:saludo|gracias|hola|cuídate),?\s*[A-ZÀ-ÿ][a-zà-ÿ]+[!.,]/i,
+        // Legal topics discussed
+        /(?:abogado|despacho|bufete|letrado|procurador)/i,
+        /(?:demanda|denuncia|juicio|sentencia|recurso|apelación)/i,
+        /(?:custodia|divorcio|herencia|testamento|pensión)/i,
+        /(?:contrato|indemnización|reclamación|despido)/i,
+        /(?:accidente|lesiones|daños|perjuicios)/i,
+        /(?:deuda|impago|moroso|embargo)/i,
+        /(?:arrendamiento|alquiler|desahucio|okupación)/i,
+        /(?:seguro|aseguradora|siniestro)/i,
+        // Agent confirming they'll call or follow up
+        /(?:llamar[áe]|contactar[áe]|atender[áe])/i,
+        /(?:te\s+llam|le\s+llam|nos\s+ponemos\s+en\s+contacto)/i,
+        /(?:caso|consulta|asunto|expediente)/i,
+        // Phone or contact references
+        /(?:\d{9}|\d{3}[\s.-]\d{3}[\s.-]\d{3})/,
+      ];
+      
+      const hasLegalContent = legalKeywords.some(pattern => pattern.test(fullConversationText));
+      const hasContactData = extractedContact.phone || extractedContact.email || extractedContact.name;
+      
+      console.log('[VALIDATION] Legal content found:', hasLegalContent, '| Contact data:', hasContactData);
+      
+      if (hasLegalContent || hasContactData) {
+        console.log('[VALIDATION] Accepting conversation despite API failure - legal content or contact data found');
+        // Continue with relaxed validation - we have enough to create a lead
       } else {
-        return { valid: false, reason: 'No client messages - only bot/agent messages (API failed, no client data found)' };
+        return { valid: false, reason: 'No client messages and no legal content detected (API failed)' };
       }
     } else {
       return { valid: false, reason: 'No client messages - only bot/agent messages' };
@@ -766,10 +787,19 @@ function isConversationValid(
     }
   }
 
-  // Check 3: Must have at least phone OR email extracted
-  // This is a REQUIRED check - without contact info we can't follow up
+  // Check 3: Contact data validation
+  // When API failed, be more lenient - we might extract contact from full conversation later via Lexcore
   if (!extractedContact.phone && !extractedContact.email) {
-    return { valid: false, reason: 'No contact data (phone or email) could be extracted' };
+    if (apiFallbackUsed && extractedContact.name) {
+      // If API failed but we have a name from agent messages, still create the lead
+      // The full conversation might have contact info that will be extracted by Lexcore
+      console.log('[VALIDATION] No phone/email but API failed and name found - will create lead for manual review');
+    } else if (!apiFallbackUsed) {
+      return { valid: false, reason: 'No contact data (phone or email) could be extracted' };
+    } else {
+      // API failed and no contact data at all - skip
+      return { valid: false, reason: 'No contact data and API failed - cannot create lead' };
+    }
   }
 
   // Check 4: Name is nice to have but not strictly required if we have phone/email
