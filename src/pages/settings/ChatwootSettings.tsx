@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Copy, RefreshCw, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle, Activity, FileText, Clipboard } from 'lucide-react';
+import { Copy, RefreshCw, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle, Activity, FileText, Clipboard, Play } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -56,6 +56,8 @@ export default function ChatwootSettings() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [manualConvId, setManualConvId] = useState('');
+  const [processingManual, setProcessingManual] = useState(false);
 
   const webhookBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chatwoot-webhook`;
 
@@ -353,6 +355,68 @@ export default function ChatwootSettings() {
               </SelectContent>
             </Select>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Manual Processing Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Play className="w-5 h-5" />
+            Procesar Conversación Manual
+          </CardTitle>
+          <CardDescription>
+            Procesa una conversación acumulada que no fue cerrada como "resuelta" en Chatwoot
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="ID de conversación (ej: 2446)"
+              value={manualConvId}
+              onChange={(e) => setManualConvId(e.target.value)}
+              className="max-w-[200px]"
+            />
+            <Button 
+              onClick={async () => {
+                if (!manualConvId.trim()) {
+                  toast.error('Ingresa un ID de conversación');
+                  return;
+                }
+                setProcessingManual(true);
+                try {
+                  const { data, error } = await supabase.functions.invoke('process-chatwoot-conversation', {
+                    body: { conversation_id: parseInt(manualConvId) }
+                  });
+                  
+                  if (error) throw error;
+                  
+                  if (data?.success) {
+                    toast.success(`Lead creado: ${data.lead_id}`);
+                    setManualConvId('');
+                    queryClient.invalidateQueries({ queryKey: ['chatwoot-import-logs'] });
+                  } else {
+                    toast.error(data?.error || 'Error procesando conversación');
+                  }
+                } catch (err: any) {
+                  toast.error(err.message || 'Error al procesar');
+                } finally {
+                  setProcessingManual(false);
+                }
+              }}
+              disabled={processingManual || !manualConvId.trim()}
+            >
+              {processingManual ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              Procesar
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Introduce el ID de conversación de Chatwoot para procesar los mensajes acumulados y crear un lead.
+          </p>
         </CardContent>
       </Card>
 
