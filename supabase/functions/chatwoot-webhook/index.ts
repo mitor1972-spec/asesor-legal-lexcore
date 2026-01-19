@@ -10,6 +10,9 @@ const corsHeaders = {
 const CHATWOOT_ACCOUNT_ID = "138173";
 const CHATWOOT_API_TOKEN = Deno.env.get("CHATWOOT_API_TOKEN") || "2GmoSRCQ9v71JhvgKWvC11Zw";
 
+// Regex para detectar alias automáticos tipo "lively-frog-81"
+const ALIAS_REGEX = /^[a-z]+-[a-z]+-\d+$/i;
+
 interface ChatwootMessage {
   id: number;
   content: string | null;
@@ -34,7 +37,6 @@ interface ChatwootMessage {
 
 // Obtener TODOS los mensajes de una conversación
 async function getConversationMessages(conversationId: number): Promise<ChatwootMessage[]> {
-  // ENDPOINT CORRECTO: /messages al final
   const url = `https://app.chatwoot.com/api/v1/accounts/${CHATWOOT_ACCOUNT_ID}/conversations/${conversationId}/messages`;
   
   console.log(`[Chatwoot API] Fetching messages from: ${url}`);
@@ -58,7 +60,6 @@ async function getConversationMessages(conversationId: number): Promise<Chatwoot
     
     const data = await response.json();
     
-    // Los mensajes vienen en data.payload (NO en data.messages)
     if (data.payload && Array.isArray(data.payload)) {
       console.log(`[Chatwoot API] Found ${data.payload.length} messages`);
       return data.payload;
@@ -71,6 +72,12 @@ async function getConversationMessages(conversationId: number): Promise<Chatwoot
     console.error("[Chatwoot API] Exception:", error);
     return [];
   }
+}
+
+// Verificar si un nombre es un alias automático
+function isAutoAlias(name: string | null | undefined): boolean {
+  if (!name) return true;
+  return ALIAS_REGEX.test(name.trim());
 }
 
 // Extraer datos del lead de los mensajes
@@ -114,10 +121,9 @@ function extractLeadData(messages: ChatwootMessage[]): {
   if (nameMatch) {
     nombre = nameMatch[1].trim();
   } else {
-    // Buscar mensajes cortos que parezcan nombres (después de preguntar por el nombre)
+    // Buscar mensajes cortos que parezcan nombres
     for (let i = 0; i < userMessages.length; i++) {
       const msg = userMessages[i].content || "";
-      // Si el mensaje es corto y tiene formato de nombre (2-4 palabras, mayúsculas)
       if (msg.length < 50 && msg.length > 3) {
         const words = msg.trim().split(/\s+/);
         if (words.length >= 2 && words.length <= 4) {
@@ -136,7 +142,6 @@ function extractLeadData(messages: ChatwootMessage[]): {
   const locationMatches = fullText.matchAll(locationRegex);
   for (const match of locationMatches) {
     const loc = match[1].trim();
-    // Filtrar palabras comunes que no son ubicaciones
     if (!["el", "la", "los", "las", "un", "una", "que", "mi", "tu"].includes(loc.toLowerCase())) {
       ubicacion = loc;
       break;
@@ -230,7 +235,10 @@ serve(async (req) => {
 
     const payload = await req.json();
     const eventType = payload.event;
-    const conversationId = payload.conversation?.id;
+    
+    // Extraer conversation correctamente
+    const conversation = payload.conversation ?? payload;
+    const conversationId = conversation?.id;
     
     console.log(`[Webhook] Received event: ${eventType}, conversation: ${conversationId}`);
     
@@ -247,6 +255,32 @@ serve(async (req) => {
       result: "processing",
     }).select().single();
 
+    // ==========================================
+    // FILTRO 1: Ignorar mensajes OUTGOING
+    // ==========================================
+    const messageType = payload.message_type;
+    const senderType = payload.sender?.type;
+    
+    // message_type puede ser "outgoing" (string) o el sender puede ser un "user" (agente)
+    if (messageType === "outgoing" || senderType === "user") {
+      console.log(`[Webhook] Ignored outgoing message (message_type=${messageType}, sender.type=${senderType})`);
+      
+      if (logData?.id) {
+        await supabase.from("webhook_logs").update({
+          result: "skipped",
+          error_message: "Ignored outgoing message",
+          processing_time_ms: Date.now() - startTime,
+        }).eq("id", logData.id);
+      }
+      
+      return new Response(JSON.stringify({ 
+        status: "ignored", 
+        reason: "outgoing message" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Validar que tenemos conversation_id
     if (!conversationId) {
       console.warn("[Webhook] No conversation ID in payload");
@@ -258,9 +292,46 @@ serve(async (req) => {
       });
     }
 
+    // ==========================================
+    // FILTRO 2: Extraer contacto CORRECTO
+    // ==========================================
+    // Si payload.sender es un contact, usarlo; si no, usar conversation.meta.sender
+    const contact = (payload.sender?.type === "contact") 
+      ? payload.sender 
+      : conversation?.meta?.sender;
+    
+    const contactName = contact?.name || null;
+    const contactEmail = contact?.email || null;
+    const contactPhone = contact?.phone_number || null;
+    
+    console.log(`[Webhook] Contact extracted: name=${contactName}, email=${contactEmail}, phone=${contactPhone}`);
+
+    // ==========================================
+    // FILTRO 3: Gate anti-lead-vacío
+    // ==========================================
+    // No crear lead si: no hay email, no hay phone, y el nombre es un alias
+    if (!contactEmail && !contactPhone && isAutoAlias(contactName)) {
+      console.log(`[Webhook] Ignored missing-contact lead (name=${contactName} is alias, no email/phone)`);
+      
+      if (logData?.id) {
+        await supabase.from("webhook_logs").update({
+          result: "skipped",
+          error_message: "Missing contact data (alias name, no email/phone)",
+          processing_time_ms: Date.now() - startTime,
+        }).eq("id", logData.id);
+      }
+      
+      return new Response(JSON.stringify({ 
+        status: "ignored", 
+        reason: "missing-contact (alias name, no email, no phone)" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // FILTRO DE SEGURIDAD: Solo procesar conversaciones desde el 17/01/2026
     const FECHA_MINIMA = new Date("2026-01-17T00:00:00Z").getTime() / 1000;
-    const conversationCreatedAt = payload.conversation?.created_at || 0;
+    const conversationCreatedAt = conversation?.created_at || 0;
     
     if (conversationCreatedAt < FECHA_MINIMA) {
       console.log(`[Webhook] Conversation ${conversationId} is too old (created: ${conversationCreatedAt}), skipping`);
@@ -281,7 +352,9 @@ serve(async (req) => {
       });
     }
 
-    // Verificar si ya procesamos esta conversación (en chatwoot_conversations)
+    // ==========================================
+    // DEDUPLICACIÓN: Verificar si ya existe lead para esta conversación
+    // ==========================================
     const { data: existingConv } = await supabase
       .from("chatwoot_conversations")
       .select("id, lead_id")
@@ -352,27 +425,23 @@ serve(async (req) => {
       });
     }
 
-    // Extraer datos del lead
+    // Extraer datos del lead de los mensajes (IA solo en incoming)
     const extracted = extractLeadData(messages);
 
-    // Datos adicionales del webhook
-    const contactMeta = payload.conversation?.meta?.sender || {};
-    const additionalAttrs = payload.conversation?.additional_attributes || {};
-    
-    // Ubicación: preferir la extraída del chat, si no la del IP
+    // Ubicación: preferir la extraída del chat, si no la del IP del contacto
     let ubicacionFinal = extracted.ubicacion;
-    if (!ubicacionFinal && contactMeta.additional_attributes?.city) {
-      ubicacionFinal = `${contactMeta.additional_attributes.city}, ${contactMeta.additional_attributes.country || "España"}`;
+    if (!ubicacionFinal && contact?.additional_attributes?.city) {
+      ubicacionFinal = `${contact.additional_attributes.city}, ${contact.additional_attributes.country || "España"}`;
     }
 
     // Construir lead_text con todos los mensajes del usuario
     const leadText = userMessages.map(m => m.content).join("\n\n");
 
-    // Preparar structured_fields
+    // Preparar structured_fields - PRIORIZAR datos extraídos del texto sobre metadata
     const structuredFields = {
-      contact_name: extracted.nombre || contactMeta.name || null,
-      contact_phone: extracted.telefono || contactMeta.phone_number || null,
-      contact_email: extracted.email || contactMeta.email || null,
+      contact_name: extracted.nombre || (isAutoAlias(contactName) ? null : contactName),
+      contact_phone: extracted.telefono || contactPhone,
+      contact_email: extracted.email || contactEmail,
       city: ubicacionFinal || null,
       province: null,
       legal_area: extracted.area_legal || null,
@@ -380,6 +449,31 @@ serve(async (req) => {
       amount: null,
       company_involved: null,
     };
+
+    // ==========================================
+    // VALIDACIÓN FINAL: Verificar que hay datos mínimos
+    // ==========================================
+    const hasValidName = structuredFields.contact_name && !isAutoAlias(structuredFields.contact_name);
+    const hasValidContact = structuredFields.contact_email || structuredFields.contact_phone;
+    
+    if (!hasValidName && !hasValidContact) {
+      console.log(`[Webhook] Ignored missing-contact lead after extraction (no valid name/email/phone)`);
+      
+      if (logData?.id) {
+        await supabase.from("webhook_logs").update({
+          result: "skipped",
+          error_message: "No valid contact data after extraction",
+          processing_time_ms: Date.now() - startTime,
+        }).eq("id", logData.id);
+      }
+      
+      return new Response(JSON.stringify({ 
+        status: "ignored", 
+        reason: "missing-contact after extraction" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     console.log("[Webhook] Creating lead with structured_fields:", JSON.stringify(structuredFields, null, 2));
 
@@ -409,13 +503,13 @@ serve(async (req) => {
       throw insertError;
     }
 
-    console.log(`[Webhook] Lead created successfully: ${newLead.id}`);
+    console.log(`[Webhook] Upsert lead ok - lead_id=${newLead.id}, conversation_id=${conversationId}`);
 
-    // Registrar en chatwoot_conversations
+    // Registrar en chatwoot_conversations con UPSERT
     await supabase.from("chatwoot_conversations").upsert({
       chatwoot_conversation_id: conversationId,
       chatwoot_account_id: parseInt(CHATWOOT_ACCOUNT_ID),
-      chatwoot_contact_id: contactMeta.id || null,
+      chatwoot_contact_id: contact?.id || null,
       contact_name: structuredFields.contact_name,
       contact_phone: structuredFields.contact_phone,
       contact_email: structuredFields.contact_email,
@@ -473,6 +567,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       status: "success", 
       lead_id: newLead.id,
+      conversation_id: conversationId,
       extracted: {
         nombre: structuredFields.contact_name,
         email: structuredFields.contact_email,
