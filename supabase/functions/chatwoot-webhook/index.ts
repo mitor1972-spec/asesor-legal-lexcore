@@ -140,7 +140,29 @@ async function handleMessageCreated(supabase: any, payload: any) {
   }
   
   const content = message?.content || '';
-  const messageCreatedAt = message?.created_at ? new Date(message.created_at * 1000).toISOString() : new Date().toISOString();
+  
+  // Handle created_at - can be unix timestamp (number), unix timestamp string, or ISO string
+  let messageCreatedAt: string;
+  try {
+    const rawCreatedAt = message?.created_at;
+    if (!rawCreatedAt) {
+      messageCreatedAt = new Date().toISOString();
+    } else if (typeof rawCreatedAt === 'number') {
+      // Unix timestamp in seconds
+      messageCreatedAt = new Date(rawCreatedAt * 1000).toISOString();
+    } else if (typeof rawCreatedAt === 'string' && /^\d+$/.test(rawCreatedAt)) {
+      // Unix timestamp as string
+      messageCreatedAt = new Date(parseInt(rawCreatedAt) * 1000).toISOString();
+    } else if (typeof rawCreatedAt === 'string') {
+      // Try parsing as ISO or date string
+      const parsed = new Date(rawCreatedAt);
+      messageCreatedAt = isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+    } else {
+      messageCreatedAt = new Date().toISOString();
+    }
+  } catch {
+    messageCreatedAt = new Date().toISOString();
+  }
   
   console.log(`[MESSAGE_CREATED] Conv: ${conversationId}, Msg: ${messageId}, Type: ${senderType}, Name: ${senderName}`);
   console.log(`[MESSAGE_CREATED] Content: ${content.substring(0, 100)}...`);
