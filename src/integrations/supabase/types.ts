@@ -1252,6 +1252,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           case_summary: string | null
+          conversation_id: number | null
           created_at: string | null
           created_by_user_id: string | null
           id: string
@@ -1270,6 +1271,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           case_summary?: string | null
+          conversation_id?: number | null
           created_at?: string | null
           created_by_user_id?: string | null
           id?: string
@@ -1288,6 +1290,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           case_summary?: string | null
+          conversation_id?: number | null
           created_at?: string | null
           created_by_user_id?: string | null
           id?: string
