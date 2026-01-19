@@ -14,3 +14,21 @@ verify_jwt = false
 
 [functions.send-email]
 verify_jwt = false
+
+[functions.chatwoot-webhook]
+verify_jwt = false
+
+[functions.process-chatwoot-conversation]
+verify_jwt = false
+
+[functions.chatwoot-debug-conversation]
+verify_jwt = false
+
+[functions.create-user]
+verify_jwt = false
+
+[functions.approve-application]
+verify_jwt = false
+
+[functions.purchase-lead]
+verify_jwt = false
