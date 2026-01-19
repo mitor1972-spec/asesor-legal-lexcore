@@ -1,956 +1,747 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-chatwoot-signature',
 };
 
-interface ChatwootMessage {
-  id: number;
-  content: string;
-  message_type: number | string;
-  created_at: number;
-  sender?: {
-    type: string;
-    name?: string;
-  };
-}
+// =============================================================================
+// NUEVA ESTRATEGIA: Capturar mensajes en tiempo real y procesar al cerrar
+// =============================================================================
+// 
+// EVENTOS SOPORTADOS:
+// 1. message_created - Acumula cada mensaje nuevo
+// 2. message_updated - Actualiza mensaje si se edita
+// 3. conversation_updated - Captura mensajes adicionales
+// 4. conversation_status_changed - Procesa todo cuando status="resolved"
+//
+// =============================================================================
 
-interface ChatwootWebhookPayload {
-  event: string;
-  id?: number;
-  status?: string;
-  meta?: {
-    sender?: {
-      id: number;
-      name?: string;
-      email?: string;
-      phone_number?: string;
-    };
-  };
-  messages?: ChatwootMessage[];
-  changed_attributes?: {
-    status?: {
-      previous_value?: string;
-      current_value?: string;
-    };
-    [key: string]: any;
-  };
-  account?: { id: number };
-  conversation?: {
-    id: number;
-    account_id: number;
-    inbox_id: number;
-    status: string;
-    messages?: ChatwootMessage[];
-  };
-}
-
-// Log to webhook_logs table
-async function logWebhookRequest(
-  supabase: any,
-  req: Request,
-  eventType: string | null,
-  payload: any,
-  result: string,
-  errorMessage: string | null,
-  startTime: number
-) {
-  try {
-    const url = new URL(req.url);
-    const processingTime = Date.now() - startTime;
-    
-    const headers: Record<string, string> = {};
-    req.headers.forEach((value, key) => {
-      if (!['authorization', 'cookie'].includes(key.toLowerCase())) {
-        headers[key] = value;
-      }
-    });
-    
-    const queryParams: Record<string, string> = {};
-    url.searchParams.forEach((value, key) => {
-      queryParams[key] = key === 'token' ? `${value.substring(0, 8)}...` : value;
-    });
-
-    await supabase.from('webhook_logs').insert({
-      source: 'chatwoot',
-      event_type: eventType,
-      method: req.method,
-      path: url.pathname,
-      query_params: queryParams,
-      headers: headers,
-      payload: payload,
-      result: result,
-      error_message: errorMessage,
-      processing_time_ms: processingTime,
-    });
-    
-    console.log(`[WEBHOOK_LOG] ${result}: ${eventType || 'unknown'} - ${errorMessage || 'OK'} (${processingTime}ms)`);
-  } catch (e) {
-    console.error('[WEBHOOK_LOG] Error saving webhook log:', e);
-  }
-}
-
-// Log to chatwoot_import_logs table
-async function logImport(
-  supabase: any,
-  conversationId: number | null,
-  eventType: string,
-  status: string,
-  errorMessage: string | null,
-  payload: any
-) {
-  try {
-    await supabase.from('chatwoot_import_logs').insert({
-      chatwoot_conversation_id: conversationId,
-      event_type: eventType,
-      status,
-      error_message: errorMessage,
-      payload_json: payload,
-    });
-  } catch (e) {
-    console.error('[IMPORT_LOG] Error logging import:', e);
-  }
-}
-
-function extractStatus(payload: ChatwootWebhookPayload): string | null {
-  if (payload.status) return payload.status;
-  if (payload.changed_attributes?.status?.current_value) return payload.changed_attributes.status.current_value;
-  if (payload.conversation?.status) return payload.conversation.status;
-  return null;
-}
-
-function extractConversationId(payload: ChatwootWebhookPayload): number | null {
-  if (payload.id) return payload.id;
-  if (payload.conversation?.id) return payload.conversation.id;
-  return null;
-}
-
-function extractAccountId(payload: ChatwootWebhookPayload): number | null {
-  if (payload.conversation?.account_id) return payload.conversation.account_id;
-  if (payload.account?.id) return payload.account.id;
-  // Fallback: extract from first message's account_id (common in conversation_created events)
-  if (payload.messages && payload.messages.length > 0) {
-    const firstMsg = payload.messages[0] as any;
-    if (firstMsg.account_id && typeof firstMsg.account_id === 'number') {
-      return firstMsg.account_id;
-    }
-  }
-  return null;
-}
-
-// Fetch ALL messages from Chatwoot API (handles pagination)
-async function fetchAllMessages(conversationId: number, accountId: number): Promise<ChatwootMessage[]> {
-  const baseUrl = Deno.env.get('CHATWOOT_BASE_URL');
-  const apiToken = Deno.env.get('CHATWOOT_API_TOKEN');
-
-  if (!baseUrl || !apiToken) {
-    console.error('[CHATWOOT_API] Missing CHATWOOT_BASE_URL or CHATWOOT_API_TOKEN');
-    return [];
-  }
-
-  const normalizedBase = baseUrl.replace(/\/$/, '');
-
-  try {
-    const all: ChatwootMessage[] = [];
-
-    // First request exactly as documented (no page param), then paginate if meta.next_page exists
-    let page: number | null = null;
-    const maxPages = 25;
-
-    for (let i = 0; i < maxPages; i++) {
-      const qs = page ? `?page=${page}` : '';
-      const url = `${normalizedBase}/api/v1/accounts/${accountId}/conversations/${conversationId}/messages${qs}`;
-      console.log(`[CHATWOOT_API] Fetching messages${page ? ` (page ${page})` : ''} from: ${url}`);
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          api_access_token: apiToken,
-        },
-      });
-
-      const rawText = await response.text();
-      let data: any = null;
-      try {
-        data = rawText ? JSON.parse(rawText) : null;
-      } catch {
-        // keep rawText for logs
-      }
-
-      if (!response.ok) {
-        console.error(`[CHATWOOT_API] Error ${response.status}:`, data ?? rawText);
-        return [];
-      }
-
-      const payload = (data?.payload ?? data) as any;
-      const pageMessages: ChatwootMessage[] = Array.isArray(payload) ? payload : (payload?.messages ?? []);
-      console.log(`[CHATWOOT_API] Received ${pageMessages.length} messages`);
-
-      all.push(...pageMessages);
-
-      const nextPage = data?.meta?.next_page;
-      if (nextPage) {
-        page = Number(nextPage);
-        if (!Number.isFinite(page) || page < 1) break;
-        continue;
-      }
-
-      // Heuristic: if no next_page but got a full page, try next page once
-      if (!page && pageMessages.length >= 25) {
-        page = 2;
-        continue;
-      }
-
-      break;
-    }
-
-    console.log(`[CHATWOOT_API] Total fetched messages: ${all.length}`);
-    return all;
-  } catch (error) {
-    console.error('[CHATWOOT_API] Error fetching messages:', error);
-    return [];
-  }
-}
-
-// Extract contact data from message content
-interface ExtractedContactData {
-  name: string | null;
-  phone: string | null;
-  email: string | null;
-}
-
-function extractContactFromMessages(messages: ChatwootMessage[], metaSender?: { name?: string; email?: string; phone_number?: string } | null): ExtractedContactData {
-  // 1) Build text from ALL messages (Chatwoot contact profile is often empty)
-  const allText = messages
-    .map(m => (m.content || '').replace(/<[^>]*>/g, ' '))
-    .join(' ');
-
-  // 2) Best-effort: sender name from any incoming message
-  const incoming = messages.filter(m => m.message_type === 0 || m.message_type === 'incoming');
-  const senderNameFromMessages = incoming.find(m => m.sender?.name)?.sender?.name?.trim();
-
-  // 3) Extract name patterns (including from agent messages where they address the client)
-  let name: string | null = null;
-  const namePatterns = [
-    /me\s+llamo\s+m?\s*([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?)/i,
-    /soy\s+([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?)/i,
-    /mi\s+nombre\s+es\s+([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?)/i,
-    /^([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?),?\s+(?:necesito|tengo|quiero)/i,
-    /hola,?\s+(?:soy|me llamo)\s+([A-ZÀ-ÿa-z]+)/i,
-    // When an agent addresses the user by name (e.g. "De nada, Pilar", "¡Un saludo, Óscar!")
-    /de\s+nada,?\s*([A-ZÀ-ÿa-z]+)\b/i,
-    /gracias,?\s*([A-ZÀ-ÿa-z]+)\b/i,
-    /saludo,?\s*([A-ZÀ-ÿa-z]+)[!.]/i,
-    /cuídate,?\s*([A-ZÀ-ÿa-z]+)\b/i,
-    /hola,?\s*([A-ZÀ-ÿa-z]+)[!.,]/i,
-    /perfecto,?\s*([A-ZÀ-ÿa-z]+)[!.,]/i,
-    /entendido,?\s*([A-ZÀ-ÿa-z]+)[!.,]/i,
-  ];
-
-  for (const pattern of namePatterns) {
-    const match = allText.match(pattern);
-    if (match && match[1]) {
-      const candidateName = match[1].trim();
-      // Filter out common words that aren't names
-      const commonWords = ['hola', 'gracias', 'perfecto', 'vale', 'buenas', 'tardes', 'dias', 'noches', 'bien', 'claro'];
-      if (!commonWords.includes(candidateName.toLowerCase()) && candidateName.length >= 2) {
-        name = candidateName;
-        break;
-      }
-    }
-  }
-
-  if (!name && senderNameFromMessages) {
-    // Filter out auto-generated names like "proud-wind-761"
-    if (!/^[a-z]+-[a-z]+-\d+$/.test(senderNameFromMessages.toLowerCase())) {
-      name = senderNameFromMessages;
-    }
-  }
-  if (!name && metaSender?.name) {
-    // Filter out auto-generated names
-    if (!/^[a-z]+-[a-z]+-\d+$/.test(metaSender.name.toLowerCase())) {
-      name = metaSender.name.trim();
-    }
-  }
-
-  // Extract Spanish phone number: 6XXXXXXXX, 7XXXXXXXX, 8XXXXXXXX, 9XXXXXXXX
-  // Also handle formatted numbers like 666 123 456 or 666-123-456
-  let phone: string | null = null;
-  const phonePatterns = [
-    /\b([6789]\d{8})\b/,  // 9 digits starting with 6,7,8,9
-    /\b([6789]\d{2}[\s.-]?\d{3}[\s.-]?\d{3})\b/,  // formatted
-    /\b(\+34\s*[6789]\d{8})\b/,  // with country code
-  ];
-  
-  for (const pattern of phonePatterns) {
-    const match = allText.match(pattern);
-    if (match) {
-      phone = match[1].replace(/[\s.-]/g, '').replace(/^\+34/, '');
-      break;
-    }
-  }
-  
-  if (!phone && metaSender?.phone_number) {
-    const clean = String(metaSender.phone_number).replace(/\D/g, '').replace(/^34/, '');
-    if (clean.match(/^[6789]\d{8}$/)) phone = clean;
-  }
-
-  // Extract email
-  let email: string | null = null;
-  const emailMatch = allText.match(/[\w.-]+@[\w.-]+\.[A-Za-z]{2,}/i);
-  if (emailMatch) {
-    email = emailMatch[0].toLowerCase();
-  } else if (metaSender?.email) {
-    email = metaSender.email.toLowerCase();
-  }
-
-  return { name, phone, email };
-}
-
-// Build full conversation text from messages
-function buildConversationText(messages: ChatwootMessage[]): string {
-  return messages
-    .sort((a, b) => (a.created_at || 0) - (b.created_at || 0))
-    .map(m => {
-      const isAgent = m.message_type === 1 || m.message_type === 'outgoing' || 
-                      m.message_type === 3 || // System message
-                      m.sender?.type === 'User';
-      const sender = isAgent ? 'Agente' : 'Cliente';
-      return `[${sender}]: ${m.content || ''}`;
-    })
-    .join('\n');
-}
-
-// Call Lexcore with service role key (no user auth needed for webhook)
-async function callLexcore(
-  supabaseUrl: string,
-  serviceRoleKey: string,
-  leadId: string,
-  leadText: string,
-  structuredFields: any,
-  sourceChannel: string
-): Promise<{ success: boolean; error?: string; result?: any }> {
-  try {
-    console.log('[LEXCORE] Calling calculate-lexcore for lead:', leadId);
-    
-    // Create admin client to call Lexcore
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    
-    // Get active Lexcore config
-    const { data: config, error: configError } = await adminClient
-      .from('lexcore_configs')
-      .select('*')
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (configError || !config) {
-      console.error('[LEXCORE] No active config:', configError);
-      return { success: false, error: 'No active Lexcore config' };
-    }
-
-    // Get OpenAI API key
-    const { data: apiSetting } = await adminClient
-      .from('api_settings')
-      .select('key_value')
-      .eq('key_name', 'OPENAI_API_KEY')
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (!apiSetting) {
-      console.error('[LEXCORE] No OpenAI API key configured');
-      return { success: false, error: 'No OpenAI API key' };
-    }
-
-    const openAIKey = apiSetting.key_value;
-    const configJson = config.config_json;
-
-    // Build scoring prompt
-    const scoringPrompt = `Eres el motor de scoring Lexcore™ para leads legales en España.
-
-DATOS DEL LEAD:
-"""
-${JSON.stringify(structuredFields || {}, null, 2)}
-"""
-
-TEXTO ORIGINAL:
-"""
-${leadText}
-"""
-
-CANAL DE ORIGEN: ${sourceChannel}
-
-CONFIGURACIÓN DE SCORING:
-${JSON.stringify(configJson, null, 2)}
-
-Analiza el lead y calcula el scoring. Además, EXTRAE estos datos del texto si están presentes:
-- nombre: nombre del cliente
-- apellidos: apellidos del cliente
-- telefono: número de teléfono (9 dígitos españoles)
-- email: correo electrónico
-- ciudad: ciudad
-- provincia: provincia española
-- area_legal: área legal del caso (ej: Derecho de Familia, Derecho Laboral, etc.)
-- urgencia_aplica: true/false si hay urgencia
-- urgencia_motivo: razón de la urgencia
-
-Devuelve SOLO un JSON válido:
-
-{
-  "extracted_data": {
-    "nombre": "string o null",
-    "apellidos": "string o null",
-    "telefono": "string o null",
-    "email": "string o null",
-    "ciudad": "string o null",
-    "provincia": "string o null",
-    "area_legal": "string o null",
-    "urgencia_aplica": boolean,
-    "urgencia_motivo": "string o null",
-    "preferencia_contacto": "Teléfono/Email/WhatsApp o null",
-    "franja_horaria": "string o null"
-  },
-  "mode_used": "A" o "B",
-  "flags": {
-    "no_contactable": boolean,
-    "urgency_applies": boolean,
-    "patrimonial_cap_applies": boolean,
-    "amount_present": boolean
-  },
-  "raw_scores": {
-    "contactability": {"score": X, "max": 8, "breakdown": "explicación breve"},
-    "intent": {"score": X, "max": 20, "breakdown": "..."},
-    "urgency": {"score": X, "max": 10, "breakdown": "..."}, 
-    "case_quality": {"score": X, "max": 25, "breakdown": "..."},
-    "evidence": {"score": X, "max": 10, "breakdown": "..."},
-    "clarity": {"score": X, "max": 10, "breakdown": "..."}
-  },
-  "weighted_scores": {...},
-  "subtotal_weighted": X,
-  "penalties": [{"name": "nombre", "value": -X, "reason": "..."}],
-  "adjustments": [{"name": "...", "value": X, "reason": "..."}],
-  "vj": {"value": X, "reason": "1 frase"},
-  "score_final": X (0-100),
-  "price_before_caps": X,
-  "price_final": X,
-  "conclusion": "2-4 líneas resumiendo"
-}`;
-
-    console.log('[LEXCORE] Calling OpenAI...');
-    
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'Eres el motor de scoring Lexcore para leads legales. Responde SOLO con JSON válido.' },
-          { role: 'user', content: scoringPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 3000,
-      }),
-    });
-
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
-      console.error('[LEXCORE] OpenAI error:', openAIResponse.status, errorText);
-      return { success: false, error: `OpenAI error: ${openAIResponse.status}` };
-    }
-
-    const openAIData = await openAIResponse.json();
-    const content = openAIData.choices?.[0]?.message?.content;
-
-    if (!content) {
-      return { success: false, error: 'No response from OpenAI' };
-    }
-
-    // Parse JSON from response
-    let scoringResult;
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        scoringResult = JSON.parse(jsonMatch[0]);
-      } else {
-        scoringResult = JSON.parse(content);
-      }
-    } catch (parseError) {
-      console.error('[LEXCORE] JSON parse error:', parseError);
-      return { success: false, error: 'Failed to parse AI response' };
-    }
-
-    console.log('[LEXCORE] Scoring result:', JSON.stringify(scoringResult).substring(0, 500));
-
-    // Merge extracted data with existing structured fields
-    const extractedData = scoringResult.extracted_data || {};
-    const mergedFields = {
-      ...structuredFields,
-      nombre: extractedData.nombre || structuredFields.nombre,
-      apellidos: extractedData.apellidos || structuredFields.apellidos,
-      telefono: extractedData.telefono || structuredFields.telefono,
-      email: extractedData.email || structuredFields.email,
-      ciudad: extractedData.ciudad || structuredFields.ciudad,
-      provincia: extractedData.provincia || structuredFields.provincia,
-      area_legal: extractedData.area_legal || structuredFields.area_legal,
-      urgencia_aplica: extractedData.urgencia_aplica ?? structuredFields.urgencia_aplica,
-      urgencia_motivo: extractedData.urgencia_motivo || structuredFields.urgencia_motivo,
-      preferencia_contacto: extractedData.preferencia_contacto || structuredFields.preferencia_contacto,
-      franja_horaria: extractedData.franja_horaria || structuredFields.franja_horaria,
-    };
-
-    // Save the run to lexcore_runs
-    const { data: runData, error: runError } = await adminClient
-      .from('lexcore_runs')
-      .insert({
-        lead_id: leadId,
-        config_id: config.id,
-        mode_used: scoringResult.mode_used,
-        flags_json: scoringResult.flags,
-        raw_scores_json: scoringResult.raw_scores,
-        weighted_scores_json: scoringResult.weighted_scores,
-        penalties_json: scoringResult.penalties,
-        adjustments_json: scoringResult.adjustments,
-        vj_json: scoringResult.vj,
-        score_final: Math.max(0, Math.min(100, scoringResult.score_final || 0)),
-        price_lexcore: scoringResult.price_final || 5,
-        price_after_caps: scoringResult.price_final || 5,
-        conclusion_text: scoringResult.conclusion,
-        llm_response_json: scoringResult,
-      })
-      .select()
-      .single();
-
-    if (runError) {
-      console.error('[LEXCORE] Error saving run:', runError);
-    }
-
-    // Update the lead with score, price, and extracted data
-    const { error: updateError } = await adminClient
-      .from('leads')
-      .update({
-        score_final: scoringResult.score_final,
-        price_final: scoringResult.price_final,
-        structured_fields: mergedFields,
-      })
-      .eq('id', leadId);
-
-    if (updateError) {
-      console.error('[LEXCORE] Error updating lead:', updateError);
-    }
-
-    console.log('[LEXCORE] Success! Score:', scoringResult.score_final, 'Price:', scoringResult.price_final);
-    return { success: true, result: scoringResult };
-  } catch (error) {
-    console.error('[LEXCORE] Error:', error);
-    return { success: false, error: String(error) };
-  }
-}
-
-Deno.serve(async (req) => {
+serve(async (req) => {
   const startTime = Date.now();
   
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-  console.log('====================================');
-  console.log('[CHATWOOT_WEBHOOK] Request received');
-  console.log('====================================');
-
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-
-  if (req.method !== 'POST') {
-    await logWebhookRequest(supabase, req, null, null, 'error', `Method not allowed: ${req.method}`, startTime);
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  let payload: ChatwootWebhookPayload | null = null;
-  let rawBody: string = '';
-
+  
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  
+  let payload: any = null;
+  let eventType = 'unknown';
+  let conversationId: number | null = null;
+  
   try {
-    const url = new URL(req.url);
-    const token = url.searchParams.get('token');
-
-    if (!token) {
-      await logWebhookRequest(supabase, req, null, null, 'error', 'No token provided', startTime);
-      return new Response(JSON.stringify({ error: 'Token required' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const { data: settings, error: settingsError } = await supabase
-      .from('chatwoot_settings')
-      .select('*')
-      .single();
-
-    if (settingsError || !settings) {
-      await logWebhookRequest(supabase, req, null, null, 'error', `Settings error: ${settingsError?.message}`, startTime);
-      return new Response(JSON.stringify({ error: 'Configuration error' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (settings.webhook_token !== token) {
-      await logWebhookRequest(supabase, req, null, null, 'error', 'Invalid token', startTime);
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (!settings.is_active) {
-      await logWebhookRequest(supabase, req, null, null, 'ignored', 'Integration disabled', startTime);
-      return new Response(JSON.stringify({ message: 'Integration disabled' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    rawBody = await req.text();
-    console.log('[CHATWOOT_WEBHOOK] Raw payload received');
+    // Parse the payload
+    payload = await req.json();
+    eventType = payload?.event || 'unknown';
+    conversationId = payload?.conversation?.id || payload?.id || null;
     
-    try {
-      payload = JSON.parse(rawBody);
-    } catch (parseError) {
-      await logWebhookRequest(supabase, req, null, { raw: rawBody.substring(0, 2000) }, 'error', `JSON parse error`, startTime);
-      return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    console.log('[CHATWOOT_WEBHOOK] Event:', payload?.event);
+    console.log(`[CHATWOOT] Event: ${eventType}, Conversation: ${conversationId}`);
+    console.log('[CHATWOOT] Full payload:', JSON.stringify(payload, null, 2));
     
-    const conversationId = extractConversationId(payload!);
-    const accountId = extractAccountId(payload!);
-    const status = extractStatus(payload!);
-
-    if (!conversationId || !accountId) {
-      const msg = `Missing conversationId/accountId (conversationId: ${conversationId}, accountId: ${accountId})`;
-      await logImport(supabase, conversationId, payload?.event || 'unknown', 'error', msg, { payload_keys: Object.keys(payload || {}) });
-      await logWebhookRequest(supabase, req, payload?.event || null, payload, 'error', msg, startTime);
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // Route to appropriate handler based on event type
+    switch (eventType) {
+      case 'message_created':
+        await handleMessageCreated(supabase, payload);
+        break;
+        
+      case 'message_updated':
+        await handleMessageUpdated(supabase, payload);
+        break;
+        
+      case 'conversation_updated':
+        await handleConversationUpdated(supabase, payload);
+        break;
+        
+      case 'conversation_status_changed':
+        await handleConversationStatusChanged(supabase, payload);
+        break;
+        
+      default:
+        console.log(`[CHATWOOT] Ignoring event type: ${eventType}`);
     }
-
-    console.log('[CHATWOOT_WEBHOOK] ConversationId:', conversationId, 'Status:', status, 'AccountId:', accountId);
-
-    // Handle conversation status change
-    if (payload?.event === 'conversation_status_changed' || payload?.event === 'conversation_resolved') {
-      const isResolved = status === 'resolved' || payload.event === 'conversation_resolved';
-      
-      if (settings.only_resolved_conversations && !isResolved) {
-        const msg = `Not resolved (status: ${status})`;
-        await logImport(supabase, conversationId, payload.event, 'skipped', msg, { status });
-        await logWebhookRequest(supabase, req, payload.event, payload, 'ignored', msg, startTime);
-        return new Response(JSON.stringify({ message: 'Skipped - not resolved', status }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Process the conversation
-      const result = await processConversation(supabase, supabaseUrl, supabaseServiceKey, payload, settings, conversationId!, accountId);
-      const logResult = result.error ? 'error' : 'success';
-      await logWebhookRequest(supabase, req, payload.event, payload, logResult, result.error || null, startTime);
-      
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    } else if (payload?.event === 'conversation_created') {
-      if (!settings.only_resolved_conversations) {
-        const result = await processConversation(supabase, supabaseUrl, supabaseServiceKey, payload, settings, conversationId!, accountId);
-        const logResult = result.error ? 'error' : 'success';
-        await logWebhookRequest(supabase, req, payload.event, payload, logResult, result.error || null, startTime);
-        return new Response(JSON.stringify(result), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      
-      await logImport(supabase, conversationId, payload.event, 'logged', null, { event: payload.event });
-      await logWebhookRequest(supabase, req, payload.event, payload, 'ignored', 'Waiting for resolution', startTime);
-      return new Response(JSON.stringify({ message: 'Waiting for resolution' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    } else {
-      await logImport(supabase, conversationId, payload?.event || 'unknown', 'ignored', 'Unhandled event type', { event: payload?.event });
-      await logWebhookRequest(supabase, req, payload?.event || 'unknown', payload, 'ignored', `Unhandled event: ${payload?.event}`, startTime);
-      return new Response(JSON.stringify({ message: 'Event type not handled' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-  } catch (error) {
-    console.error('[CHATWOOT_WEBHOOK] UNHANDLED ERROR:', error);
-    await logWebhookRequest(supabase, req, payload?.event || null, payload || { raw: rawBody?.substring(0, 2000) }, 'error', `Unhandled error: ${error}`, startTime);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
+    
+    // Log success
+    const processingTime = Date.now() - startTime;
+    await logWebhook(supabase, {
+      source: 'chatwoot',
+      eventType,
+      payload,
+      result: 'success',
+      processingTimeMs: processingTime,
+    });
+    
+    return new Response(JSON.stringify({ success: true, event: eventType }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
+    
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+    console.error('[CHATWOOT] Error:', error);
+    
+    await logWebhook(supabase, {
+      source: 'chatwoot',
+      eventType,
+      payload,
+      result: 'error',
+      errorMessage: error instanceof Error ? error.message : String(error),
+      processingTimeMs: processingTime,
+    });
+    
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200, // Return 200 to prevent Chatwoot retries
     });
   }
 });
 
-// Check if conversation has valid content worth creating a lead
-// When API fails, we should be more lenient with validation since we only have partial data
-function isConversationValid(
-  messages: ChatwootMessage[], 
-  extractedContact: ExtractedContactData,
-  apiFallbackUsed: boolean,
-  fullConversationText: string
-): { valid: boolean; reason: string } {
-  // Filter messages from the client (not bot/agent)
-  const clientMessages = messages.filter(m => m.message_type === 0 || m.message_type === 'incoming');
+// =============================================================================
+// EVENT HANDLERS
+// =============================================================================
 
-  // Check 1: Must have at least one client message (but be lenient if API failed)
-  if (clientMessages.length === 0) {
-    // If API failed, check if conversation text contains meaningful legal content
-    // The agent might be responding to client messages we didn't receive
-    if (apiFallbackUsed) {
-      console.log('[VALIDATION] API failed, checking conversation text for legal case clues...');
-      
-      // Legal keywords that indicate a valid case was discussed
-      const legalKeywords = [
-        // Personal names being addressed
-        /(?:saludo|gracias|hola|cuídate),?\s*[A-ZÀ-ÿ][a-zà-ÿ]+[!.,]/i,
-        // Legal topics discussed
-        /(?:abogado|despacho|bufete|letrado|procurador)/i,
-        /(?:demanda|denuncia|juicio|sentencia|recurso|apelación)/i,
-        /(?:custodia|divorcio|herencia|testamento|pensión)/i,
-        /(?:contrato|indemnización|reclamación|despido)/i,
-        /(?:accidente|lesiones|daños|perjuicios)/i,
-        /(?:deuda|impago|moroso|embargo)/i,
-        /(?:arrendamiento|alquiler|desahucio|okupación)/i,
-        /(?:seguro|aseguradora|siniestro)/i,
-        // Agent confirming they'll call or follow up
-        /(?:llamar[áe]|contactar[áe]|atender[áe])/i,
-        /(?:te\s+llam|le\s+llam|nos\s+ponemos\s+en\s+contacto)/i,
-        /(?:caso|consulta|asunto|expediente)/i,
-        // Phone or contact references
-        /(?:\d{9}|\d{3}[\s.-]\d{3}[\s.-]\d{3})/,
-      ];
-      
-      const hasLegalContent = legalKeywords.some(pattern => pattern.test(fullConversationText));
-      const hasContactData = extractedContact.phone || extractedContact.email || extractedContact.name;
-      
-      console.log('[VALIDATION] Legal content found:', hasLegalContent, '| Contact data:', hasContactData);
-      
-      if (hasLegalContent || hasContactData) {
-        console.log('[VALIDATION] Accepting conversation despite API failure - legal content or contact data found');
-        // Continue with relaxed validation - we have enough to create a lead
-      } else {
-        return { valid: false, reason: 'No client messages and no legal content detected (API failed)' };
-      }
-    } else {
-      return { valid: false, reason: 'No client messages - only bot/agent messages' };
+/**
+ * Handle message_created event - Store each message as it arrives
+ */
+async function handleMessageCreated(supabase: any, payload: any) {
+  const message = payload;
+  const conversationId = message?.conversation?.id;
+  const messageId = message?.id;
+  
+  if (!conversationId || !messageId) {
+    console.log('[MESSAGE_CREATED] Missing conversation_id or message_id, skipping');
+    return;
+  }
+  
+  // Determine sender type
+  let senderType = 'system';
+  let senderName = '';
+  
+  if (message?.sender) {
+    if (message.sender.type === 'contact') {
+      senderType = 'contact';
+      senderName = message.sender.name || '';
+    } else if (message.sender.type === 'user') {
+      senderType = 'agent';
+      senderName = message.sender.name || '';
     }
   }
-
-  // Check 2: Messages must not be only automated/empty content
-  const automatedPhrases = [
-    'hemos cerrado la conversación',
-    'periodo de inactividad',
-    'conversation closed',
-    'cerrada por inactividad',
-    'ha sido cerrada',
-    'auto-closed',
-  ];
-
-  if (clientMessages.length > 0) {
-    const meaningfulMessages = clientMessages.filter(m => {
-      const content = (m.content || '').toLowerCase().trim();
-      if (!content || content.length < 3) return false;
-
-      for (const phrase of automatedPhrases) {
-        if (content.includes(phrase)) return false;
-      }
-
-      return true;
+  
+  // If no sender and message_type indicates automation
+  if (message?.message_type === 3 || message?.message_type === 2) {
+    senderType = 'system';
+  }
+  
+  const content = message?.content || '';
+  const messageCreatedAt = message?.created_at ? new Date(message.created_at * 1000).toISOString() : new Date().toISOString();
+  
+  console.log(`[MESSAGE_CREATED] Conv: ${conversationId}, Msg: ${messageId}, Type: ${senderType}, Name: ${senderName}`);
+  console.log(`[MESSAGE_CREATED] Content: ${content.substring(0, 100)}...`);
+  
+  // Upsert the message (in case of duplicates)
+  const { error } = await supabase
+    .from('chatwoot_messages')
+    .upsert({
+      conversation_id: conversationId,
+      message_id: messageId,
+      sender_type: senderType,
+      sender_name: senderName,
+      content: content,
+      message_created_at: messageCreatedAt,
+      received_at: new Date().toISOString(),
+      processed: false,
+    }, {
+      onConflict: 'message_id',
     });
-
-    if (meaningfulMessages.length === 0 && !apiFallbackUsed) {
-      return { valid: false, reason: 'Only automated/empty messages from client' };
-    }
+  
+  if (error) {
+    console.error('[MESSAGE_CREATED] Error storing message:', error);
+    throw error;
   }
-
-  // Check 3: Contact data validation
-  // When API failed, be more lenient - we might extract contact from full conversation later via Lexcore
-  if (!extractedContact.phone && !extractedContact.email) {
-    if (apiFallbackUsed && extractedContact.name) {
-      // If API failed but we have a name from agent messages, still create the lead
-      // The full conversation might have contact info that will be extracted by Lexcore
-      console.log('[VALIDATION] No phone/email but API failed and name found - will create lead for manual review');
-    } else if (!apiFallbackUsed) {
-      return { valid: false, reason: 'No contact data (phone or email) could be extracted' };
-    } else {
-      // API failed and no contact data at all - skip
-      return { valid: false, reason: 'No contact data and API failed - cannot create lead' };
-    }
-  }
-
-  // Check 4: Name is nice to have but not strictly required if we have phone/email
-  // Just log a warning if missing
-  if (!extractedContact.name) {
-    console.log('[VALIDATION] Warning: No name extracted, but contact info exists');
-    // Don't reject - we can still create lead with phone/email
-  }
-
-  return { valid: true, reason: 'Valid conversation' };
+  
+  console.log(`[MESSAGE_CREATED] Successfully stored message ${messageId}`);
 }
 
-// Process conversation - fetch ALL messages from API, extract data, create lead, call Lexcore
-async function processConversation(
-  supabase: any,
-  supabaseUrl: string,
-  supabaseServiceKey: string,
-  payload: ChatwootWebhookPayload,
-  settings: any,
-  conversationId: number,
-  accountId: number
-) {
-  console.log('[PROCESS] Starting for conversation:', conversationId);
+/**
+ * Handle message_updated event - Update message content if edited
+ */
+async function handleMessageUpdated(supabase: any, payload: any) {
+  const message = payload;
+  const messageId = message?.id;
+  const conversationId = message?.conversation?.id;
   
-  // Check if already processed
+  if (!messageId) {
+    console.log('[MESSAGE_UPDATED] Missing message_id, skipping');
+    return;
+  }
+  
+  const content = message?.content || '';
+  
+  console.log(`[MESSAGE_UPDATED] Updating message ${messageId} with new content`);
+  
+  // First try to update existing
+  const { data, error } = await supabase
+    .from('chatwoot_messages')
+    .update({ content: content })
+    .eq('message_id', messageId)
+    .select();
+  
+  if (error) {
+    console.error('[MESSAGE_UPDATED] Error updating message:', error);
+    throw error;
+  }
+  
+  // If no rows updated, insert as new
+  if (!data || data.length === 0) {
+    console.log('[MESSAGE_UPDATED] Message not found, inserting as new');
+    await handleMessageCreated(supabase, payload);
+  } else {
+    console.log(`[MESSAGE_UPDATED] Successfully updated message ${messageId}`);
+  }
+}
+
+/**
+ * Handle conversation_updated event - Check for new messages in payload
+ */
+async function handleConversationUpdated(supabase: any, payload: any) {
+  const conversationId = payload?.id;
+  
+  if (!conversationId) {
+    console.log('[CONVERSATION_UPDATED] Missing conversation_id, skipping');
+    return;
+  }
+  
+  console.log(`[CONVERSATION_UPDATED] Processing conversation ${conversationId}`);
+  
+  // Check if there are messages in the payload
+  const messages = payload?.messages || [];
+  
+  for (const msg of messages) {
+    // Simulate message_created for each message
+    await handleMessageCreated(supabase, {
+      ...msg,
+      conversation: { id: conversationId },
+    });
+  }
+  
+  console.log(`[CONVERSATION_UPDATED] Processed ${messages.length} messages`);
+}
+
+/**
+ * Handle conversation_status_changed event - Process and create lead when resolved
+ */
+async function handleConversationStatusChanged(supabase: any, payload: any) {
+  const conversationId = payload?.id;
+  const newStatus = payload?.status;
+  
+  console.log(`[STATUS_CHANGED] Conversation ${conversationId} -> ${newStatus}`);
+  
+  if (!conversationId) {
+    console.log('[STATUS_CHANGED] Missing conversation_id, skipping');
+    return;
+  }
+  
+  // Only process when status changes to "resolved"
+  if (newStatus !== 'resolved') {
+    console.log(`[STATUS_CHANGED] Status is "${newStatus}", not "resolved", skipping lead creation`);
+    return;
+  }
+  
+  // 1. Check if already processed
   const { data: existingConv } = await supabase
     .from('chatwoot_conversations')
     .select('id, lead_id')
     .eq('chatwoot_conversation_id', conversationId)
-    .single();
-
-  if (existingConv) {
-    console.log('[PROCESS] Already processed - lead_id:', existingConv.lead_id);
-    await logImport(supabase, conversationId, payload.event, 'skipped', 'Already processed', { lead_id: existingConv.lead_id });
-    return { message: 'Already processed', lead_id: existingConv.lead_id };
-  }
-
-  // Fetch ALL messages from Chatwoot API
-  console.log('[PROCESS] Fetching all messages from Chatwoot API...');
-  let messages = await fetchAllMessages(conversationId, accountId);
-  const apiFallbackUsed = messages.length === 0;
+    .maybeSingle();
   
-  // Fallback to payload messages if API fails
-  if (apiFallbackUsed) {
-    console.log('[PROCESS] API returned no messages, using payload messages');
-    messages = payload.messages || payload.conversation?.messages || [];
+  if (existingConv?.lead_id) {
+    console.log(`[STATUS_CHANGED] Conversation ${conversationId} already processed with lead ${existingConv.lead_id}`);
+    return;
   }
-
-  console.log(`[PROCESS] Total messages: ${messages.length}`);
-
-  if (messages.length === 0) {
-    await logImport(supabase, conversationId, payload.event, 'skipped', 'No messages', { payload_keys: Object.keys(payload) });
-    return { message: 'Skipped - no messages' };
+  
+  // 2. Fetch all accumulated messages for this conversation
+  const { data: messages, error: msgError } = await supabase
+    .from('chatwoot_messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('message_created_at', { ascending: true });
+  
+  if (msgError) {
+    console.error('[STATUS_CHANGED] Error fetching messages:', msgError);
+    throw msgError;
   }
-
-  // Build full conversation text
-  const conversationContent = buildConversationText(messages);
-  console.log('[PROCESS] Conversation preview:', conversationContent.substring(0, 300));
-
-  // Extract contact data from messages (Chatwoot contact profile can be empty)
-  const extractedContact = extractContactFromMessages(messages, payload.meta?.sender || null);
-  console.log('[PROCESS] Extracted contact:', extractedContact);
-
-  // VALIDATION: Check if conversation is worth creating a lead
-  const validation = isConversationValid(messages, extractedContact, apiFallbackUsed, conversationContent);
-  if (!validation.valid) {
-    console.log('[PROCESS] SKIPPED - Invalid conversation:', validation.reason);
-    await logImport(supabase, conversationId, payload.event, 'skipped', validation.reason, { 
-      messages_count: messages.length,
-      client_messages_count: messages.filter(m => m.message_type === 0 || m.message_type === 'incoming').length,
-      api_fallback_used: apiFallbackUsed,
-      extracted_contact: extractedContact,
-      preview: conversationContent.substring(0, 200)
-    });
-    return { message: `Skipped - ${validation.reason}`, skipped: true };
+  
+  console.log(`[STATUS_CHANGED] Found ${messages?.length || 0} accumulated messages`);
+  
+  // If no messages accumulated, try to extract from payload + API
+  if (!messages || messages.length === 0) {
+    console.log('[STATUS_CHANGED] No accumulated messages, trying to fetch from API...');
+    await fetchAndStoreMessagesFromAPI(supabase, conversationId, payload);
+    
+    // Re-fetch after API call
+    const { data: refetchedMessages } = await supabase
+      .from('chatwoot_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('message_created_at', { ascending: true });
+    
+    if (!refetchedMessages || refetchedMessages.length === 0) {
+      console.log('[STATUS_CHANGED] Still no messages after API fetch, cannot create lead');
+      await logImportResult(supabase, conversationId, 'skipped', 'No messages found for conversation');
+      return;
+    }
+    
+    // Use refetched messages
+    await processMessagesAndCreateLead(supabase, conversationId, refetchedMessages, payload);
+  } else {
+    // Process accumulated messages
+    await processMessagesAndCreateLead(supabase, conversationId, messages, payload);
   }
+}
 
+// =============================================================================
+// LEAD CREATION LOGIC
+// =============================================================================
+
+async function processMessagesAndCreateLead(supabase: any, conversationId: number, messages: any[], payload: any) {
+  console.log(`[PROCESS] Processing ${messages.length} messages for conversation ${conversationId}`);
+  
+  // Separate messages by sender type
+  const contactMessages = messages.filter(m => m.sender_type === 'contact');
+  const agentMessages = messages.filter(m => m.sender_type === 'agent');
+  const allMessages = messages.filter(m => m.sender_type !== 'system');
+  
+  console.log(`[PROCESS] Contact messages: ${contactMessages.length}, Agent messages: ${agentMessages.length}`);
+  
+  // Build conversation text
+  const contactText = contactMessages.map(m => m.content).join('\n');
+  const fullConversationText = allMessages
+    .map(m => `[${m.sender_type === 'contact' ? 'Cliente' : 'Agente'}]: ${m.content}`)
+    .join('\n');
+  
+  // Extract contact data from all text sources
+  const extractedData = extractContactData(contactText, agentMessages.map(m => m.content).join('\n'), payload);
+  
+  console.log('[PROCESS] Extracted data:', JSON.stringify(extractedData, null, 2));
+  
+  // Validate - must have at least phone OR email
+  if (!extractedData.phone && !extractedData.email) {
+    console.log('[PROCESS] No phone or email found, skipping lead creation');
+    await logImportResult(supabase, conversationId, 'skipped', 'No contact data (phone or email) could be extracted');
+    return;
+  }
+  
+  // Check for meaningful content
+  if (contactMessages.length === 0 && !hasLegalContent(fullConversationText)) {
+    console.log('[PROCESS] No contact messages and no legal content, skipping');
+    await logImportResult(supabase, conversationId, 'skipped', 'No client messages and no legal content');
+    return;
+  }
+  
+  // Get settings for source channel
+  const { data: settings } = await supabase
+    .from('chatwoot_settings')
+    .select('default_source_channel')
+    .limit(1)
+    .single();
+  
+  const sourceChannel = settings?.default_source_channel || 'Web chat';
+  
   // Build structured fields
-  const structuredFields = {
-    nombre: extractedContact.name,
-    telefono: extractedContact.phone,
-    email: extractedContact.email,
-    fuente: 'Chatwoot',
-    chatwoot_conversation_id: conversationId,
-  };
-
-  // Create lead
-  console.log('[PROCESS] Creating lead...');
+  const structuredFields: any = {};
+  if (extractedData.name) structuredFields.contact_name = extractedData.name;
+  if (extractedData.phone) structuredFields.contact_phone = extractedData.phone;
+  if (extractedData.email) structuredFields.contact_email = extractedData.email;
+  if (extractedData.city) structuredFields.city = extractedData.city;
+  if (extractedData.province) structuredFields.province = extractedData.province;
+  structuredFields.chatwoot_conversation_id = conversationId;
+  
+  // Create the lead
+  const leadText = fullConversationText || contactText || 'Conversación de Chatwoot sin contenido textual';
+  
   const { data: lead, error: leadError } = await supabase
     .from('leads')
     .insert({
-      lead_text: conversationContent,
-      source_channel: settings.default_source_channel || 'Web chat',
+      lead_text: leadText,
+      source_channel: sourceChannel,
       status_internal: 'Pendiente',
       structured_fields: structuredFields,
     })
     .select()
     .single();
-
+  
   if (leadError) {
     console.error('[PROCESS] Error creating lead:', leadError);
-    await logImport(supabase, conversationId, payload.event, 'error', `Error creating lead: ${leadError.message}`, { error: leadError });
-    return { error: 'Error creating lead' };
+    throw leadError;
   }
-
-  console.log('[PROCESS] Lead created:', lead.id);
-
-  // Save conversation record
-  await supabase.from('chatwoot_conversations').insert({
+  
+  console.log(`[PROCESS] Created lead ${lead.id}`);
+  
+  // Save to chatwoot_conversations for tracking
+  await supabase.from('chatwoot_conversations').upsert({
     chatwoot_conversation_id: conversationId,
-    chatwoot_account_id: accountId,
-    lead_id: lead.id,
-    contact_name: extractedContact.name,
-    contact_email: extractedContact.email,
-    contact_phone: extractedContact.phone,
-    status: extractStatus(payload),
+    chatwoot_account_id: payload?.account?.id || null,
+    chatwoot_contact_id: payload?.meta?.sender?.id || null,
+    contact_name: extractedData.name,
+    contact_phone: extractedData.phone,
+    contact_email: extractedData.email,
+    conversation_content: fullConversationText.substring(0, 10000),
     messages_count: messages.length,
-    conversation_content: conversationContent,
+    status: 'resolved',
+    lead_id: lead.id,
+    processed_at: new Date().toISOString(),
+  }, {
+    onConflict: 'chatwoot_conversation_id',
   });
+  
+  // Mark messages as processed
+  await supabase
+    .from('chatwoot_messages')
+    .update({ processed: true, lead_id: lead.id })
+    .eq('conversation_id', conversationId);
+  
+  // Log success
+  await logImportResult(supabase, conversationId, 'success', null, lead.id);
+  
+  // Process with Lexcore
+  await processWithLexcore(supabase, lead.id);
+  
+  console.log(`[PROCESS] Successfully completed processing for conversation ${conversationId}`);
+}
 
-  // Call Lexcore to extract data and calculate scoring
-  if (settings.auto_process_lexcore) {
-    console.log('[PROCESS] Calling Lexcore...');
-    const lexcoreResult = await callLexcore(
-      supabaseUrl,
-      supabaseServiceKey,
-      lead.id,
-      conversationContent,
-      structuredFields,
-      settings.default_source_channel || 'Web chat'
-    );
-    
-    if (lexcoreResult.success) {
-      console.log('[PROCESS] Lexcore completed successfully');
-    } else {
-      console.error('[PROCESS] Lexcore failed:', lexcoreResult.error);
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Extract contact data from conversation text
+ */
+function extractContactData(contactText: string, agentText: string, payload: any): {
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  city: string | null;
+  province: string | null;
+} {
+  const allText = `${contactText}\n${agentText}`;
+  
+  // Extract phone - Spanish mobile/landline patterns
+  const phonePatterns = [
+    /(?:\+34)?[6789]\d{8}/g,                    // Spanish mobiles
+    /(?:\+34)?\s*\d{3}[\s.-]?\d{3}[\s.-]?\d{3}/g, // With separators
+    /(?:\+34)?\s*\d{2}[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}/g, // Landlines
+  ];
+  
+  let phone: string | null = null;
+  for (const pattern of phonePatterns) {
+    const matches = allText.match(pattern);
+    if (matches && matches.length > 0) {
+      // Clean and normalize
+      phone = matches[0].replace(/[\s.-]/g, '').replace(/^\+34/, '');
+      if (phone.length >= 9) break;
     }
   }
+  
+  // Extract email
+  const emailMatch = allText.match(/[\w.-]+@[\w.-]+\.\w{2,}/i);
+  const email = emailMatch ? emailMatch[0].toLowerCase() : null;
+  
+  // Extract name from various patterns
+  let name: string | null = null;
+  
+  // From payload first (most reliable)
+  if (payload?.meta?.sender?.name) {
+    name = payload.meta.sender.name;
+  }
+  
+  // From contact text patterns
+  if (!name) {
+    const namePatterns = [
+      /(?:me llamo|soy|mi nombre es)\s+([A-ZÀ-ÿ][a-zà-ÿ]+(?:\s+[A-ZÀ-ÿ][a-zà-ÿ]+)?)/i,
+      /(?:soy\s+)?([A-ZÀ-ÿ][a-zà-ÿ]+)\s*,?\s*(?:tengo|necesito|quiero)/i,
+    ];
+    
+    for (const pattern of namePatterns) {
+      const match = contactText.match(pattern);
+      if (match && match[1]) {
+        name = match[1].trim();
+        break;
+      }
+    }
+  }
+  
+  // From agent messages (they often greet by name)
+  if (!name) {
+    const agentNamePatterns = [
+      /(?:hola|buenos días|buenas tardes|estimado\/a?|querido\/a?),?\s*([A-ZÀ-ÿ][a-zà-ÿ]+)/i,
+      /(?:gracias|saludos),?\s*([A-ZÀ-ÿ][a-zà-ÿ]+)/i,
+    ];
+    
+    for (const pattern of agentNamePatterns) {
+      const match = agentText.match(pattern);
+      if (match && match[1]) {
+        // Validate it's not a common word
+        const commonWords = ['señor', 'señora', 'sr', 'sra', 'don', 'doña', 'cliente', 'usuario'];
+        if (!commonWords.includes(match[1].toLowerCase())) {
+          name = match[1].trim();
+          break;
+        }
+      }
+    }
+  }
+  
+  // Extract city/province from payload
+  const city = payload?.additional_attributes?.city || 
+               payload?.meta?.sender?.additional_attributes?.city || 
+               null;
+               
+  const province = payload?.additional_attributes?.province || 
+                   payload?.meta?.sender?.additional_attributes?.province || 
+                   null;
+  
+  return { name, phone, email, city, province };
+}
 
-  await logImport(supabase, conversationId, payload.event, 'success', null, { 
-    lead_id: lead.id,
-    messages_count: messages.length,
-    api_fallback_used: apiFallbackUsed,
-    extracted_contact: extractedContact 
-  });
+/**
+ * Check if text contains legal-related content
+ */
+function hasLegalContent(text: string): boolean {
+  const legalKeywords = [
+    /(?:abogado|despacho|bufete|letrado|procurador)/i,
+    /(?:demanda|denuncia|juicio|sentencia|recurso|apelación)/i,
+    /(?:custodia|divorcio|herencia|testamento|pensión)/i,
+    /(?:contrato|indemnización|reclamación|despido)/i,
+    /(?:accidente|lesiones|daños|perjuicios)/i,
+    /(?:deuda|impago|moroso|embargo)/i,
+    /(?:arrendamiento|alquiler|desahucio|okupación)/i,
+    /(?:seguro|aseguradora|siniestro)/i,
+    /(?:caso|consulta|asunto|expediente)/i,
+  ];
+  
+  return legalKeywords.some(pattern => pattern.test(text));
+}
 
-  console.log('[PROCESS] SUCCESS - Lead:', lead.id);
-  return { 
-    message: 'Lead created and processed', 
-    lead_id: lead.id,
-    messages_count: messages.length,
-    extracted_contact: extractedContact
-  };
+/**
+ * Fetch messages from Chatwoot API and store them
+ */
+async function fetchAndStoreMessagesFromAPI(supabase: any, conversationId: number, payload: any) {
+  const chatwootToken = Deno.env.get('CHATWOOT_API_TOKEN');
+  const chatwootUrl = Deno.env.get('CHATWOOT_API_URL') || 'https://app.chatwoot.com';
+  const accountId = payload?.account?.id;
+  
+  if (!chatwootToken || !accountId) {
+    console.log('[API_FETCH] Missing API token or account ID, skipping API fetch');
+    
+    // Try to extract from payload at least
+    const payloadMessages = extractMessagesFromPayload(payload);
+    for (const msg of payloadMessages) {
+      await storeMessage(supabase, conversationId, msg);
+    }
+    return;
+  }
+  
+  try {
+    const apiUrl = `${chatwootUrl}/api/v1/accounts/${accountId}/conversations/${conversationId}/messages`;
+    console.log(`[API_FETCH] Fetching from: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
+      headers: {
+        'api_access_token': chatwootToken,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      console.error(`[API_FETCH] API error: ${response.status} ${response.statusText}`);
+      
+      // Fall back to payload extraction
+      const payloadMessages = extractMessagesFromPayload(payload);
+      for (const msg of payloadMessages) {
+        await storeMessage(supabase, conversationId, msg);
+      }
+      return;
+    }
+    
+    const data = await response.json();
+    const messages = data?.payload || data?.messages || [];
+    
+    console.log(`[API_FETCH] Fetched ${messages.length} messages from API`);
+    
+    for (const msg of messages) {
+      await storeMessage(supabase, conversationId, {
+        messageId: msg.id,
+        senderType: msg.sender?.type === 'contact' ? 'contact' : 
+                    msg.sender?.type === 'user' ? 'agent' : 'system',
+        senderName: msg.sender?.name || '',
+        content: msg.content || '',
+        createdAt: msg.created_at ? new Date(msg.created_at * 1000).toISOString() : new Date().toISOString(),
+      });
+    }
+    
+  } catch (error) {
+    console.error('[API_FETCH] Error fetching from API:', error);
+    
+    // Fall back to payload extraction
+    const payloadMessages = extractMessagesFromPayload(payload);
+    for (const msg of payloadMessages) {
+      await storeMessage(supabase, conversationId, msg);
+    }
+  }
+}
+
+/**
+ * Extract any messages present in the payload
+ */
+function extractMessagesFromPayload(payload: any): any[] {
+  const messages: any[] = [];
+  
+  // Check various payload structures
+  const payloadMessages = payload?.messages || 
+                          payload?.conversation?.messages || 
+                          [];
+  
+  for (const msg of payloadMessages) {
+    messages.push({
+      messageId: msg.id,
+      senderType: msg.sender?.type === 'contact' ? 'contact' : 
+                  msg.sender?.type === 'user' ? 'agent' : 'system',
+      senderName: msg.sender?.name || '',
+      content: msg.content || '',
+      createdAt: msg.created_at ? new Date(msg.created_at * 1000).toISOString() : new Date().toISOString(),
+    });
+  }
+  
+  // Also check for last_non_activity_message
+  if (payload?.last_non_activity_message) {
+    const msg = payload.last_non_activity_message;
+    messages.push({
+      messageId: msg.id,
+      senderType: msg.sender?.type === 'contact' ? 'contact' : 
+                  msg.sender?.type === 'user' ? 'agent' : 'system',
+      senderName: msg.sender?.name || '',
+      content: msg.content || '',
+      createdAt: msg.created_at ? new Date(msg.created_at * 1000).toISOString() : new Date().toISOString(),
+    });
+  }
+  
+  return messages;
+}
+
+/**
+ * Store a single message in the database
+ */
+async function storeMessage(supabase: any, conversationId: number, msg: {
+  messageId: number;
+  senderType: string;
+  senderName: string;
+  content: string;
+  createdAt: string;
+}) {
+  if (!msg.messageId || !msg.content) return;
+  
+  const { error } = await supabase
+    .from('chatwoot_messages')
+    .upsert({
+      conversation_id: conversationId,
+      message_id: msg.messageId,
+      sender_type: msg.senderType,
+      sender_name: msg.senderName,
+      content: msg.content,
+      message_created_at: msg.createdAt,
+      received_at: new Date().toISOString(),
+      processed: false,
+    }, {
+      onConflict: 'message_id',
+    });
+  
+  if (error) {
+    console.error('[STORE_MSG] Error:', error);
+  }
+}
+
+/**
+ * Process lead with Lexcore scoring
+ */
+async function processWithLexcore(supabase: any, leadId: string) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  
+  try {
+    console.log(`[LEXCORE] Processing lead ${leadId}`);
+    
+    const response = await fetch(`${supabaseUrl}/functions/v1/calculate-lexcore`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ lead_id: leadId }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[LEXCORE] Error: ${response.status} - ${errorText}`);
+    } else {
+      const result = await response.json();
+      console.log(`[LEXCORE] Success: Score=${result.score}, Price=${result.price}`);
+    }
+  } catch (error) {
+    console.error('[LEXCORE] Error calling calculate-lexcore:', error);
+    // Don't throw - Lexcore processing is not critical for lead creation
+  }
+}
+
+/**
+ * Log import result to chatwoot_import_logs
+ */
+async function logImportResult(
+  supabase: any, 
+  conversationId: number, 
+  status: 'success' | 'skipped' | 'error', 
+  errorMessage?: string | null,
+  leadId?: string
+) {
+  try {
+    await supabase.from('chatwoot_import_logs').insert({
+      chatwoot_conversation_id: conversationId,
+      event_type: 'conversation_status_changed',
+      status: status,
+      error_message: errorMessage,
+      payload_json: leadId ? { lead_id: leadId } : null,
+    });
+  } catch (error) {
+    console.error('[LOG] Error logging import result:', error);
+  }
+}
+
+/**
+ * Log webhook event
+ */
+async function logWebhook(supabase: any, data: {
+  source: string;
+  eventType: string;
+  payload: any;
+  result: string;
+  errorMessage?: string;
+  processingTimeMs: number;
+}) {
+  try {
+    await supabase.from('webhook_logs').insert({
+      source: data.source,
+      event_type: data.eventType,
+      payload: data.payload,
+      result: data.result,
+      error_message: data.errorMessage,
+      processing_time_ms: data.processingTimeMs,
+    });
+  } catch (error) {
+    console.error('[LOG] Error logging webhook:', error);
+  }
 }

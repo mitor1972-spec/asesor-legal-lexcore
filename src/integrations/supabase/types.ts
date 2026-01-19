@@ -401,6 +401,53 @@ export type Database = {
         }
         Relationships: []
       }
+      chatwoot_messages: {
+        Row: {
+          content: string | null
+          conversation_id: number
+          id: string
+          lead_id: string | null
+          message_created_at: string | null
+          message_id: number | null
+          processed: boolean | null
+          received_at: string | null
+          sender_name: string | null
+          sender_type: string | null
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: number
+          id?: string
+          lead_id?: string | null
+          message_created_at?: string | null
+          message_id?: number | null
+          processed?: boolean | null
+          received_at?: string | null
+          sender_name?: string | null
+          sender_type?: string | null
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: number
+          id?: string
+          lead_id?: string | null
+          message_created_at?: string | null
+          message_id?: number | null
+          processed?: boolean | null
+          received_at?: string | null
+          sender_name?: string | null
+          sender_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chatwoot_messages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chatwoot_settings: {
         Row: {
           auto_process_lexcore: boolean | null
