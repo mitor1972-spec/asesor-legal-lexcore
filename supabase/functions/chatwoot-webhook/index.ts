@@ -230,7 +230,7 @@ function extractContactFromMessages(messages: ChatwootMessage[], metaSender?: { 
   const incoming = messages.filter(m => m.message_type === 0 || m.message_type === 'incoming');
   const senderNameFromMessages = incoming.find(m => m.sender?.name)?.sender?.name?.trim();
 
-  // 3) Extract name patterns
+  // 3) Extract name patterns (including from agent messages where they address the client)
   let name: string | null = null;
   const namePatterns = [
     /me\s+llamo\s+m?\s*([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?)/i,
@@ -238,29 +238,61 @@ function extractContactFromMessages(messages: ChatwootMessage[], metaSender?: { 
     /mi\s+nombre\s+es\s+([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?)/i,
     /^([A-ZÀ-ÿa-z]+(?:\s+[A-ZÀ-ÿa-z]+)?),?\s+(?:necesito|tengo|quiero)/i,
     /hola,?\s+(?:soy|me llamo)\s+([A-ZÀ-ÿa-z]+)/i,
-    // When an agent addresses the user by name (e.g. "De nada, Pilar")
+    // When an agent addresses the user by name (e.g. "De nada, Pilar", "¡Un saludo, Óscar!")
     /de\s+nada,?\s*([A-ZÀ-ÿa-z]+)\b/i,
     /gracias,?\s*([A-ZÀ-ÿa-z]+)\b/i,
+    /saludo,?\s*([A-ZÀ-ÿa-z]+)[!.]/i,
+    /cuídate,?\s*([A-ZÀ-ÿa-z]+)\b/i,
+    /hola,?\s*([A-ZÀ-ÿa-z]+)[!.,]/i,
+    /perfecto,?\s*([A-ZÀ-ÿa-z]+)[!.,]/i,
+    /entendido,?\s*([A-ZÀ-ÿa-z]+)[!.,]/i,
   ];
 
   for (const pattern of namePatterns) {
     const match = allText.match(pattern);
     if (match && match[1]) {
-      name = match[1].trim();
-      break;
+      const candidateName = match[1].trim();
+      // Filter out common words that aren't names
+      const commonWords = ['hola', 'gracias', 'perfecto', 'vale', 'buenas', 'tardes', 'dias', 'noches', 'bien', 'claro'];
+      if (!commonWords.includes(candidateName.toLowerCase()) && candidateName.length >= 2) {
+        name = candidateName;
+        break;
+      }
     }
   }
 
-  if (!name && senderNameFromMessages) name = senderNameFromMessages;
-  if (!name && metaSender?.name) name = metaSender.name.trim();
+  if (!name && senderNameFromMessages) {
+    // Filter out auto-generated names like "proud-wind-761"
+    if (!/^[a-z]+-[a-z]+-\d+$/.test(senderNameFromMessages.toLowerCase())) {
+      name = senderNameFromMessages;
+    }
+  }
+  if (!name && metaSender?.name) {
+    // Filter out auto-generated names
+    if (!/^[a-z]+-[a-z]+-\d+$/.test(metaSender.name.toLowerCase())) {
+      name = metaSender.name.trim();
+    }
+  }
 
   // Extract Spanish phone number: 6XXXXXXXX, 7XXXXXXXX, 8XXXXXXXX, 9XXXXXXXX
+  // Also handle formatted numbers like 666 123 456 or 666-123-456
   let phone: string | null = null;
-  const phoneMatch = allText.match(/\b([6789]\d{8})\b/);
-  if (phoneMatch) {
-    phone = phoneMatch[1];
-  } else if (metaSender?.phone_number) {
-    const clean = String(metaSender.phone_number).replace(/\D/g, '');
+  const phonePatterns = [
+    /\b([6789]\d{8})\b/,  // 9 digits starting with 6,7,8,9
+    /\b([6789]\d{2}[\s.-]?\d{3}[\s.-]?\d{3})\b/,  // formatted
+    /\b(\+34\s*[6789]\d{8})\b/,  // with country code
+  ];
+  
+  for (const pattern of phonePatterns) {
+    const match = allText.match(pattern);
+    if (match) {
+      phone = match[1].replace(/[\s.-]/g, '').replace(/^\+34/, '');
+      break;
+    }
+  }
+  
+  if (!phone && metaSender?.phone_number) {
+    const clean = String(metaSender.phone_number).replace(/\D/g, '').replace(/^34/, '');
     if (clean.match(/^[6789]\d{8}$/)) phone = clean;
   }
 
@@ -674,13 +706,37 @@ Deno.serve(async (req) => {
 });
 
 // Check if conversation has valid content worth creating a lead
-function isConversationValid(messages: ChatwootMessage[], extractedContact: ExtractedContactData): { valid: boolean; reason: string } {
+// When API fails, we should be more lenient with validation since we only have partial data
+function isConversationValid(
+  messages: ChatwootMessage[], 
+  extractedContact: ExtractedContactData,
+  apiFallbackUsed: boolean,
+  fullConversationText: string
+): { valid: boolean; reason: string } {
   // Filter messages from the client (not bot/agent)
   const clientMessages = messages.filter(m => m.message_type === 0 || m.message_type === 'incoming');
 
-  // Check 1: Must have at least one client message
+  // Check 1: Must have at least one client message (but be lenient if API failed)
   if (clientMessages.length === 0) {
-    return { valid: false, reason: 'No client messages - only bot/agent messages' };
+    // If API failed, check if conversation text contains meaningful content
+    // The agent might be responding to client messages we didn't receive
+    if (apiFallbackUsed) {
+      console.log('[VALIDATION] API failed, checking conversation text for clues...');
+      // Check if agent messages reference client data (names, cases, etc.)
+      const hasClientDataInConversation = 
+        extractedContact.phone || 
+        extractedContact.email || 
+        /(?:llamo|soy|mi nombre es|le llamo|contacto)/i.test(fullConversationText);
+      
+      if (hasClientDataInConversation) {
+        console.log('[VALIDATION] Found client data in conversation despite API failure');
+        // Continue with relaxed validation
+      } else {
+        return { valid: false, reason: 'No client messages - only bot/agent messages (API failed, no client data found)' };
+      }
+    } else {
+      return { valid: false, reason: 'No client messages - only bot/agent messages' };
+    }
   }
 
   // Check 2: Messages must not be only automated/empty content
@@ -693,29 +749,34 @@ function isConversationValid(messages: ChatwootMessage[], extractedContact: Extr
     'auto-closed',
   ];
 
-  const meaningfulMessages = clientMessages.filter(m => {
-    const content = (m.content || '').toLowerCase().trim();
-    if (!content || content.length < 3) return false;
+  if (clientMessages.length > 0) {
+    const meaningfulMessages = clientMessages.filter(m => {
+      const content = (m.content || '').toLowerCase().trim();
+      if (!content || content.length < 3) return false;
 
-    for (const phrase of automatedPhrases) {
-      if (content.includes(phrase)) return false;
+      for (const phrase of automatedPhrases) {
+        if (content.includes(phrase)) return false;
+      }
+
+      return true;
+    });
+
+    if (meaningfulMessages.length === 0 && !apiFallbackUsed) {
+      return { valid: false, reason: 'Only automated/empty messages from client' };
     }
-
-    return true;
-  });
-
-  if (meaningfulMessages.length === 0) {
-    return { valid: false, reason: 'Only automated/empty messages from client' };
   }
 
   // Check 3: Must have at least phone OR email extracted
+  // This is a REQUIRED check - without contact info we can't follow up
   if (!extractedContact.phone && !extractedContact.email) {
     return { valid: false, reason: 'No contact data (phone or email) could be extracted' };
   }
 
-  // Check 4: Avoid "Sin nombre" leads
+  // Check 4: Name is nice to have but not strictly required if we have phone/email
+  // Just log a warning if missing
   if (!extractedContact.name) {
-    return { valid: false, reason: 'No name could be extracted' };
+    console.log('[VALIDATION] Warning: No name extracted, but contact info exists');
+    // Don't reject - we can still create lead with phone/email
   }
 
   return { valid: true, reason: 'Valid conversation' };
@@ -773,7 +834,7 @@ async function processConversation(
   console.log('[PROCESS] Extracted contact:', extractedContact);
 
   // VALIDATION: Check if conversation is worth creating a lead
-  const validation = isConversationValid(messages, extractedContact);
+  const validation = isConversationValid(messages, extractedContact, apiFallbackUsed, conversationContent);
   if (!validation.valid) {
     console.log('[PROCESS] SKIPPED - Invalid conversation:', validation.reason);
     await logImport(supabase, conversationId, payload.event, 'skipped', validation.reason, { 

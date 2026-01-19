@@ -172,6 +172,28 @@ export default function ChatwootSettings() {
     }
   };
 
+  const copyFullLog = async (log: WebhookLog) => {
+    try {
+      const fullLog = {
+        id: log.id,
+        created_at: log.created_at,
+        source: log.source,
+        event_type: log.event_type,
+        method: log.method,
+        result: log.result,
+        error_message: log.error_message,
+        processing_time_ms: log.processing_time_ms,
+        query_params: log.query_params,
+        headers: log.headers,
+        payload: log.payload,
+      };
+      await navigator.clipboard.writeText(JSON.stringify(fullLog, null, 2));
+      toast.success('Log completo copiado al portapapeles');
+    } catch {
+      toast.error('Error copiando log');
+    }
+  };
+
   const getResultBadge = (result: string) => {
     switch (result) {
       case 'success':
@@ -407,6 +429,22 @@ export default function ChatwootSettings() {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <div className="mt-2 p-3 bg-muted rounded-lg space-y-3">
+                            {/* Copy Full Log Button at the top */}
+                            <div className="flex justify-end">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-7"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyFullLog(log);
+                                }}
+                              >
+                                <Clipboard className="w-3 h-3 mr-1" />
+                                Copiar log completo
+                              </Button>
+                            </div>
+                            
                             {log.query_params && Object.keys(log.query_params).length > 0 && (
                               <div>
                                 <Label className="text-xs">Query Params</Label>
