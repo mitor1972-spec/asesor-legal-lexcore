@@ -16,6 +16,7 @@ import { Plus, Search, Pencil, Archive, Thermometer, FileDown, Building2, X, Tra
 import { toast } from 'sonner';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
 import { BulkAssignDialog } from '@/components/lead/BulkAssignDialog';
+import { CleanupLeadsDialog } from '@/components/admin/CleanupLeadsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { exportLeadsToExcel } from '@/lib/exportToExcel';
 
@@ -201,6 +202,7 @@ export default function Leads() {
           <p className="text-muted-foreground">{data?.totalCount ?? 0} leads en total</p>
         </div>
         <div className="flex gap-2">
+          <CleanupLeadsDialog />
           <Button variant="outline" onClick={handleExport}>
             <FileDown className="mr-2 h-4 w-4" />Exportar Excel
           </Button>
