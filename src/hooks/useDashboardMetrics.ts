@@ -89,21 +89,22 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
   return useQuery({
     queryKey: ['dashboard-metrics', period, customRange?.start?.toISOString(), customRange?.end?.toISOString()],
     queryFn: async (): Promise<DashboardMetrics> => {
-      // Fetch current period leads
+      // Fetch current period leads - UNIFIED QUERY matching Leads list
       const { data: currentLeads, error: leadsError } = await supabase
         .from('leads')
         .select('*, lead_assignments(lawfirm_id, firm_status, lawfirms(name))')
         .is('archived_at', null)
+        .or('structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false')
         .gte('created_at', dateRange.start.toISOString())
         .lte('created_at', dateRange.end.toISOString());
-      
       if (leadsError) throw leadsError;
 
-      // Fetch previous period leads for comparison
+      // Fetch previous period leads for comparison - UNIFIED QUERY
       const { data: prevLeads, error: prevError } = await supabase
         .from('leads')
         .select('id, price_final, status_internal')
         .is('archived_at', null)
+        .or('structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false')
         .gte('created_at', prevRange.start.toISOString())
         .lte('created_at', prevRange.end.toISOString());
       

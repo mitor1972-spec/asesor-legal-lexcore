@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.repair-leads]
 verify_jwt = false
+
+[functions.reprocess-lead]
+verify_jwt = false
