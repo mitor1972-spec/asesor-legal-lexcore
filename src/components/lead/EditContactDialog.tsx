@@ -8,6 +8,7 @@ import { PROVINCIAS_ESPANA } from '@/lib/constants';
 import { useUpdateLead } from '@/hooks/useLeads';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { getRealName, getContactPhone, getContactEmail } from '@/lib/contactUtils';
 
 interface EditContactDialogProps {
   open: boolean;
@@ -31,11 +32,13 @@ export function EditContactDialog({ open, onOpenChange, leadId, structuredFields
 
   useEffect(() => {
     if (structuredFields && open) {
+      // Use helper functions that exclude aliases
+      const realName = getRealName(structuredFields);
       setFormData({
-        nombre: (structuredFields.nombre as string) || (structuredFields.contact_name as string) || '',
+        nombre: realName || '',
         apellidos: (structuredFields.apellidos as string) || '',
-        telefono: (structuredFields.telefono as string) || (structuredFields.contact_phone as string) || '',
-        email: (structuredFields.email as string) || (structuredFields.contact_email as string) || '',
+        telefono: getContactPhone(structuredFields) || '',
+        email: getContactEmail(structuredFields) || '',
         ciudad: (structuredFields.ciudad as string) || '',
         provincia: (structuredFields.provincia as string) || '',
       });

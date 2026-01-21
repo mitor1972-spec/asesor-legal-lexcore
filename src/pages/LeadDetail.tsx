@@ -13,7 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { LEAD_STATUSES, type LeadStatus } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2, Eye, Euro, Scale, Zap, Inbox, Building2, BarChart3, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Phone, Mail, MapPin, FileText, Clock, User, Sparkles, MessageSquare, RefreshCw, Loader2, Eye, Euro, Scale, Zap, Inbox, Building2, BarChart3, Plus, Trash2, Hash } from 'lucide-react';
 import { NewLeadButton } from '@/components/lead/NewLeadButton';
 import { toast } from 'sonner';
 import { LexcoreScoring } from '@/components/scoring/LexcoreScoring';
@@ -27,6 +27,7 @@ import { EditContactDialog } from '@/components/lead/EditContactDialog';
 import { EditCaseDialog } from '@/components/lead/EditCaseDialog';
 import { DeleteLeadDialog } from '@/components/lead/DeleteLeadDialog';
 import { formatLocation } from '@/lib/cityProvinceMapping';
+import { getDisplayName, getChatwootAlias, getContactEmail, getContactPhone } from '@/lib/contactUtils';
 
 const statusColors: Record<LeadStatus, string> = {
   'Pendiente': 'bg-warning/10 text-warning border-warning/20',
@@ -218,10 +219,13 @@ export default function LeadDetail() {
             </Button>
           </CardHeader>
           <CardContent className="space-y-1 text-sm py-2 px-3">
-            <p className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /><strong>Nombre:</strong> {(f?.nombre as string) || (f?.contact_name as string) || ''} {(f?.apellidos as string) || ''}</p>
-            <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><strong>Teléfono:</strong> {(f?.telefono as string) || (f?.contact_phone as string) || ''}</p>
-            <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><strong>Email:</strong> {(f?.email as string) || (f?.contact_email as string) || ''}</p>
-            <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /><strong>Ubicación:</strong> {location}</p>
+            <p className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /><strong>Nombre:</strong> <span className={getDisplayName(f) === 'No consta' ? 'text-muted-foreground italic' : ''}>{getDisplayName(f)}</span></p>
+            <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><strong>Teléfono:</strong> {getContactPhone(f) || <span className="text-muted-foreground italic">No consta</span>}</p>
+            <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><strong>Email:</strong> {getContactEmail(f) || <span className="text-muted-foreground italic">No consta</span>}</p>
+            <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /><strong>Ubicación:</strong> {location || <span className="text-muted-foreground italic">No consta</span>}</p>
+            {getChatwootAlias(f) && (
+              <p className="flex items-center gap-2 text-xs text-muted-foreground"><Hash className="h-3 w-3" /><span>ID Chatwoot:</span> <code className="bg-muted px-1.5 py-0.5 rounded">{getChatwootAlias(f)}</code></p>
+            )}
           </CardContent>
         </Card>
         <Card className="shadow-soft">
