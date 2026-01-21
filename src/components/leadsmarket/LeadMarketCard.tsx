@@ -8,6 +8,7 @@ import {
   TrendingUp, MessageSquareQuote, ShoppingCart, Eye, Euro
 } from 'lucide-react';
 import type { MarketplaceLead, RawScores } from '@/types/marketplace';
+import { LeadReference } from '@/components/common/LeadReference';
 
 interface LeadMarketCardProps {
   lead: MarketplaceLead;
@@ -76,12 +77,18 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col">
       {/* Header with Score */}
       <div className="flex items-center justify-between p-4 bg-muted/40 border-b">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Scale className="h-5 w-5 text-lawfirm-primary flex-shrink-0" />
-          <span className="font-semibold text-base truncate">{legalArea}</span>
-          <span className="text-xs text-muted-foreground font-mono" title={lead.id}>
-            #{lead.id.slice(0, 8)}
-          </span>
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <Scale className="h-5 w-5 text-lawfirm-primary flex-shrink-0" />
+            <span className="font-semibold text-base truncate">{legalArea}</span>
+          </div>
+          {/* Lead Reference with conversation_id and alias */}
+          <LeadReference 
+            leadId={lead.id}
+            conversationId={lead.conversation_id}
+            chatwootAlias={fields._contact_alias as string | undefined}
+            variant="compact"
+          />
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           {/* Mini thermometer bar */}

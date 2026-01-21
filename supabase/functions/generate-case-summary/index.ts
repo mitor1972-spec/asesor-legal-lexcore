@@ -120,25 +120,62 @@ serve(async (req) => {
       throw new Error('No authorization header');
     }
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    // Use service role key for internal calls from webhook
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    
+    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      throw new Error('Unauthorized');
+    const body = await req.json();
+    const { lead_id } = body;
+    let { lead_text, structured_fields, scoring_data, source_channel } = body;
+
+    if (!lead_id) {
+      throw new Error('Missing required field: lead_id');
     }
 
-    const { lead_id, lead_text, structured_fields, scoring_data, source_channel } = await req.json();
+    // If lead_text is not provided, fetch it from the database
+    if (!lead_text) {
+      console.log(`[generate-case-summary] Fetching lead data for ${lead_id}...`);
+      
+      const { data: lead, error: leadError } = await serviceClient
+        .from('leads')
+        .select('lead_text, structured_fields, source_channel')
+        .eq('id', lead_id)
+        .single();
+      
+      if (leadError || !lead) {
+        throw new Error(`Failed to fetch lead: ${leadError?.message || 'Lead not found'}`);
+      }
+      
+      lead_text = lead.lead_text;
+      structured_fields = structured_fields || lead.structured_fields;
+      source_channel = source_channel || lead.source_channel;
+      
+      console.log(`[generate-case-summary] Lead data fetched: ${lead_text?.length || 0} chars`);
+    }
 
-    if (!lead_id || !lead_text) {
-      throw new Error('Missing required fields: lead_id and lead_text');
+    if (!lead_text) {
+      throw new Error('No lead_text available for summary generation');
+    }
+
+    // Fetch lexcore scoring data if not provided
+    if (!scoring_data) {
+      const { data: lexcoreRun } = await serviceClient
+        .from('lexcore_runs')
+        .select('score_final, price_lexcore, vj_json')
+        .eq('lead_id', lead_id)
+        .order('computed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (lexcoreRun) {
+        scoring_data = lexcoreRun;
+      }
     }
 
     // Get OpenAI API key from api_settings
-    const { data: apiKeyData, error: apiKeyError } = await supabaseClient
+    const { data: apiKeyData } = await serviceClient
       .from('api_settings')
       .select('key_value')
       .eq('key_name', 'OPENAI_API_KEY')
@@ -246,11 +283,7 @@ Genera el resumen completo:`;
 
     console.log('Summary generated successfully, updating lead...');
 
-    // Update the lead with the generated summary
-    const serviceClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    // Update the lead with the generated summary (reuse serviceClient from top)
 
     const { error: updateError } = await serviceClient
       .from('leads')
