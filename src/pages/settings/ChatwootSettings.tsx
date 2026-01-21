@@ -372,34 +372,47 @@ export default function ChatwootSettings() {
         <CardContent className="space-y-4">
           <div className="flex gap-2">
             <Input
-              placeholder="ID de conversación (ej: 2446)"
+              placeholder="ID o alias (ej: 3311 o billowing-mountain-320)"
               value={manualConvId}
               onChange={(e) => setManualConvId(e.target.value)}
-              className="max-w-[200px]"
+              className="max-w-[300px]"
             />
             <Button 
             onClick={async () => {
-                const trimmedId = manualConvId.trim();
-                const parsedId = parseInt(trimmedId, 10);
+                const trimmedInput = manualConvId.trim();
                 
-                if (!trimmedId || isNaN(parsedId)) {
-                  toast.error('Ingresa un ID de conversación válido (número)');
+                if (!trimmedInput) {
+                  toast.error('Ingresa un ID de conversación o alias de contacto');
                   return;
                 }
+                
                 setProcessingManual(true);
                 try {
+                  // Check if it's a number (conversation_id) or string (alias)
+                  const isNumeric = /^\d+$/.test(trimmedInput);
+                  
                   const { data, error } = await supabase.functions.invoke('process-chatwoot-conversation', {
-                    body: { conversation_id: parsedId }
+                    body: isNumeric 
+                      ? { conversation_id: parseInt(trimmedInput, 10) }
+                      : { contact_alias: trimmedInput }
                   });
                   
                   if (error) throw error;
                   
                   if (data?.success) {
-                    toast.success(`Lead creado: ${data.lead_id}`);
+                    const action = data.action === 'reprocessed' ? 'Reprocesado' : 'Creado';
+                    toast.success(`${action} lead: ${data.lead_id}`, {
+                      description: data.changes?.length > 0 
+                        ? `Cambios: ${data.changes.length}` 
+                        : undefined
+                    });
                     setManualConvId('');
                     queryClient.invalidateQueries({ queryKey: ['chatwoot-import-logs'] });
+                    queryClient.invalidateQueries({ queryKey: ['leads'] });
                   } else {
-                    toast.error(data?.error || 'Error procesando conversación');
+                    toast.error(data?.error || 'Error procesando conversación', {
+                      description: data?.hint
+                    });
                   }
                 } catch (err: any) {
                   toast.error(err.message || 'Error al procesar');

@@ -588,8 +588,29 @@ serve(async (req) => {
       }).eq("id", logData.id);
     }
 
-    // Intentar calcular Lexcore automáticamente
+    // ==========================================
+    // PIPELINE IA: Extraer datos + Calcular Lexcore
+    // ==========================================
     try {
+      // Paso 1: Reprocesar con IA para extraer datos estructurados del texto
+      const reprocessUrl = `${supabaseUrl}/functions/v1/reprocess-lead`;
+      const reprocessResponse = await fetch(reprocessUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ lead_id: newLead.id }),
+      });
+      
+      if (reprocessResponse.ok) {
+        const reprocessData = await reprocessResponse.json();
+        console.log(`[Webhook] AI extraction completed for lead ${newLead.id}:`, JSON.stringify(reprocessData.results?.[0]?.changes_made || []));
+      } else {
+        console.warn(`[Webhook] AI extraction failed (${reprocessResponse.status}) - continuing with Lexcore`);
+      }
+      
+      // Paso 2: Calcular Lexcore
       const lexcoreUrl = `${supabaseUrl}/functions/v1/calculate-lexcore`;
       await fetch(lexcoreUrl, {
         method: "POST",
@@ -605,8 +626,8 @@ serve(async (req) => {
         }),
       });
       console.log(`[Webhook] Lexcore calculation triggered for lead ${newLead.id}`);
-    } catch (lexcoreError) {
-      console.warn("[Webhook] Lexcore calculation failed (non-blocking):", lexcoreError);
+    } catch (pipelineError) {
+      console.warn("[Webhook] Pipeline (AI+Lexcore) failed (non-blocking):", pipelineError);
     }
 
     return new Response(JSON.stringify({ 
