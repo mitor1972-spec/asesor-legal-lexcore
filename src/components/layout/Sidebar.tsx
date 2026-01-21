@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog, ChevronDown, Key, Cog, Building2, BarChart3, MessageSquare, FileCheck, Bot } from 'lucide-react';
+import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog, ChevronDown, Key, Cog, Building2, BarChart3, MessageSquare, FileCheck, Bot, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -22,6 +22,7 @@ const configSubItems = [
   { label: 'Gestión de Despachos', href: '/settings/lawfirms', icon: Building2 },
   { label: 'Solicitudes Despachos', href: '/settings/solicitudes', icon: FileCheck },
   { label: 'Chatwoot', href: '/settings/chatwoot', icon: MessageSquare },
+  { label: 'Leads Descartados', href: '/settings/discarded-leads', icon: AlertTriangle },
 ];
 
 interface SidebarProps {

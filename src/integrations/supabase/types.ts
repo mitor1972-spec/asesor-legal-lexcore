@@ -1255,6 +1255,8 @@ export type Database = {
           conversation_id: number | null
           created_at: string | null
           created_by_user_id: string | null
+          discard_reason: string | null
+          discarded_at: string | null
           id: string
           is_in_marketplace: boolean | null
           last_message_at: string | null
@@ -1276,6 +1278,8 @@ export type Database = {
           conversation_id?: number | null
           created_at?: string | null
           created_by_user_id?: string | null
+          discard_reason?: string | null
+          discarded_at?: string | null
           id?: string
           is_in_marketplace?: boolean | null
           last_message_at?: string | null
@@ -1297,6 +1301,8 @@ export type Database = {
           conversation_id?: number | null
           created_at?: string | null
           created_by_user_id?: string | null
+          discard_reason?: string | null
+          discarded_at?: string | null
           id?: string
           is_in_marketplace?: boolean | null
           last_message_at?: string | null
