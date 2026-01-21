@@ -79,6 +79,9 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Scale className="h-5 w-5 text-lawfirm-primary flex-shrink-0" />
           <span className="font-semibold text-base truncate">{legalArea}</span>
+          <span className="text-xs text-muted-foreground font-mono" title={lead.id}>
+            #{lead.id.slice(0, 8)}
+          </span>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           {/* Mini thermometer bar */}

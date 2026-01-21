@@ -481,6 +481,9 @@ export default function ChatwootSettings() {
                           <div className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
+                                <span className="text-xs text-muted-foreground font-mono" title={log.id}>
+                                  #{log.id.slice(0, 8)}
+                                </span>
                                 <span className="text-xs text-muted-foreground">
                                   {format(new Date(log.created_at), 'dd/MM/yy HH:mm:ss', { locale: es })}
                                 </span>
@@ -501,7 +504,7 @@ export default function ChatwootSettings() {
                               </div>
                             </div>
                             {log.error_message && (
-                              <p className="text-sm text-destructive mt-1">
+                              <p className="text-sm text-destructive mt-1 truncate max-w-full" title={log.error_message}>
                                 {log.error_message}
                               </p>
                             )}
