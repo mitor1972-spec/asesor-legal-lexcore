@@ -14,6 +14,7 @@ import { CaseTrackingTab } from '@/components/lawfirm/CaseTrackingTab';
 import { CaseResultDialog } from '@/components/lawfirm/CaseResultDialog';
 import { processAndSanitize } from '@/lib/sanitize';
 import { formatLocation } from '@/lib/cityProvinceMapping';
+import { getDisplayName, getContactPhone, getContactEmail, getChatwootAlias } from '@/lib/contactUtils';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -38,7 +39,8 @@ import {
   Zap,
   Inbox,
   ClipboardList,
-  Calendar
+  Calendar,
+  Hash
 } from 'lucide-react';
 
 // More detailed status labels for lawyers
@@ -251,19 +253,25 @@ ${legalHelp.estimated_complexity}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1 text-sm py-2 px-3">
-            <p><strong>Nombre:</strong> {(f.nombre as string) || ''} {(f.apellidos as string) || ''}</p>
+            <p><strong>Nombre:</strong> <span className={getDisplayName(f) === 'No consta' ? 'text-muted-foreground italic' : ''}>{getDisplayName(f)}</span></p>
             <p className="flex items-center gap-2">
               <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Teléfono:</strong> {(f.telefono as string) || ''}
+              <strong>Teléfono:</strong> {getContactPhone(f) || <span className="text-muted-foreground italic">No consta</span>}
             </p>
             <p className="flex items-center gap-2">
               <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Email:</strong> {(f.email as string) || ''}
+              <strong>Email:</strong> {getContactEmail(f) || <span className="text-muted-foreground italic">No consta</span>}
             </p>
             <p className="flex items-center gap-2">
               <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-              <strong>Ubicación:</strong> {location}
+              <strong>Ubicación:</strong> {location || <span className="text-muted-foreground italic">No consta</span>}
             </p>
+            {getChatwootAlias(f) && (
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Hash className="h-3 w-3" />
+                <span>ID Chatwoot:</span> <code className="bg-muted px-1.5 py-0.5 rounded">{getChatwootAlias(f)}</code>
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card className="shadow-soft">

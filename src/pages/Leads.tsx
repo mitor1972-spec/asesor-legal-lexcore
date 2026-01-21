@@ -19,6 +19,7 @@ import { BulkAssignDialog } from '@/components/lead/BulkAssignDialog';
 import { CleanupLeadsDialog } from '@/components/admin/CleanupLeadsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { exportLeadsToExcel } from '@/lib/exportToExcel';
+import { getDisplayName } from '@/lib/contactUtils';
 
 const statusColors: Record<LeadStatus, string> = {
   'Pendiente': 'bg-warning/10 text-warning border-warning/20',
@@ -401,7 +402,11 @@ export default function Leads() {
                     />
                   </TableCell>
                   <TableCell className="text-sm">{format(new Date(lead.created_at), 'dd MMM yyyy', { locale: es })}</TableCell>
-                  <TableCell className="font-medium">{lead.structured_fields?.nombre || 'Sin nombre'} {lead.structured_fields?.apellidos || ''}</TableCell>
+                  <TableCell className="font-medium">
+                    <span className={getDisplayName(lead.structured_fields as Record<string, unknown>) === 'No consta' ? 'text-muted-foreground italic' : ''}>
+                      {getDisplayName(lead.structured_fields as Record<string, unknown>)}
+                    </span>
+                  </TableCell>
                   <TableCell><Badge variant="outline">{lead.source_channel}</Badge></TableCell>
                   <TableCell className="text-sm text-muted-foreground">{lead.structured_fields?.area_legal || '-'}</TableCell>
                   <TableCell className="text-center">
