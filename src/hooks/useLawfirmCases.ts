@@ -7,6 +7,7 @@ export interface LawfirmCase {
   id: string;
   lead_id: string;
   lawfirm_id: string;
+  branch_id: string | null;
   assigned_at: string;
   firm_status: string;
   firm_notes: string | null;
@@ -14,6 +15,8 @@ export interface LawfirmCase {
   contacted_at: string | null;
   result_amount: number | null;
   result_notes: string | null;
+  service_type: string | null;
+  lost_reason: string | null;
   lead: {
     id: string;
     lead_text: string;
@@ -23,6 +26,7 @@ export interface LawfirmCase {
     source_channel: string | null;
     structured_fields: Record<string, unknown> | null;
     created_at: string;
+    conversation_id: number | null;
   };
   assigned_lawyer?: {
     id: string;
@@ -55,7 +59,8 @@ export function useLawfirmCases() {
             price_final,
             source_channel,
             structured_fields,
-            created_at
+            created_at,
+            conversation_id
           ),
           assigned_lawyer:profiles!lead_assignments_assigned_lawyer_id_fkey (
             id,
@@ -97,7 +102,8 @@ export function useLawfirmCase(assignmentId: string | undefined) {
             price_final,
             source_channel,
             structured_fields,
-            created_at
+            created_at,
+            conversation_id
           ),
           assigned_lawyer:profiles!lead_assignments_assigned_lawyer_id_fkey (
             id,
