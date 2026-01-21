@@ -96,6 +96,7 @@ export default function LawfirmDashboard() {
         `)
         .is('archived_at', null)
         .is('discarded_at', null)
+        .or('is_demo.is.null,is_demo.eq.false') // Exclude demo data
         .eq('status_internal', 'Pendiente')
         .or('structured_fields->>email.neq.,structured_fields->>telefono.neq.')
         .order('score_final', { ascending: false, nullsFirst: false })
