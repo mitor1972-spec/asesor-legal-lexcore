@@ -36,10 +36,50 @@ serve(async (req) => {
     }
 
     const userId = claims.claims.sub as string;
-    const { lead_id, lead_text, structured_fields, source_channel } = await req.json();
+    const requestBody = await req.json();
+    const { lead_id } = requestBody;
+    let { lead_text, structured_fields, source_channel } = requestBody;
 
-    if (!lead_id || !lead_text) {
-      return new Response(JSON.stringify({ error: "lead_id and lead_text are required" }), {
+    if (!lead_id) {
+      return new Response(JSON.stringify({ error: "lead_id is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // If lead_text not provided, fetch from database (AUTO-FETCH mode)
+    // This ensures the full transcript is used, not truncated versions
+    if (!lead_text) {
+      console.log(`[Lexcore] Auto-fetching lead data from database for lead_id=${lead_id}`);
+      
+      const adminClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      
+      const { data: leadData, error: leadError } = await adminClient
+        .from("leads")
+        .select("lead_text, structured_fields, source_channel")
+        .eq("id", lead_id)
+        .single();
+      
+      if (leadError || !leadData) {
+        console.error("Lead fetch error:", leadError);
+        return new Response(JSON.stringify({ error: "Lead not found", lead_id }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      lead_text = leadData.lead_text;
+      structured_fields = leadData.structured_fields;
+      source_channel = leadData.source_channel;
+      
+      console.log(`[Lexcore] Auto-fetched: lead_text=${lead_text?.length || 0} chars, structured_fields keys=${Object.keys(structured_fields || {}).length}`);
+    }
+
+    if (!lead_text) {
+      return new Response(JSON.stringify({ error: "lead_text is required (or lead must have text in database)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
