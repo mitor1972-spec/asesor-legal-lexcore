@@ -62,18 +62,47 @@ serve(async (req) => {
       );
     }
 
+    // FASE 5: Check if lead is already assigned (EXCLUSIVITY)
+    const { data: existingAssignment } = await supabaseAdmin
+      .from('lead_assignments')
+      .select('id, lawfirm_id')
+      .eq('lead_id', lead_id)
+      .maybeSingle();
+
+    if (existingAssignment) {
+      console.warn(`[EXCLUSIVITY] Lead ${lead_id} already assigned to lawfirm ${existingAssignment.lawfirm_id}`);
+      return new Response(
+        JSON.stringify({ error: 'Este lead ya ha sido asignado a otro despacho' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Get lead details
     const { data: lead, error: leadError } = await supabaseAdmin
       .from('leads')
       .select('*')
       .eq('id', lead_id)
-      .eq('is_in_marketplace', true)
+      .eq('status_internal', 'Pendiente')
       .single();
 
     if (leadError || !lead) {
+      console.warn(`[PURCHASE] Lead ${lead_id} not found or not pending. Error: ${leadError?.message}`);
       return new Response(
         JSON.stringify({ error: 'Lead no disponible en el marketplace' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // GOLDEN RULE check
+    const fields = lead.structured_fields || {};
+    const hasEmail = fields.email && fields.email.trim() !== '';
+    const hasPhone = fields.telefono && fields.telefono.trim() !== '';
+    
+    if (!hasEmail && !hasPhone) {
+      console.warn(`[GOLDEN RULE] Lead ${lead_id} rejected: no email or phone`);
+      return new Response(
+        JSON.stringify({ error: 'Lead sin contacto válido' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -194,7 +223,7 @@ serve(async (req) => {
         },
       });
 
-    console.log(`Lead ${lead_id} purchased by lawfirm ${lawfirm_id} for ${price}€`);
+    console.log(`[PURCHASE SUCCESS] Lead ${lead_id} purchased by lawfirm ${lawfirm_id} (${lawfirm.name}) for ${price}€. New balance: ${newBalance}€`);
 
     return new Response(
       JSON.stringify({ 

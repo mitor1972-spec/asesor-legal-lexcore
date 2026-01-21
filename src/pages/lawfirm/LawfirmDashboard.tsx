@@ -29,6 +29,8 @@ import {
   CasesByLawyerWidget, 
   WonCasesTable 
 } from '@/components/lawfirm/DashboardWidgets';
+import { QuickActionsCard } from '@/components/lawfirm/QuickActionsCard';
+import { RecentActivityCard } from '@/components/lawfirm/RecentActivityCard';
 
 const statusLabels: Record<string, string> = {
   received: 'Recibido',
@@ -198,6 +200,21 @@ export default function LawfirmDashboard() {
         </Card>
       )}
 
+      {/* Side Panel with Quick Actions and Activity */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          {/* Won Cases Table */}
+          <WonCasesTable cases={cases} />
+        </div>
+        <div className="space-y-4">
+          <QuickActionsCard 
+            pendingCases={cases.filter(c => c.firm_status === 'received').length}
+            balance={lawfirm?.marketplace_balance || 0}
+          />
+          <RecentActivityCard cases={cases} />
+        </div>
+      </div>
+
       {/* Widgets Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <CasesByAreaWidget cases={cases} />
@@ -205,9 +222,6 @@ export default function LawfirmDashboard() {
         <CasesByBranchWidget cases={cases} branches={branches} />
         <CasesByLawyerWidget cases={cases} lawyers={lawyers} />
       </div>
-
-      {/* Won Cases Table */}
-      <WonCasesTable cases={cases} />
 
       {/* Recent Cases */}
       <Card className="shadow-soft">
