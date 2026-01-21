@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
+import { DemoModeProvider } from "@/contexts/DemoModeContext";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { LawfirmLayout } from "@/components/lawfirm/LawfirmLayout";
 import Login from "@/pages/Login";
@@ -51,10 +52,11 @@ const App = () => (
     <ThemeProvider>
       <AuthProvider>
         <ImpersonationProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-          <BrowserRouter>
+          <DemoModeProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
               {/* Public routes */}
@@ -99,10 +101,11 @@ const App = () => (
                 <Route path="informes" element={<LawfirmReports />} />
                 <Route path="outsourcing" element={<LawfirmOutsourcing />} />
               </Route>
-            <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+              <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </DemoModeProvider>
       </ImpersonationProvider>
     </AuthProvider>
   </ThemeProvider>
