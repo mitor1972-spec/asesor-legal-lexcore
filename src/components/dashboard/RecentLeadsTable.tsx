@@ -75,7 +75,9 @@ export function RecentLeadsTable({ leads }: RecentLeadsTableProps) {
                   <TableCell className="text-xs">
                     {format(new Date(lead.date), 'dd/MM/yy', { locale: es })}
                   </TableCell>
-                  <TableCell className="font-medium text-sm">{lead.name}</TableCell>
+                  <TableCell className="font-medium text-sm">
+                    {lead.name || <span className="text-muted-foreground italic">—</span>}
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{lead.area}</TableCell>
                   <TableCell className="text-xs">
                     {lead.lawfirm || <span className="text-muted-foreground">Pendiente</span>}

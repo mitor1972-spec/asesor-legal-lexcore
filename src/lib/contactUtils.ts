@@ -1,6 +1,9 @@
 /**
  * Utility functions for handling contact information
  * Separates Chatwoot aliases from real human names
+ * 
+ * GOLDEN RULE: Empty fields should be NULL/empty, never "No consta" or "Sin nombre"
+ * The UI should render empty fields as visually empty (—) not as placeholder text
  */
 
 // Regex to detect Chatwoot auto-generated aliases like "billowing-silence-429"
@@ -39,11 +42,11 @@ export function getRealName(structuredFields: Record<string, unknown> | null | u
 
 /**
  * Get the full display name including apellidos (surname)
- * Returns "No consta" if no real name is available
+ * Returns empty string if no real name is available (NOT "No consta")
  */
 export function getDisplayName(structuredFields: Record<string, unknown> | null | undefined): string {
   const nombre = getRealName(structuredFields);
-  if (!nombre) return 'No consta';
+  if (!nombre) return '';
   
   const apellidos = structuredFields?.apellidos as string | undefined;
   if (apellidos && apellidos.trim()) {
@@ -54,7 +57,7 @@ export function getDisplayName(structuredFields: Record<string, unknown> | null 
 }
 
 /**
- * Get the Chatwoot alias from structured fields (for display as ID)
+ * Get the Chatwoot alias from structured fields (for display as "ID Chatwoot")
  */
 export function getChatwootAlias(structuredFields: Record<string, unknown> | null | undefined): string | null {
   if (!structuredFields) return null;
@@ -82,20 +85,38 @@ export function getChatwootAlias(structuredFields: Record<string, unknown> | nul
 
 /**
  * Get contact email, trying multiple field names
+ * Returns null for empty/invalid values (NOT "No consta")
  */
 export function getContactEmail(structuredFields: Record<string, unknown> | null | undefined): string | null {
   if (!structuredFields) return null;
   
   const email = (structuredFields.email as string) || (structuredFields.contact_email as string);
-  return email && email.trim() ? email.trim() : null;
+  if (!email || email.trim() === '' || email === 'null' || email === 'No consta') {
+    return null;
+  }
+  return email.trim();
 }
 
 /**
  * Get contact phone, trying multiple field names
+ * Returns null for empty/invalid values (NOT "No consta")
  */
 export function getContactPhone(structuredFields: Record<string, unknown> | null | undefined): string | null {
   if (!structuredFields) return null;
   
   const phone = (structuredFields.telefono as string) || (structuredFields.contact_phone as string);
-  return phone && phone.trim() ? phone.trim() : null;
+  if (!phone || phone.trim() === '' || phone === 'null' || phone === 'No consta') {
+    return null;
+  }
+  return phone.trim();
+}
+
+/**
+ * Check if structured fields have valid contact info (email OR phone)
+ * This is the GOLDEN RULE for determining if a lead is "sellable"
+ */
+export function hasValidContact(structuredFields: Record<string, unknown> | null | undefined): boolean {
+  const email = getContactEmail(structuredFields);
+  const phone = getContactPhone(structuredFields);
+  return !!email || !!phone;
 }

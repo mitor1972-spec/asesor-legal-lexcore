@@ -219,10 +219,10 @@ export default function LeadDetail() {
             </Button>
           </CardHeader>
           <CardContent className="space-y-1 text-sm py-2 px-3">
-            <p className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /><strong>Nombre:</strong> <span className={getDisplayName(f) === 'No consta' ? 'text-muted-foreground italic' : ''}>{getDisplayName(f)}</span></p>
-            <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><strong>Teléfono:</strong> {getContactPhone(f) || <span className="text-muted-foreground italic">No consta</span>}</p>
-            <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><strong>Email:</strong> {getContactEmail(f) || <span className="text-muted-foreground italic">No consta</span>}</p>
-            <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /><strong>Ubicación:</strong> {location || <span className="text-muted-foreground italic">No consta</span>}</p>
+            <p className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-muted-foreground" /><strong>Nombre:</strong> {getDisplayName(f) || <span className="text-muted-foreground">—</span>}</p>
+            <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><strong>Teléfono:</strong> {getContactPhone(f) || <span className="text-muted-foreground">—</span>}</p>
+            <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><strong>Email:</strong> {getContactEmail(f) || <span className="text-muted-foreground">—</span>}</p>
+            <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-muted-foreground" /><strong>Ubicación:</strong> {location || <span className="text-muted-foreground">—</span>}</p>
             {getChatwootAlias(f) && (
               <p className="flex items-center gap-2 text-xs text-muted-foreground"><Hash className="h-3 w-3" /><span>ID Chatwoot:</span> <code className="bg-muted px-1.5 py-0.5 rounded">{getChatwootAlias(f)}</code></p>
             )}

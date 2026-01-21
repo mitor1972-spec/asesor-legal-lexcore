@@ -190,18 +190,18 @@ ${legalHelp.estimated_complexity}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 text-sm py-2 px-3">
-              <p><strong>Nombre:</strong> <span className={getDisplayName(f) === 'No consta' ? 'text-muted-foreground italic' : ''}>{getDisplayName(f)}</span></p>
+              <p><strong>Nombre:</strong> {getDisplayName(f) || <span className="text-muted-foreground">—</span>}</p>
               <p className="flex items-center gap-2">
                 <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                <strong>Teléfono:</strong> {getContactPhone(f) || <span className="text-muted-foreground italic">No consta</span>}
+                <strong>Teléfono:</strong> {getContactPhone(f) || <span className="text-muted-foreground">—</span>}
               </p>
               <p className="flex items-center gap-2">
                 <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                <strong>Email:</strong> {getContactEmail(f) || <span className="text-muted-foreground italic">No consta</span>}
+                <strong>Email:</strong> {getContactEmail(f) || <span className="text-muted-foreground">—</span>}
               </p>
               <p className="flex items-center gap-2">
                 <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                <strong>Ubicación:</strong> {location || <span className="text-muted-foreground italic">No consta</span>}
+                <strong>Ubicación:</strong> {location || <span className="text-muted-foreground">—</span>}
               </p>
               {getChatwootAlias(f) && (
                 <p className="flex items-center gap-2 text-xs text-muted-foreground">

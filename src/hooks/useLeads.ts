@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Lead, StructuredFields } from '@/types';
 import type { LeadStatus, SourceChannel } from '@/lib/constants';
 import type { Json } from '@/integrations/supabase/types';
+import { applyVisibleLeadsFilters } from '@/lib/leadsQuery';
 
 interface LeadFilters {
   search?: string;
@@ -12,6 +13,7 @@ interface LeadFilters {
   dateFrom?: Date;
   dateTo?: Date;
   showArchived?: boolean;
+  showInvalid?: boolean; // For admin debugging: show leads without contact
 }
 
 interface CreateLeadData {
@@ -25,6 +27,12 @@ interface UpdateLeadData extends Partial<CreateLeadData> {
   status_internal?: LeadStatus;
 }
 
+/**
+ * Main hook for fetching leads with unified filtering.
+ * Uses applyVisibleLeadsFilters to ensure consistency with Dashboard and LeadMarket.
+ * 
+ * GOLDEN RULE: Only leads with email OR phone are shown (unless showInvalid=true)
+ */
 export function useLeads(filters?: LeadFilters, page = 1, pageSize = 20) {
   return useQuery({
     queryKey: ['leads', filters, page, pageSize],
@@ -35,46 +43,17 @@ export function useLeads(filters?: LeadFilters, page = 1, pageSize = 20) {
         .order('created_at', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
 
-      // Filter by archived status
-      if (filters?.showArchived) {
-        query = query.not('archived_at', 'is', null);
-      } else {
-        query = query.is('archived_at', null);
-      }
-
-      // Filter out incomplete leads (marked by repair function) from main view
-      // Only show incomplete leads if explicitly viewing archived
-      if (!filters?.showArchived) {
-        query = query.or('structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false');
-      }
-
-      if (filters?.status) {
-        query = query.eq('status_internal', filters.status);
-      }
-
-      if (filters?.channel) {
-        query = query.eq('source_channel', filters.channel);
-      }
-
-      if (filters?.areaLegal) {
-        query = query.contains('structured_fields', { area_legal: filters.areaLegal });
-      }
-
-      if (filters?.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom.toISOString());
-      }
-
-      if (filters?.dateTo) {
-        query = query.lte('created_at', filters.dateTo.toISOString());
-      }
-
-      if (filters?.search) {
-        // Búsqueda en lead_text y en campos estructurados (nombre, apellidos, email, telefono, area_legal, ciudad, provincia)
-        const searchTerm = filters.search.toLowerCase();
-        query = query.or(
-          `lead_text.ilike.%${searchTerm}%,structured_fields->>nombre.ilike.%${searchTerm}%,structured_fields->>apellidos.ilike.%${searchTerm}%,structured_fields->>email.ilike.%${searchTerm}%,structured_fields->>telefono.ilike.%${searchTerm}%,structured_fields->>area_legal.ilike.%${searchTerm}%,structured_fields->>ciudad.ilike.%${searchTerm}%,structured_fields->>provincia.ilike.%${searchTerm}%`
-        );
-      }
+      // Apply unified filters from leadsQuery.ts (GOLDEN RULE enforced here)
+      query = applyVisibleLeadsFilters(query, {
+        includeArchived: filters?.showArchived,
+        includeInvalid: filters?.showInvalid,
+        status: filters?.status,
+        channel: filters?.channel,
+        areaLegal: filters?.areaLegal,
+        dateFrom: filters?.dateFrom,
+        dateTo: filters?.dateTo,
+        search: filters?.search,
+      });
 
       const { data, error, count } = await query;
 
@@ -108,6 +87,11 @@ export function useLead(id: string | undefined) {
   });
 }
 
+/**
+ * Lead stats hook - uses unified filtering from leadsQuery.ts
+ * 
+ * GOLDEN RULE: Only counts leads with email OR phone (valid contact)
+ */
 export function useLeadStats() {
   return useQuery({
     queryKey: ['lead-stats'],
@@ -115,25 +99,37 @@ export function useLeadStats() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      // Apply GOLDEN RULE filter: must have email OR phone
+      const validContactFilter = 'structured_fields->>email.neq.,structured_fields->>telefono.neq.';
+      const incompleteFilter = 'structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false';
+
       const [totalResult, pendingResult, derivedResult, todayResult] = await Promise.all([
         supabase
           .from('leads')
           .select('id', { count: 'exact', head: true })
-          .is('archived_at', null),
+          .is('archived_at', null)
+          .or(incompleteFilter)
+          .or(validContactFilter),
         supabase
           .from('leads')
           .select('id', { count: 'exact', head: true })
           .is('archived_at', null)
+          .or(incompleteFilter)
+          .or(validContactFilter)
           .eq('status_internal', 'Pendiente'),
         supabase
           .from('leads')
           .select('id', { count: 'exact', head: true })
           .is('archived_at', null)
+          .or(incompleteFilter)
+          .or(validContactFilter)
           .eq('status_internal', 'Enviado'),
         supabase
           .from('leads')
           .select('id', { count: 'exact', head: true })
           .is('archived_at', null)
+          .or(incompleteFilter)
+          .or(validContactFilter)
           .gte('created_at', today.toISOString()),
       ]);
 
