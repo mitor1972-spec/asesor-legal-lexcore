@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { startOfDay, endOfDay, subDays, startOfWeek, startOfMonth, startOfQuarter, startOfYear, subWeeks, subMonths, subQuarters, subYears } from 'date-fns';
 import { applyVisibleLeadsFilters } from '@/lib/leadsQuery';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 export type DatePeriod = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
 
@@ -89,11 +90,12 @@ export interface DashboardMetrics {
  * GOLDEN RULE: Only counts leads with email OR phone (valid contact)
  */
 export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange) {
+  const { mode } = useDemoMode();
   const dateRange = getDateRange(period, customRange);
   const prevRange = getPreviousDateRange(period, customRange);
   
   return useQuery({
-    queryKey: ['dashboard-metrics', period, customRange?.start?.toISOString(), customRange?.end?.toISOString()],
+    queryKey: ['dashboard-metrics', period, mode, customRange?.start?.toISOString(), customRange?.end?.toISOString()],
     queryFn: async (): Promise<DashboardMetrics> => {
       // Fetch current period leads - UNIFIED QUERY with GOLDEN RULE
       let currentQuery = supabase
@@ -101,6 +103,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
         .select('*, lead_assignments(lawfirm_id, firm_status, lawfirms(name))');
       
       currentQuery = applyVisibleLeadsFilters(currentQuery, {
+        demoMode: mode,
         dateFrom: dateRange.start,
         dateTo: dateRange.end,
       });
@@ -114,6 +117,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
         .select('id, price_final, status_internal');
       
       prevQuery = applyVisibleLeadsFilters(prevQuery, {
+        demoMode: mode,
         dateFrom: prevRange.start,
         dateTo: prevRange.end,
       });

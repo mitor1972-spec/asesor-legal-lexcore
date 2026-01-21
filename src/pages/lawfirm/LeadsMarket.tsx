@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +21,7 @@ import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
 
 export default function LeadsMarket() {
   const { user } = useAuthContext();
+  const { mode } = useDemoMode();
   const queryClient = useQueryClient();
   
   const [areaFilter, setAreaFilter] = useState<string>('all');
@@ -50,7 +52,7 @@ export default function LeadsMarket() {
 
   // Fetch marketplace leads with lexcore data
   const { data: leads, isLoading } = useQuery({
-    queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore],
+    queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore, mode],
     queryFn: async () => {
       let query = supabase
         .from('leads')
@@ -72,12 +74,18 @@ export default function LeadsMarket() {
           )
         `)
         .is('archived_at', null)
-        .or('is_demo.is.null,is_demo.eq.false') // Exclude demo data
         .or('structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false')
         .eq('status_internal', 'Pendiente')
         // GOLDEN RULE: Lead must have email OR phone to be shown in marketplace
         .or('structured_fields->>email.neq.,structured_fields->>telefono.neq.')
         .order('score_final', { ascending: false, nullsFirst: false });
+
+      // Apply demo mode filter
+      if (mode === 'demo') {
+        query = query.eq('is_demo', true);
+      } else {
+        query = query.or('is_demo.is.null,is_demo.eq.false');
+      }
 
       if (minScore && !isNaN(parseInt(minScore))) {
         query = query.gte('score_final', parseInt(minScore));

@@ -4,11 +4,12 @@ import { useThemeContext } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Menu, Sun, Moon, Monitor, LogOut, User, Search } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut, User, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
+import { DemoModeToggle } from '@/components/layout/DemoModeToggle';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -66,6 +67,8 @@ export function Header({ onMenuClick }: HeaderProps) {
 
           <div className="flex-1" />
 
+          <DemoModeToggle />
+          
           <NotificationBell />
 
           {/* Theme toggle with label */}

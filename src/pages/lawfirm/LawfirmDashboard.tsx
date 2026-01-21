@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLawfirmCases } from '@/hooks/useLawfirmCases';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 import { useLawfirmProfile, useLawfirmTeam, useLawfirmBranches } from '@/hooks/useLawfirmProfile';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,6 +62,7 @@ const statusColors: Record<string, string> = {
 
 export default function LawfirmDashboard() {
   const { user } = useAuthContext();
+  const { mode } = useDemoMode();
   const queryClient = useQueryClient();
   const { data: lawfirm } = useLawfirmProfile();
   const { data: cases = [], isLoading } = useLawfirmCases();
@@ -72,9 +74,9 @@ export default function LawfirmDashboard() {
 
   // Fetch available marketplace leads
   const { data: marketplaceLeads = [] } = useQuery({
-    queryKey: ['dashboard-opportunities', user?.profile?.lawfirm_id],
+    queryKey: ['dashboard-opportunities', user?.profile?.lawfirm_id, mode],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('leads')
         .select(`
           id, 
@@ -96,11 +98,19 @@ export default function LawfirmDashboard() {
         `)
         .is('archived_at', null)
         .is('discarded_at', null)
-        .or('is_demo.is.null,is_demo.eq.false') // Exclude demo data
         .eq('status_internal', 'Pendiente')
         .or('structured_fields->>email.neq.,structured_fields->>telefono.neq.')
         .order('score_final', { ascending: false, nullsFirst: false })
         .limit(10);
+
+      // Apply demo mode filter
+      if (mode === 'demo') {
+        query = query.eq('is_demo', true);
+      } else {
+        query = query.or('is_demo.is.null,is_demo.eq.false');
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       

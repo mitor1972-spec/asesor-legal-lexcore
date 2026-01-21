@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
+import { useDemoMode } from '@/contexts/DemoModeContext';
 
 export interface LawfirmCase {
   id: string;
@@ -46,16 +47,17 @@ export interface LawfirmCase {
 export function useLawfirmCases() {
   const { user } = useAuthContext();
   const { impersonatedLawfirm, isImpersonating } = useImpersonation();
+  const { mode } = useDemoMode();
   
   // Use impersonated lawfirm ID if impersonating
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
 
   return useQuery({
-    queryKey: ['lawfirm-cases', lawfirmId],
+    queryKey: ['lawfirm-cases', lawfirmId, mode],
     queryFn: async () => {
       if (!lawfirmId) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('lead_assignments')
         .select(`
           *,
@@ -78,6 +80,15 @@ export function useLawfirmCases() {
         `)
         .eq('lawfirm_id', lawfirmId)
         .order('assigned_at', { ascending: false });
+
+      // Apply demo mode filter
+      if (mode === 'demo') {
+        query = query.eq('is_demo', true);
+      } else {
+        query = query.or('is_demo.is.null,is_demo.eq.false');
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return (data || []) as unknown as LawfirmCase[];
