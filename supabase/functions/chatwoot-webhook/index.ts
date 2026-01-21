@@ -16,12 +16,15 @@ const ALIAS_REGEX = /^[a-z]+-[a-z]+-\d+$/i;
 // Regex para extracción de datos del texto
 const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const PHONE_REGEX_ES = /(?:\+34\s?)?(?:6|7|8|9)\d{8}/g;
-const NAME_REGEX = /(?:me llamo|soy|mi nombre es|llamo)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+){0,3})/i;
+const NAME_PATTERNS = [
+  /(?:me llamo|soy|mi nombre es|llamo)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+){0,4})/i,
+  /^([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,4})$/m, // Nombre propio en línea sola
+];
 
 interface ChatwootMessage {
   id: number;
   content: string | null;
-  message_type: number;
+  message_type: number; // 0 = incoming (user), 1 = outgoing (agent)
   created_at: number;
   sender?: {
     id?: number;
@@ -29,11 +32,18 @@ interface ChatwootMessage {
     type?: string;
     email?: string;
     phone_number?: string;
-    additional_attributes?: {
-      city?: string;
-      country?: string;
-    };
   };
+}
+
+interface TranscriptStats {
+  total_messages: number;
+  incoming_count: number;
+  outgoing_count: number;
+  first_message_at: string | null;
+  last_message_at: string | null;
+  last_incoming_excerpt: string | null;
+  last_outgoing_excerpt: string | null;
+  pages_fetched: number;
 }
 
 // Verificar si un nombre es un alias automático
@@ -42,7 +52,7 @@ function looksLikeAlias(name: string | null | undefined): boolean {
   return ALIAS_REGEX.test(name.trim());
 }
 
-// Extraer datos de contacto del texto de los mensajes
+// Extraer datos de contacto del texto completo
 function extractContactFromText(text: string): {
   email: string | null;
   phone: string | null;
@@ -50,52 +60,110 @@ function extractContactFromText(text: string): {
 } {
   const emailMatches = text.match(EMAIL_REGEX);
   const phoneMatches = text.match(PHONE_REGEX_ES);
-  const nameMatch = text.match(NAME_REGEX);
+  
+  let name: string | null = null;
+  for (const pattern of NAME_PATTERNS) {
+    const match = text.match(pattern);
+    if (match && match[1] && !looksLikeAlias(match[1])) {
+      name = match[1].trim();
+      break;
+    }
+  }
   
   return {
     email: emailMatches ? emailMatches[0].toLowerCase() : null,
     phone: phoneMatches ? phoneMatches[0].replace(/[\s.-]/g, "") : null,
-    name: nameMatch ? nameMatch[1].trim() : null,
+    name,
   };
 }
 
-// Obtener TODOS los mensajes de una conversación
-async function getConversationMessages(conversationId: number): Promise<ChatwootMessage[]> {
-  const url = `https://app.chatwoot.com/api/v1/accounts/${CHATWOOT_ACCOUNT_ID}/conversations/${conversationId}/messages`;
+/**
+ * FETCH COMPLETO CON PAGINACIÓN - Obtener TODOS los mensajes de una conversación
+ */
+async function fetchAllMessagesWithPagination(conversationId: number): Promise<{ messages: ChatwootMessage[]; stats: TranscriptStats }> {
+  const allMessages: ChatwootMessage[] = [];
+  let page = 1;
+  const perPage = 100; // Chatwoot default max
+  let hasMore = true;
+  let pagesCount = 0;
   
-  console.log(`[Chatwoot API] Fetching messages from: ${url}`);
+  console.log(`[FETCH] Starting paginated fetch for conversation ${conversationId}`);
   
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "api_access_token": CHATWOOT_API_TOKEN,
-        "Content-Type": "application/json",
-      },
-    });
+  while (hasMore) {
+    const url = `https://app.chatwoot.com/api/v1/accounts/${CHATWOOT_ACCOUNT_ID}/conversations/${conversationId}/messages?page=${page}&per_page=${perPage}`;
     
-    console.log(`[Chatwoot API] Response status: ${response.status}`);
+    console.log(`[FETCH] Requesting page ${page}: ${url}`);
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Chatwoot API] Error: ${response.status} - ${errorText}`);
-      return [];
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "api_access_token": CHATWOOT_API_TOKEN,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      console.log(`[FETCH] Page ${page} response status: ${response.status}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[FETCH] API Error on page ${page}: ${response.status} - ${errorText}`);
+        break;
+      }
+      
+      const data = await response.json();
+      const messages = data.payload || [];
+      const meta = data.meta || {};
+      
+      console.log(`[FETCH] Page ${page}: received ${messages.length} messages (meta: ${JSON.stringify(meta)})`);
+      
+      allMessages.push(...messages);
+      pagesCount++;
+      
+      // Check pagination
+      if (messages.length < perPage) {
+        hasMore = false;
+      } else {
+        page++;
+        // Rate limit protection
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+    } catch (error) {
+      console.error(`[FETCH] Exception on page ${page}:`, error);
+      break;
     }
-    
-    const data = await response.json();
-    
-    if (data.payload && Array.isArray(data.payload)) {
-      console.log(`[Chatwoot API] Found ${data.payload.length} messages`);
-      return data.payload;
-    }
-    
-    console.warn("[Chatwoot API] No payload array in response");
-    return [];
-    
-  } catch (error) {
-    console.error("[Chatwoot API] Exception:", error);
-    return [];
   }
+  
+  // Sort by created_at ascending
+  allMessages.sort((a, b) => a.created_at - b.created_at);
+  
+  // Calculate stats
+  const incomingMessages = allMessages.filter(m => m.message_type === 0);
+  const outgoingMessages = allMessages.filter(m => m.message_type === 1);
+  
+  const stats: TranscriptStats = {
+    total_messages: allMessages.length,
+    incoming_count: incomingMessages.length,
+    outgoing_count: outgoingMessages.length,
+    first_message_at: allMessages.length > 0 
+      ? new Date(allMessages[0].created_at * 1000).toISOString() 
+      : null,
+    last_message_at: allMessages.length > 0 
+      ? new Date(allMessages[allMessages.length - 1].created_at * 1000).toISOString() 
+      : null,
+    last_incoming_excerpt: incomingMessages.length > 0 
+      ? (incomingMessages[incomingMessages.length - 1].content || "").substring(0, 50) 
+      : null,
+    last_outgoing_excerpt: outgoingMessages.length > 0 
+      ? (outgoingMessages[outgoingMessages.length - 1].content || "").substring(0, 50) 
+      : null,
+    pages_fetched: pagesCount,
+  };
+  
+  console.log(`[FETCH] Complete transcript stats: ${JSON.stringify(stats)}`);
+  
+  return { messages: allMessages, stats };
 }
 
 // Detectar área legal basado en palabras clave
@@ -164,32 +232,34 @@ serve(async (req) => {
       null;
     
     // ==========================================
-    // EXTRAER DATOS DEL CONTACTO (RAW - SIN MODIFICAR)
+    // EXTRAER DATOS DEL CONTACTO (METADATA CHATWOOT - NO ES EL NOMBRE REAL)
     // ==========================================
     const contact = (payload.sender?.type === "contact") 
       ? payload.sender 
       : conversation?.meta?.sender;
     
-    const rawName: string | null = contact?.name ?? null;
-    const email: string | null = contact?.email ?? null;
-    const phone: string | null = contact?.phone_number ?? contact?.phone ?? null;
-    const isAlias = looksLikeAlias(rawName);
+    const contactAlias: string | null = contact?.name ?? null; // Este es el ALIAS (floral-surf-101)
+    const contactEmail: string | null = contact?.email ?? null;
+    const contactPhone: string | null = contact?.phone_number ?? contact?.phone ?? null;
+    const isAlias = looksLikeAlias(contactAlias);
     
     // ==========================================
-    // LOG DE VERIFICACIÓN (ANTES DE DECIDIR)
+    // LOG DE ENTRADA DETALLADO (REQUISITO A)
     // ==========================================
+    const payloadMessagesCount = Array.isArray(payload.messages) ? payload.messages.length : 0;
     const messageType = payload.message_type;
     const senderType = payload.sender?.type;
     
-    console.log(`[Webhook] Decision data: ${JSON.stringify({
+    console.log(`[WEBHOOK_ENTRY] ${JSON.stringify({
       event: eventType,
-      message_type: messageType,
-      sender_type: senderType,
       conversation_id: conversationId,
-      rawName: rawName,
-      looksLikeAlias: isAlias,
-      email: email,
-      phone: phone,
+      sender_type: senderType,
+      message_type: messageType,
+      payload_messages_count: payloadMessagesCount,
+      contact_alias: contactAlias,
+      contact_email: contactEmail,
+      contact_phone: contactPhone,
+      is_alias: isAlias,
     })}`);
     
     // Inicializar Supabase
@@ -206,33 +276,8 @@ serve(async (req) => {
     }).select().single();
 
     // ==========================================
-    // FILTRO 1: IGNORAR OUTGOING (ROBUSTO)
+    // VALIDAR CONVERSATION_ID
     // ==========================================
-    const isOutgoing = 
-      messageType === "outgoing" || 
-      messageType === 1 || 
-      senderType === "user";
-    
-    if (isOutgoing) {
-      console.log(`[Webhook] Ignored outgoing message (message_type=${messageType}, sender.type=${senderType})`);
-      
-      if (logData?.id) {
-        await supabase.from("webhook_logs").update({
-          result: "skipped",
-          error_message: "ignored outgoing message",
-          processing_time_ms: Date.now() - startTime,
-        }).eq("id", logData.id);
-      }
-      
-      return new Response(JSON.stringify({ 
-        status: "ignored", 
-        reason: "outgoing message" 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Validar que tenemos conversation_id
     if (!conversationId) {
       console.warn("[Webhook] No conversation ID in payload");
       
@@ -253,282 +298,175 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // FILTRO 2: GATE ANTI-LEAD-VACÍO (DETERMINISTA)
+    // REQUISITO D: DEDUPLICACIÓN POR TIMESTAMP
     // ==========================================
-    // Si no hay email, no hay phone, y el nombre es null o es un alias -> NO crear lead
-    const hasEmail = email !== null && email.trim() !== "";
-    const hasPhone = phone !== null && phone.trim() !== "";
-    const hasValidName = rawName !== null && !isAlias;
-    
-    if (!hasEmail && !hasPhone && !hasValidName) {
-      console.log(`[Webhook] Ignored missing-contact lead (rawName=${rawName}, looksLikeAlias=${isAlias}, email=${email}, phone=${phone})`);
-      
-      if (logData?.id) {
-        await supabase.from("webhook_logs").update({
-          result: "skipped",
-          error_message: "ignored missing-contact lead",
-          processing_time_ms: Date.now() - startTime,
-        }).eq("id", logData.id);
-      }
-      
-      return new Response(JSON.stringify({ 
-        status: "ignored", 
-        reason: "missing-contact (no email, no phone, name is null or alias)" 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { data: existingLead } = await supabase
+      .from("leads")
+      .select("id, structured_fields, lead_text, last_message_at, last_processed_at, conversation_id")
+      .eq("conversation_id", conversationId)
+      .maybeSingle();
 
-    // FILTRO DE SEGURIDAD: Solo procesar conversaciones desde el 17/01/2026
-    const FECHA_MINIMA = new Date("2026-01-17T00:00:00Z").getTime() / 1000;
-    const conversationCreatedAt = conversation?.created_at || 0;
+    // ==========================================
+    // REQUISITO #1: FETCH TRANSCRIPT COMPLETO CON PAGINACIÓN
+    // ==========================================
+    console.log(`[Webhook] Fetching FULL transcript for conversation ${conversationId} (NOT using payload.messages)`);
     
-    if (conversationCreatedAt < FECHA_MINIMA) {
-      console.log(`[Webhook] Conversation ${conversationId} is too old (created: ${conversationCreatedAt}), skipping`);
+    const { messages: allMessages, stats: transcriptStats } = await fetchAllMessagesWithPagination(conversationId);
+    
+    // Log del transcript (REQUISITO A - punto 3)
+    console.log(`[TRANSCRIPT] ${JSON.stringify({
+      conversation_id: conversationId,
+      transcript_messages_count: transcriptStats.total_messages,
+      incoming_count: transcriptStats.incoming_count,
+      outgoing_count: transcriptStats.outgoing_count,
+      first_message_at: transcriptStats.first_message_at,
+      last_message_at: transcriptStats.last_message_at,
+      last_incoming_excerpt: transcriptStats.last_incoming_excerpt,
+      last_outgoing_excerpt: transcriptStats.last_outgoing_excerpt,
+      pages_fetched: transcriptStats.pages_fetched,
+    })}`);
+    
+    // Validar que tenemos mensajes
+    if (allMessages.length === 0) {
+      console.warn("[Webhook] No messages in transcript");
       
       if (logData?.id) {
         await supabase.from("webhook_logs").update({
           result: "skipped",
-          error_message: "Conversation before cutoff date (17/01/2026)",
+          error_message: "No messages in transcript after full fetch",
           processing_time_ms: Date.now() - startTime,
         }).eq("id", logData.id);
       }
       
       return new Response(JSON.stringify({ 
         status: "skipped", 
-        reason: "Conversation before cutoff date 17/01/2026" 
+        reason: "No messages in transcript" 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // ==========================================
-    // VERIFICAR SI YA EXISTE LEAD PARA ESTA CONVERSACIÓN
+    // REQUISITO D: DEDUPLICACIÓN - Comprobar si ya procesamos este estado
     // ==========================================
-    const { data: existingLead } = await supabase
-      .from("leads")
-      .select("id, structured_fields, lead_text")
-      .eq("conversation_id", conversationId)
-      .maybeSingle();
-
-    // Si ya existe un lead, intentar actualizar con nuevos datos del mensaje
-    if (existingLead) {
-      console.log(`[Webhook] Lead exists for conversation ${conversationId}: ${existingLead.id} - checking for new data`);
+    const lastMessageTimestamp = transcriptStats.last_message_at;
+    
+    if (existingLead && existingLead.last_processed_at && existingLead.last_message_at) {
+      const lastProcessedAt = new Date(existingLead.last_processed_at).getTime();
+      const lastMsgAt = new Date(existingLead.last_message_at).getTime();
+      const currentLastMsgAt = lastMessageTimestamp ? new Date(lastMessageTimestamp).getTime() : 0;
       
-      // Extraer datos del mensaje incoming actual
-      const incomingContent = payload.content || "";
-      const extractedFromText = extractContactFromText(incomingContent);
-      
-      const currentFields = existingLead.structured_fields as Record<string, unknown> || {};
-      const updates: Record<string, unknown> = {};
-      let hasUpdates = false;
-      
-      // Solo actualizar campos que están vacíos
-      if (!currentFields.contact_email && extractedFromText.email) {
-        updates.contact_email = extractedFromText.email;
-        hasUpdates = true;
-      }
-      if (!currentFields.contact_phone && extractedFromText.phone) {
-        updates.contact_phone = extractedFromText.phone;
-        hasUpdates = true;
-      }
-      if (looksLikeAlias(currentFields.contact_name as string) && extractedFromText.name && !looksLikeAlias(extractedFromText.name)) {
-        updates.contact_name = extractedFromText.name;
-        hasUpdates = true;
-      }
-      
-      if (hasUpdates) {
-        const newFields = { ...currentFields, ...updates };
-        const newLeadText = existingLead.lead_text 
-          ? `${existingLead.lead_text}\n\n${incomingContent}`
-          : incomingContent;
-        
-        await supabase
-          .from("leads")
-          .update({
-            structured_fields: newFields,
-            lead_text: newLeadText,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existingLead.id);
-        
-        // Actualizar también chatwoot_conversations
-        await supabase
-          .from("chatwoot_conversations")
-          .update({
-            contact_name: (newFields.contact_name as string) || null,
-            contact_email: (newFields.contact_email as string) || null,
-            contact_phone: (newFields.contact_phone as string) || null,
-            processed_at: new Date().toISOString(),
-          })
-          .eq("chatwoot_conversation_id", conversationId);
-        
-        console.log(`[Webhook] Lead updated from incoming - conversation_id=${conversationId}, lead_id=${existingLead.id}, updates=${JSON.stringify(updates)}`);
+      // Si el último mensaje no ha cambiado desde el último procesamiento, skip
+      if (currentLastMsgAt <= lastMsgAt && lastMsgAt <= lastProcessedAt) {
+        console.log(`[Webhook] DEDUPE: Skipping - no new messages since last processing (last_message_at=${existingLead.last_message_at}, last_processed_at=${existingLead.last_processed_at})`);
         
         if (logData?.id) {
           await supabase.from("webhook_logs").update({
-            result: "success",
-            error_message: `Updated existing lead with: ${Object.keys(updates).join(", ")}`,
+            result: "skipped",
+            error_message: "Dedupe: no new messages since last processing",
             processing_time_ms: Date.now() - startTime,
           }).eq("id", logData.id);
         }
         
         return new Response(JSON.stringify({ 
-          status: "updated", 
+          status: "skipped", 
+          reason: "dedupe - no new messages",
           lead_id: existingLead.id,
-          conversation_id: conversationId,
-          updates: updates,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      
-      // No hay nuevos datos
-      console.log(`[Webhook] No new contact data in incoming message for conversation ${conversationId}`);
-      
-      if (logData?.id) {
-        await supabase.from("webhook_logs").update({
-          result: "skipped",
-          error_message: "Lead exists, no new contact data",
-          processing_time_ms: Date.now() - startTime,
-        }).eq("id", logData.id);
-      }
-      
-      return new Response(JSON.stringify({ 
-        status: "skipped", 
-        reason: "Lead exists, no new data",
-        lead_id: existingLead.id 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     // ==========================================
-    // OBTENER MENSAJES Y EXTRAER DATOS
+    // CONSTRUIR TRANSCRIPT COMPLETO
     // ==========================================
-    const messages = await getConversationMessages(conversationId);
+    // Incluir TODOS los mensajes para contexto de IA, pero priorizar incoming para extracción
+    const incomingMessages = allMessages.filter(m => m.message_type === 0 && m.content);
+    const allMessageContents = allMessages.filter(m => m.content);
     
-    if (messages.length === 0) {
-      console.warn("[Webhook] No messages retrieved from API");
-      
-      if (logData?.id) {
-        await supabase.from("webhook_logs").update({
-          result: "error",
-          error_message: "No messages from Chatwoot API",
-          processing_time_ms: Date.now() - startTime,
-        }).eq("id", logData.id);
-      }
-      
-      return new Response(JSON.stringify({ 
-        status: "error", 
-        reason: "Could not fetch messages from Chatwoot" 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Transcript completo (incoming + outgoing) para IA
+    const fullTranscript = allMessageContents
+      .map(m => `[${m.message_type === 0 ? 'USER' : 'AGENT'}]: ${m.content}`)
+      .join("\n\n");
+    
+    // Texto solo de usuario (incoming) para extracción de contacto
+    const userText = incomingMessages.map(m => m.content).join("\n\n");
+    
+    console.log(`[Webhook] Built transcripts: fullTranscript=${fullTranscript.length} chars, userText=${userText.length} chars`);
 
-    // Filtrar solo mensajes del USUARIO (message_type = 0)
-    const userMessages = messages
-      .filter(m => m.message_type === 0 && m.content)
-      .sort((a, b) => a.created_at - b.created_at);
+    // ==========================================
+    // REQUISITO #3: EXTRAER DATOS - Priorizar INCOMING del contacto
+    // ==========================================
+    const extractedFromText = extractContactFromText(userText);
     
-    if (userMessages.length === 0) {
-      console.warn("[Webhook] No user messages in conversation");
-      
-      if (logData?.id) {
-        await supabase.from("webhook_logs").update({
-          result: "skipped",
-          error_message: "No user messages in conversation",
-          processing_time_ms: Date.now() - startTime,
-        }).eq("id", logData.id);
-      }
-      
-      return new Response(JSON.stringify({ 
-        status: "skipped", 
-        reason: "No user messages" 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Construir texto completo y extraer datos
-    const fullText = userMessages.map(m => m.content).join("\n");
-    const extractedFromText = extractContactFromText(fullText);
+    // IMPORTANTE: Usar solo datos extraídos del texto, NO el alias de Chatwoot
+    // El campo contact_alias guardará el alias de Chatwoot (floral-surf-101)
+    // El campo nombre (structured_fields.nombre) solo se llena si hay nombre real en el texto
     
-    // Detectar área legal
-    const legalArea = detectLegalArea(fullText);
+    // Detectar área legal del texto completo
+    const legalArea = detectLegalArea(fullTranscript);
     
-    // Ubicación del contacto (desde metadata de Chatwoot)
-    let ubicacion: string | null = null;
-    if (contact?.additional_attributes?.city) {
-      ubicacion = `${contact.additional_attributes.city}, ${contact.additional_attributes.country || "España"}`;
-    }
-
-    // Construir lead_text
-    const leadText = userMessages.map(m => m.content).join("\n\n");
+    console.log(`[EXTRACTION] ${JSON.stringify({
+      conversation_id: conversationId,
+      contact_alias: contactAlias,
+      extracted_name: extractedFromText.name,
+      extracted_email: extractedFromText.email || contactEmail,
+      extracted_phone: extractedFromText.phone || contactPhone,
+      detected_legal_area: legalArea,
+    })}`);
 
     // ==========================================
     // PREPARAR STRUCTURED_FIELDS
     // ==========================================
-    // IMPORTANTE: NUNCA usar "Sin nombre" como valor - dejar NULL si no hay nombre válido
-    const finalName = extractedFromText.name || (hasValidName ? rawName : null);
-    const finalEmail = extractedFromText.email || email;
-    const finalPhone = extractedFromText.phone || phone;
+    const finalEmail = extractedFromText.email || contactEmail;
+    const finalPhone = extractedFromText.phone || contactPhone;
+    const finalName = extractedFromText.name; // Solo nombre extraído del texto, NUNCA el alias
     
-    const structuredFields = {
-      contact_name: finalName, // NULL si no hay nombre válido (NO "Sin nombre")
-      contact_phone: finalPhone,
-      contact_email: finalEmail,
-      city: ubicacion,
-      province: null,
-      legal_area: legalArea,
-      urgency: "media",
-      amount: null,
-      company_involved: null,
+    const structuredFields: Record<string, unknown> = {
+      nombre: finalName, // NULL si no hay nombre real extraído
+      telefono: finalPhone,
+      email: finalEmail,
+      area_legal: legalArea,
+      _contact_alias: contactAlias, // Guardar alias por separado (REQUISITO #3)
+      _transcript_stats: transcriptStats,
     };
-
-    // ==========================================
-    // VALIDACIÓN FINAL PRE-INSERT
-    // ==========================================
-    const hasFinalEmail = finalEmail !== null && finalEmail.trim() !== "";
-    const hasFinalPhone = finalPhone !== null && finalPhone.trim() !== "";
-    const hasFinalValidName = finalName !== null && !looksLikeAlias(finalName);
     
-    if (!hasFinalEmail && !hasFinalPhone && !hasFinalValidName) {
-      console.log(`[Webhook] Ignored missing-contact lead after text extraction (no valid name/email/phone)`);
-      
-      if (logData?.id) {
-        await supabase.from("webhook_logs").update({
-          result: "skipped",
-          error_message: "ignored missing-contact lead (after text extraction)",
-          processing_time_ms: Date.now() - startTime,
-        }).eq("id", logData.id);
-      }
-      
-      return new Response(JSON.stringify({ 
-        status: "ignored", 
-        reason: "missing-contact after text extraction" 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Eliminar _incomplete flag si tenemos datos de contacto
+    if (finalEmail || finalPhone || finalName) {
+      delete structuredFields._incomplete;
     }
 
-    console.log("[Webhook] Creating lead with structured_fields:", JSON.stringify(structuredFields, null, 2));
+    // ==========================================
+    // UPSERT LEAD CON TIMESTAMPS (REQUISITO #4)
+    // ==========================================
+    const now = new Date().toISOString();
+    
+    const leadData = {
+      conversation_id: conversationId,
+      lead_text: fullTranscript, // Transcript COMPLETO para IA
+      structured_fields: existingLead 
+        ? { ...(existingLead.structured_fields as Record<string, unknown> || {}), ...structuredFields }
+        : structuredFields,
+      source_channel: "Web chat",
+      status_internal: "Pendiente",
+      last_message_at: lastMessageTimestamp,
+      last_processed_at: now,
+      updated_at: now,
+    };
+    
+    console.log(`[Webhook] Upserting lead with data: ${JSON.stringify({
+      conversation_id: conversationId,
+      has_name: !!finalName,
+      has_email: !!finalEmail,
+      has_phone: !!finalPhone,
+      transcript_length: fullTranscript.length,
+      last_message_at: lastMessageTimestamp,
+    })}`);
 
-    // ==========================================
-    // UPSERT LEAD (DEDUPLICACIÓN POR CONVERSATION_ID)
-    // ==========================================
-    const { data: newLead, error: upsertError } = await supabase
+    const { data: upsertedLead, error: upsertError } = await supabase
       .from("leads")
-      .upsert({
-        conversation_id: conversationId,
-        lead_text: leadText,
-        structured_fields: structuredFields,
-        source_channel: "Web chat",
-        status_internal: "Pendiente",
-        updated_at: new Date().toISOString(),
-      }, {
+      .upsert(leadData, {
         onConflict: "conversation_id",
       })
       .select()
@@ -548,20 +486,20 @@ serve(async (req) => {
       throw upsertError;
     }
 
-    console.log(`[Webhook] Upsert lead ok - lead_id=${newLead.id}, conversation_id=${conversationId}`);
+    console.log(`[Webhook] Upsert lead OK - lead_id=${upsertedLead.id}, conversation_id=${conversationId}, action=${existingLead ? 'updated' : 'created'}`);
 
     // Registrar en chatwoot_conversations con UPSERT
     await supabase.from("chatwoot_conversations").upsert({
       chatwoot_conversation_id: conversationId,
       chatwoot_account_id: parseInt(CHATWOOT_ACCOUNT_ID),
       chatwoot_contact_id: contact?.id || null,
-      contact_name: structuredFields.contact_name,
-      contact_phone: structuredFields.contact_phone,
-      contact_email: structuredFields.contact_email,
-      conversation_content: leadText,
-      messages_count: messages.length,
-      lead_id: newLead.id,
-      processed_at: new Date().toISOString(),
+      contact_name: finalName || contactAlias, // Para referencia visual
+      contact_phone: finalPhone,
+      contact_email: finalEmail,
+      conversation_content: fullTranscript.substring(0, 10000),
+      messages_count: allMessages.length,
+      lead_id: upsertedLead.id,
+      processed_at: now,
       status: "processed",
     }, {
       onConflict: "chatwoot_conversation_id",
@@ -573,9 +511,13 @@ serve(async (req) => {
       event_type: eventType,
       status: "success",
       payload_json: {
-        extracted: structuredFields,
-        messages_count: messages.length,
-        user_messages_count: userMessages.length,
+        transcript_stats: transcriptStats,
+        extracted: {
+          name: finalName,
+          email: finalEmail,
+          phone: finalPhone,
+          area: legalArea,
+        },
       },
     });
 
@@ -592,7 +534,7 @@ serve(async (req) => {
     // PIPELINE IA: Extraer datos + Calcular Lexcore
     // ==========================================
     try {
-      // Paso 1: Reprocesar con IA para extraer datos estructurados del texto
+      // Paso 1: Reprocesar con IA para extraer datos estructurados del texto COMPLETO
       const reprocessUrl = `${supabaseUrl}/functions/v1/reprocess-lead`;
       const reprocessResponse = await fetch(reprocessUrl, {
         method: "POST",
@@ -600,12 +542,12 @@ serve(async (req) => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${supabaseKey}`,
         },
-        body: JSON.stringify({ lead_id: newLead.id }),
+        body: JSON.stringify({ lead_id: upsertedLead.id }),
       });
       
       if (reprocessResponse.ok) {
         const reprocessData = await reprocessResponse.json();
-        console.log(`[Webhook] AI extraction completed for lead ${newLead.id}:`, JSON.stringify(reprocessData.results?.[0]?.changes_made || []));
+        console.log(`[Webhook] AI extraction completed for lead ${upsertedLead.id}:`, JSON.stringify(reprocessData.results?.[0]?.changes_made || []));
       } else {
         console.warn(`[Webhook] AI extraction failed (${reprocessResponse.status}) - continuing with Lexcore`);
       }
@@ -619,29 +561,29 @@ serve(async (req) => {
           "Authorization": `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({
-          lead_id: newLead.id,
-          lead_text: leadText,
+          lead_id: upsertedLead.id,
+          lead_text: fullTranscript,
           structured_fields: structuredFields,
           source_channel: "Web chat",
         }),
       });
-      console.log(`[Webhook] Lexcore calculation triggered for lead ${newLead.id}`);
+      console.log(`[Webhook] Lexcore calculation triggered for lead ${upsertedLead.id}`);
     } catch (pipelineError) {
       console.warn("[Webhook] Pipeline (AI+Lexcore) failed (non-blocking):", pipelineError);
     }
 
     return new Response(JSON.stringify({ 
       status: "success", 
-      lead_id: newLead.id,
+      action: existingLead ? "updated" : "created",
+      lead_id: upsertedLead.id,
       conversation_id: conversationId,
+      transcript_stats: transcriptStats,
       extracted: {
-        nombre: structuredFields.contact_name,
-        email: structuredFields.contact_email,
-        telefono: structuredFields.contact_phone,
-        ubicacion: ubicacion,
+        nombre: finalName,
+        email: finalEmail,
+        telefono: finalPhone,
         area: legalArea,
-        messages_processed: messages.length,
-        user_messages: userMessages.length,
+        contact_alias: contactAlias,
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
