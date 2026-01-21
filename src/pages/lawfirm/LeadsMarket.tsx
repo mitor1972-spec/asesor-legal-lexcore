@@ -5,12 +5,15 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { toast } from 'sonner';
-import { ShoppingCart, Wallet, Filter } from 'lucide-react';
+import { ShoppingCart, Wallet, Filter, LayoutGrid, List } from 'lucide-react';
 import { LEGAL_AREAS, PROVINCES } from '@/lib/constants';
 import { LeadMarketCard } from '@/components/leadsmarket/LeadMarketCard';
+import { LeadMarketListItem } from '@/components/leadsmarket/LeadMarketListItem';
 import { LeadDetailModal } from '@/components/leadsmarket/LeadDetailModal';
 import { ShoppingCart as ShoppingCartPanel, CartButton } from '@/components/leadsmarket/ShoppingCart';
 import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
@@ -27,6 +30,7 @@ export default function LeadsMarket() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Fetch lawfirm balance
   const { data: lawfirm } = useQuery({
@@ -295,6 +299,20 @@ export default function LeadsMarket() {
             <Badge variant="secondary" className="h-9 px-3">
               {leads?.length || 0} leads disponibles
             </Badge>
+
+            <ToggleGroup 
+              type="single" 
+              value={viewMode} 
+              onValueChange={(v) => v && setViewMode(v as 'grid' | 'list')}
+              className="ml-auto"
+            >
+              <ToggleGroupItem value="grid" aria-label="Vista cuadrícula">
+                <LayoutGrid className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="list" aria-label="Vista lista">
+                <List className="h-4 w-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
         </CardContent>
       </Card>
@@ -316,10 +334,23 @@ export default function LeadsMarket() {
             </p>
           </CardContent>
         </Card>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid gap-5 lg:grid-cols-2">
           {leads?.map((lead) => (
             <LeadMarketCard
+              key={lead.id}
+              lead={lead}
+              onAddToCart={handleAddToCart}
+              onViewDetails={handleViewDetails}
+              isInCart={isInCart(lead.id)}
+              canAfford={balance >= lead.marketplace_price}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {leads?.map((lead) => (
+            <LeadMarketListItem
               key={lead.id}
               lead={lead}
               onAddToCart={handleAddToCart}
