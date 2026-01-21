@@ -1257,6 +1257,8 @@ export type Database = {
           created_by_user_id: string | null
           id: string
           is_in_marketplace: boolean | null
+          last_message_at: string | null
+          last_processed_at: string | null
           lead_text: string
           marketplace_added_at: string | null
           marketplace_price: number | null
@@ -1276,6 +1278,8 @@ export type Database = {
           created_by_user_id?: string | null
           id?: string
           is_in_marketplace?: boolean | null
+          last_message_at?: string | null
+          last_processed_at?: string | null
           lead_text: string
           marketplace_added_at?: string | null
           marketplace_price?: number | null
@@ -1295,6 +1299,8 @@ export type Database = {
           created_by_user_id?: string | null
           id?: string
           is_in_marketplace?: boolean | null
+          last_message_at?: string | null
+          last_processed_at?: string | null
           lead_text?: string
           marketplace_added_at?: string | null
           marketplace_price?: number | null
