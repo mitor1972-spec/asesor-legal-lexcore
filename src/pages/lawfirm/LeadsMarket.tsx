@@ -70,6 +70,8 @@ export default function LeadsMarket() {
         .is('archived_at', null)
         .or('structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false')
         .eq('status_internal', 'Pendiente')
+        // GOLDEN RULE: Lead must have email OR phone to be shown in marketplace
+        .or('structured_fields->>email.neq.,structured_fields->>telefono.neq.')
         .order('score_final', { ascending: false, nullsFirst: false });
 
       if (minScore && !isNaN(parseInt(minScore))) {
