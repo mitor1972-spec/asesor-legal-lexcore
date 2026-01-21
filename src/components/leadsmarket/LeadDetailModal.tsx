@@ -73,13 +73,18 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 flex flex-col">
-        <DialogHeader className="p-6 pb-4 border-b">
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0 flex flex-col overflow-hidden">
+        <DialogHeader className="p-6 pb-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Scale className="h-6 w-6 text-lawfirm-primary" />
               <div>
-                <DialogTitle className="text-xl">{legalArea}</DialogTitle>
+                <DialogTitle className="text-xl flex items-center gap-2">
+                  {legalArea}
+                  <span className="text-xs text-muted-foreground font-mono font-normal" title={lead.id}>
+                    #{lead.id.slice(0, 8)}
+                  </span>
+                </DialogTitle>
                 <DialogDescription className="flex items-center gap-2 mt-1">
                   <MapPin className="h-3 w-3" />
                   {location}
@@ -244,7 +249,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-6 pt-4 border-t bg-muted/30">
+        <DialogFooter className="p-6 pt-4 border-t bg-muted/30 flex-shrink-0">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
               <Euro className="h-5 w-5 text-lawfirm-primary" />
