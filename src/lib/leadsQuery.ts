@@ -46,6 +46,12 @@ export function applyVisibleLeadsFilters(
   query: any,
   options: VisibleLeadsOptions = {}
 ): any {
+  // CRITICAL: Always exclude discarded leads from operational views
+  // Discarded leads go to Settings > Leads Descartados
+  if (!options.includeInvalid) {
+    query = query.is('discarded_at', null);
+  }
+
   // Filter archived leads
   if (options.includeArchived) {
     query = query.not('archived_at', 'is', null);
