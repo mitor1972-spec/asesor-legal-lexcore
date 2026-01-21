@@ -37,6 +37,8 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
   const city = fields.city || fields.ciudad;
   const location = city ? `${province} (${city})` : province;
   const isUrgent = fields.urgencia_aplica === true;
+  const chatwootAlias = fields._contact_alias as string || null;
+  const conversationId = lead.conversation_id;
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return 'text-green-600 bg-green-500/10 border-green-500/30';
@@ -81,11 +83,16 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               <div>
                 <DialogTitle className="text-xl flex items-center gap-2">
                   {legalArea}
-                  <span className="text-xs text-muted-foreground font-mono font-normal" title={lead.id}>
-                    #{lead.id.slice(0, 8)}
-                  </span>
                 </DialogTitle>
-                <DialogDescription className="flex items-center gap-2 mt-1">
+                <DialogDescription className="flex flex-wrap items-center gap-2 mt-1">
+                  <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded" title={lead.id}>
+                    Lead #{lead.id.slice(0, 8)}
+                  </span>
+                  {(chatwootAlias || conversationId) && (
+                    <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">
+                      CW: {chatwootAlias || `#${conversationId}`}
+                    </span>
+                  )}
                   <MapPin className="h-3 w-3" />
                   {location}
                   {isUrgent && (

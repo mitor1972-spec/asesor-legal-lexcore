@@ -302,7 +302,7 @@ serve(async (req) => {
     // ==========================================
     const { data: existingLead } = await supabase
       .from("leads")
-      .select("id, structured_fields, lead_text, last_message_at, last_processed_at, conversation_id")
+      .select("id, structured_fields, lead_text, last_message_at, last_processed_at, conversation_id, discarded_at, discard_reason")
       .eq("conversation_id", conversationId)
       .maybeSingle();
 
@@ -445,17 +445,46 @@ serve(async (req) => {
     const now = new Date().toISOString();
     
     if (!hasValidContact) {
-      console.log(`[Webhook] GOLDEN RULE: Lead rejected - no email and no phone for conversation ${conversationId}`);
+      console.log(`[Webhook] GOLDEN RULE: Lead invalid - no email and no phone for conversation ${conversationId}`);
       
-      // Still log the conversation for debugging, but mark as incomplete
+      // Create/update lead with discarded_at flag (soft-delete pattern)
+      // This allows the lead to be reactivated if contact info arrives later
+      const discardedLeadData = {
+        conversation_id: conversationId,
+        lead_text: fullTranscript,
+        structured_fields: {
+          ...structuredFields,
+          _incomplete: true,
+        },
+        source_channel: "Web chat",
+        status_internal: "Pendiente",
+        last_message_at: lastMessageTimestamp,
+        last_processed_at: now,
+        updated_at: now,
+        // CRITICAL: Mark as discarded with reason
+        discarded_at: now,
+        discard_reason: "missing_contact",
+        price_final: 0, // No commercial value without contact
+      };
+      
+      const { data: discardedLead, error: discardError } = await supabase
+        .from("leads")
+        .upsert(discardedLeadData, {
+          onConflict: "conversation_id",
+        })
+        .select()
+        .single();
+      
+      // Log the conversation for debugging
       await supabase.from("chatwoot_conversations").upsert({
         chatwoot_conversation_id: conversationId,
         chatwoot_account_id: parseInt(CHATWOOT_ACCOUNT_ID),
         contact_name: contactAlias,
         conversation_content: fullTranscript.substring(0, 10000),
         messages_count: allMessages.length,
-        status: "incomplete_no_contact",
+        status: "discarded_no_contact",
         processed_at: now,
+        lead_id: discardedLead?.id,
       }, {
         onConflict: "chatwoot_conversation_id",
       });
@@ -463,27 +492,30 @@ serve(async (req) => {
       await supabase.from("chatwoot_import_logs").insert({
         chatwoot_conversation_id: conversationId,
         event_type: eventType,
-        status: "rejected_no_contact",
+        status: "discarded_no_contact",
         payload_json: {
           transcript_stats: transcriptStats,
-          reason: "GOLDEN RULE: No email AND no phone - lead not created",
+          reason: "GOLDEN RULE: No email AND no phone - lead discarded",
           contact_alias: contactAlias,
+          lead_id: discardedLead?.id,
         },
       });
       
       if (logData?.id) {
         await supabase.from("webhook_logs").update({
-          result: "rejected",
-          error_message: "GOLDEN RULE: No email AND no phone",
+          result: "discarded",
+          error_message: "GOLDEN RULE: No email AND no phone - lead stored but discarded",
           processing_time_ms: Date.now() - startTime,
         }).eq("id", logData.id);
       }
       
       return new Response(JSON.stringify({ 
-        status: "rejected", 
-        reason: "GOLDEN RULE: Lead must have email OR phone to be created",
+        status: "discarded", 
+        reason: "GOLDEN RULE: Lead must have email OR phone to be commercial",
         conversation_id: conversationId,
         contact_alias: contactAlias,
+        lead_id: discardedLead?.id,
+        note: "Lead stored in 'Leads Descartados' - can be reactivated if contact info arrives",
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -493,6 +525,7 @@ serve(async (req) => {
 
     // ==========================================
     // UPSERT LEAD CON TIMESTAMPS (REQUISITO #4)
+    // INCLUDING REACTIVATION: Clear discarded_at if lead was previously discarded
     // ==========================================
     
     const leadData = {
@@ -506,6 +539,9 @@ serve(async (req) => {
       last_message_at: lastMessageTimestamp,
       last_processed_at: now,
       updated_at: now,
+      // REACTIVATION: Clear discarded status since we now have valid contact
+      discarded_at: null,
+      discard_reason: null,
     };
     
     console.log(`[Webhook] Upserting lead with data: ${JSON.stringify({
@@ -515,6 +551,7 @@ serve(async (req) => {
       has_phone: !!finalPhone,
       transcript_length: fullTranscript.length,
       last_message_at: lastMessageTimestamp,
+      reactivating: !!(existingLead?.discarded_at),
     })}`);
 
     const { data: upsertedLead, error: upsertError } = await supabase
@@ -584,8 +621,10 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // PIPELINE IA COMPLETO: Extract → Lexcore → Summary
+    // PIPELINE IA COMPLETO: Extract → POST-IA GATE → Lexcore → Summary
     // ==========================================
+    let finalLeadValid = true; // Track if lead is still valid after AI extraction
+    
     try {
       // Paso 1: Reprocesar con IA para extraer datos estructurados del texto COMPLETO
       const reprocessUrl = `${supabaseUrl}/functions/v1/reprocess-lead`;
@@ -601,42 +640,81 @@ serve(async (req) => {
       if (reprocessResponse.ok) {
         const reprocessData = await reprocessResponse.json();
         console.log(`[Webhook] AI extraction completed for lead ${upsertedLead.id}:`, JSON.stringify(reprocessData.results?.[0]?.changes_made || []));
+        
+        // ==========================================
+        // GATE POST-IA: Re-verify contact after AI extraction
+        // ==========================================
+        const { data: updatedLead } = await supabase
+          .from("leads")
+          .select("id, structured_fields")
+          .eq("id", upsertedLead.id)
+          .single();
+        
+        if (updatedLead) {
+          const sf = updatedLead.structured_fields as Record<string, unknown>;
+          const postAiEmail = sf?.email as string;
+          const postAiPhone = sf?.telefono as string;
+          const postAiHasContact = !!(
+            (postAiEmail && postAiEmail.trim() !== '') || 
+            (postAiPhone && postAiPhone.trim() !== '')
+          );
+          
+          if (!postAiHasContact) {
+            console.log(`[Webhook] POST-IA GATE: Lead ${upsertedLead.id} has no contact after AI extraction - marking as discarded`);
+            
+            await supabase
+              .from("leads")
+              .update({
+                discarded_at: new Date().toISOString(),
+                discard_reason: "missing_contact_post_ai",
+                price_final: 0,
+              })
+              .eq("id", upsertedLead.id);
+            
+            finalLeadValid = false;
+          } else {
+            console.log(`[Webhook] POST-IA GATE: Lead ${upsertedLead.id} confirmed valid - email=${!!postAiEmail}, phone=${!!postAiPhone}`);
+          }
+        }
       } else {
         console.warn(`[Webhook] AI extraction failed (${reprocessResponse.status}) - continuing with Lexcore`);
       }
       
-      // Paso 2: Calcular Lexcore
-      const lexcoreUrl = `${supabaseUrl}/functions/v1/calculate-lexcore`;
-      await fetch(lexcoreUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          lead_id: upsertedLead.id,
-          lead_text: fullTranscript,
-          structured_fields: structuredFields,
-          source_channel: "Web chat",
-        }),
-      });
-      console.log(`[Webhook] Lexcore calculation triggered for lead ${upsertedLead.id}`);
-      
-      // Paso 3: Generar resumen estructurado AUTOMÁTICAMENTE (REQUISITO FASE 2)
-      const summaryUrl = `${supabaseUrl}/functions/v1/generate-case-summary`;
-      const summaryResponse = await fetch(summaryUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({ lead_id: upsertedLead.id }),
-      });
-      
-      if (summaryResponse.ok) {
-        console.log(`[Webhook] Case summary generated for lead ${upsertedLead.id}`);
-      } else {
-        console.warn(`[Webhook] Case summary generation failed (${summaryResponse.status})`);
+      // Only run Lexcore and Summary if lead is still valid
+      if (finalLeadValid) {
+        // Paso 2: Calcular Lexcore
+        const lexcoreUrl = `${supabaseUrl}/functions/v1/calculate-lexcore`;
+        await fetch(lexcoreUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({
+            lead_id: upsertedLead.id,
+            lead_text: fullTranscript,
+            structured_fields: structuredFields,
+            source_channel: "Web chat",
+          }),
+        });
+        console.log(`[Webhook] Lexcore calculation triggered for lead ${upsertedLead.id}`);
+        
+        // Paso 3: Generar resumen estructurado AUTOMÁTICAMENTE (REQUISITO FASE 2)
+        const summaryUrl = `${supabaseUrl}/functions/v1/generate-case-summary`;
+        const summaryResponse = await fetch(summaryUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ lead_id: upsertedLead.id }),
+        });
+        
+        if (summaryResponse.ok) {
+          console.log(`[Webhook] Case summary generated for lead ${upsertedLead.id}`);
+        } else {
+          console.warn(`[Webhook] Case summary generation failed (${summaryResponse.status})`);
+        }
       }
     } catch (pipelineError) {
       console.warn("[Webhook] Pipeline (AI+Lexcore+Summary) failed (non-blocking):", pipelineError);

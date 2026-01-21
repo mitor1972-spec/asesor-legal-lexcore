@@ -26,6 +26,7 @@ export interface MarketplaceLead {
   score_final: number;
   source_channel: string;
   created_at: string;
+  conversation_id?: number | null;
   structured_fields: {
     legal_area?: string;
     area_legal?: string;
@@ -36,6 +37,7 @@ export interface MarketplaceLead {
     urgencia_aplica?: boolean;
     cuantia_aproximada?: string;
     complejidad?: string;
+    _contact_alias?: string;
     [key: string]: any;
   };
   vj_value?: number;

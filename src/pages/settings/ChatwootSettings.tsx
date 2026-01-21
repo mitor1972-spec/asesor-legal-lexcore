@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,8 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Copy, RefreshCw, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle, Activity, FileText, Clipboard, Play, Database } from 'lucide-react';
+import { Copy, RefreshCw, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle, Activity, FileText, Clipboard, Play, Database, Search, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -60,6 +61,8 @@ export default function ChatwootSettings() {
   const [processingManual, setProcessingManual] = useState(false);
   const [runningBackfill, setRunningBackfill] = useState(false);
   const [backfillResults, setBackfillResults] = useState<any>(null);
+  const [logSearch, setLogSearch] = useState('');
+  const [selectedLog, setSelectedLog] = useState<WebhookLog | null>(null);
 
   const webhookBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chatwoot-webhook`;
 
@@ -564,7 +567,16 @@ export default function ChatwootSettings() {
             </TabsList>
 
             <TabsContent value="webhook">
-              <div className="flex justify-end mb-4">
+              <div className="flex items-center justify-between mb-4 gap-4">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por alias, conversation_id o texto..."
+                    value={logSearch}
+                    onChange={(e) => setLogSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
                 <Button variant="outline" size="sm" onClick={() => refetchWebhookLogs()}>
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Actualizar
@@ -573,117 +585,121 @@ export default function ChatwootSettings() {
               
               {webhookLogsLoading ? (
                 <p className="text-muted-foreground">Cargando...</p>
-              ) : webhookLogs && webhookLogs.length > 0 ? (
-                <ScrollArea className="h-[500px]">
-                  <div className="space-y-2">
-                    {webhookLogs.map((log) => (
-                      <Collapsible
-                        key={log.id}
-                        open={expandedLogId === log.id}
-                        onOpenChange={(open) => setExpandedLogId(open ? log.id : null)}
-                      >
-                        <CollapsibleTrigger asChild>
-                          <div className="p-3 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center justify-between">
+              ) : (() => {
+                // Filter logs based on search
+                const filteredLogs = webhookLogs?.filter(log => {
+                  if (!logSearch.trim()) return true;
+                  const search = logSearch.toLowerCase();
+                  const payloadStr = JSON.stringify(log.payload || {}).toLowerCase();
+                  const convId = log.payload?.conversation?.id || log.payload?.conversation_id;
+                  const alias = log.payload?.sender?.name || log.payload?.conversation?.meta?.sender?.name || '';
+                  
+                  return (
+                    log.id.toLowerCase().includes(search) ||
+                    (convId && String(convId).includes(search)) ||
+                    alias.toLowerCase().includes(search) ||
+                    payloadStr.includes(search) ||
+                    (log.event_type || '').toLowerCase().includes(search) ||
+                    (log.error_message || '').toLowerCase().includes(search)
+                  );
+                }) || [];
+                
+                // Group logs by conversation_id
+                const groupedLogs = filteredLogs.reduce((acc, log) => {
+                  const convId = log.payload?.conversation?.id || log.payload?.conversation_id || 'unknown';
+                  if (!acc[convId]) acc[convId] = [];
+                  acc[convId].push(log);
+                  return acc;
+                }, {} as Record<string, WebhookLog[]>);
+                
+                return Object.keys(groupedLogs).length > 0 ? (
+                  <ScrollArea className="h-[600px]">
+                    <div className="space-y-4">
+                      {Object.entries(groupedLogs).map(([convId, logs]) => {
+                        const alias = logs[0]?.payload?.sender?.name || 
+                                     logs[0]?.payload?.conversation?.meta?.sender?.name || '';
+                        
+                        return (
+                          <div key={convId} className="border rounded-lg overflow-hidden">
+                            <div className="p-3 bg-muted/50 flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <span className="text-xs text-muted-foreground font-mono" title={log.id}>
-                                  #{log.id.slice(0, 8)}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {format(new Date(log.created_at), 'dd/MM/yy HH:mm:ss', { locale: es })}
-                                </span>
-                                <Badge variant="outline" className="font-mono text-xs">
-                                  {log.method}
+                                <Badge variant="outline" className="font-mono">
+                                  Conv #{convId}
                                 </Badge>
-                                <span className="text-sm font-medium">
-                                  {log.event_type || 'unknown'}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {log.processing_time_ms && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {log.processing_time_ms}ms
+                                {alias && (
+                                  <span className="text-sm text-muted-foreground">
+                                    {alias}
                                   </span>
                                 )}
-                                {getResultBadge(log.result)}
                               </div>
+                              <Badge variant="secondary">{logs.length} eventos</Badge>
                             </div>
-                            {log.error_message && (
-                              <p className="text-sm text-destructive mt-1 truncate max-w-full" title={log.error_message}>
-                                {log.error_message}
-                              </p>
-                            )}
-                          </div>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="mt-2 p-3 bg-muted rounded-lg space-y-3">
-                            {/* Copy Full Log Button at the top */}
-                            <div className="flex justify-end">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="h-7"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  copyFullLog(log);
-                                }}
-                              >
-                                <Clipboard className="w-3 h-3 mr-1" />
-                                Copiar log completo
-                              </Button>
-                            </div>
-                            
-                            {log.query_params && Object.keys(log.query_params).length > 0 && (
-                              <div>
-                                <Label className="text-xs">Query Params</Label>
-                                <pre className="text-xs mt-1 p-2 bg-background rounded overflow-x-auto">
-                                  {JSON.stringify(log.query_params, null, 2)}
-                                </pre>
-                              </div>
-                            )}
-                            {log.headers && Object.keys(log.headers).length > 0 && (
-                              <div>
-                                <Label className="text-xs">Headers</Label>
-                                <pre className="text-xs mt-1 p-2 bg-background rounded overflow-x-auto max-h-32">
-                                  {JSON.stringify(log.headers, null, 2)}
-                                </pre>
-                              </div>
-                            )}
-                            {log.payload && (
-                              <div>
-                                <div className="flex items-center justify-between">
-                                  <Label className="text-xs">Payload</Label>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="h-6 text-xs"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      copyPayload(log.payload);
-                                    }}
-                                  >
-                                    <Clipboard className="w-3 h-3 mr-1" />
-                                    Copiar payload
-                                  </Button>
+                            <div className="divide-y">
+                              {logs.map((log) => (
+                                <div 
+                                  key={log.id} 
+                                  className="p-3 hover:bg-muted/30 cursor-pointer transition-colors"
+                                  onClick={() => setSelectedLog(log)}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xs text-muted-foreground font-mono" title={log.id}>
+                                        #{log.id.slice(0, 8)}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {format(new Date(log.created_at), 'dd/MM HH:mm:ss', { locale: es })}
+                                      </span>
+                                      <Badge variant="outline" className="font-mono text-xs">
+                                        {log.event_type || 'unknown'}
+                                      </Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {log.processing_time_ms && (
+                                        <span className="text-xs text-muted-foreground">
+                                          {log.processing_time_ms}ms
+                                        </span>
+                                      )}
+                                      {getResultBadge(log.result)}
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        className="h-6 w-6 p-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedLog(log);
+                                        }}
+                                      >
+                                        <Eye className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  {log.error_message && (
+                                    <p className="text-sm text-destructive mt-1 truncate" title={log.error_message}>
+                                      {log.error_message}
+                                    </p>
+                                  )}
                                 </div>
-                                <pre className="text-xs mt-1 p-2 bg-background rounded overflow-x-auto max-h-64">
-                                  {JSON.stringify(log.payload, null, 2)}
-                                </pre>
-                              </div>
-                            )}
+                              ))}
+                            </div>
                           </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    ))}
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    {logSearch ? (
+                      <p>No se encontraron logs para "{logSearch}"</p>
+                    ) : (
+                      <>
+                        <p>No hay peticiones registradas</p>
+                        <p className="text-sm mt-1">Las peticiones de Chatwoot aparecerán aquí cuando lleguen</p>
+                      </>
+                    )}
                   </div>
-                </ScrollArea>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No hay peticiones registradas</p>
-                  <p className="text-sm mt-1">Las peticiones de Chatwoot aparecerán aquí cuando lleguen</p>
-                </div>
-              )}
+                );
+              })()}
             </TabsContent>
 
             <TabsContent value="imports">
@@ -731,6 +747,74 @@ export default function ChatwootSettings() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Large Modal for Log Details */}
+      <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <span className="font-mono text-sm">#{selectedLog?.id.slice(0, 8)}</span>
+              {selectedLog && getResultBadge(selectedLog.result)}
+              {selectedLog?.processing_time_ms && (
+                <span className="text-sm text-muted-foreground font-normal">
+                  {selectedLog.processing_time_ms}ms
+                </span>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedLog && format(new Date(selectedLog.created_at), "dd/MM/yyyy HH:mm:ss", { locale: es })}
+              {' • '}
+              {selectedLog?.event_type || 'unknown event'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-end gap-2 mb-4">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => selectedLog && copyPayload(selectedLog.payload)}
+            >
+              <Clipboard className="w-4 h-4 mr-2" />
+              Copiar Payload
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => selectedLog && copyFullLog(selectedLog)}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Copiar Log Completo
+            </Button>
+          </div>
+
+          <ScrollArea className="h-[60vh]">
+            <div className="space-y-4">
+              {selectedLog?.error_message && (
+                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                  <Label className="text-xs text-destructive">Error</Label>
+                  <p className="text-sm mt-1">{selectedLog.error_message}</p>
+                </div>
+              )}
+              
+              {selectedLog?.query_params && Object.keys(selectedLog.query_params).length > 0 && (
+                <div>
+                  <Label className="text-xs">Query Params</Label>
+                  <pre className="text-xs mt-1 p-3 bg-muted rounded-lg overflow-x-auto">
+                    {JSON.stringify(selectedLog.query_params, null, 2)}
+                  </pre>
+                </div>
+              )}
+              
+              <div>
+                <Label className="text-xs">Payload Completo</Label>
+                <pre className="text-xs mt-1 p-3 bg-muted rounded-lg overflow-auto whitespace-pre-wrap break-words">
+                  {JSON.stringify(selectedLog?.payload, null, 2)}
+                </pre>
+              </div>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
