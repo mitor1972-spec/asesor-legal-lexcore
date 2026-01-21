@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Copy, RefreshCw, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle, Activity, FileText, Clipboard, Play } from 'lucide-react';
+import { Copy, RefreshCw, ExternalLink, CheckCircle, XCircle, Clock, AlertCircle, Activity, FileText, Clipboard, Play, Database } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -58,6 +58,8 @@ export default function ChatwootSettings() {
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [manualConvId, setManualConvId] = useState('');
   const [processingManual, setProcessingManual] = useState(false);
+  const [runningBackfill, setRunningBackfill] = useState(false);
+  const [backfillResults, setBackfillResults] = useState<any>(null);
 
   const webhookBaseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chatwoot-webhook`;
 
@@ -355,6 +357,109 @@ export default function ChatwootSettings() {
               </SelectContent>
             </Select>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Backfill Card - Fase 3 */}
+      <Card className="border-amber-500/50 bg-amber-500/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="w-5 h-5 text-amber-600" />
+            Backfill: Reprocesar Todas las Conversaciones
+          </CardTitle>
+          <CardDescription>
+            Reprocesa todas las conversaciones de Chatwoot existentes aplicando la regla de oro (email O teléfono requerido) y ejecutando el pipeline completo (IA → Lexcore → Resumen)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 bg-amber-500/10 rounded-lg border border-amber-500/30">
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+              ⚠️ Este proceso puede tardar varios minutos. Procesará:
+            </p>
+            <ul className="text-sm text-muted-foreground mt-2 list-disc list-inside space-y-1">
+              <li>Primero los 10 aliases prioritarios (floral-surf-101, etc.)</li>
+              <li>Luego todas las conversaciones resueltas</li>
+              <li>Y conversaciones abiertas con más de 24h de inactividad</li>
+            </ul>
+          </div>
+          
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              className="border-amber-500 text-amber-600 hover:bg-amber-500/10"
+              onClick={async () => {
+                setRunningBackfill(true);
+                setBackfillResults(null);
+                try {
+                  const { data, error } = await supabase.functions.invoke('backfill-chatwoot', {
+                    body: { 
+                      limit: 100,
+                      inactivity_hours: 24
+                    }
+                  });
+                  
+                  if (error) throw error;
+                  
+                  if (data?.success) {
+                    setBackfillResults(data.summary);
+                    toast.success(`Backfill completado`, {
+                      description: `Procesados: ${data.summary.total_processed}, Creados: ${data.summary.created}, Actualizados: ${data.summary.updated}`
+                    });
+                    queryClient.invalidateQueries({ queryKey: ['chatwoot-import-logs'] });
+                    queryClient.invalidateQueries({ queryKey: ['leads'] });
+                    queryClient.invalidateQueries({ queryKey: ['lead-stats'] });
+                    queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+                  } else {
+                    toast.error(data?.error || 'Error en backfill');
+                  }
+                } catch (err: any) {
+                  toast.error(err.message || 'Error ejecutando backfill');
+                } finally {
+                  setRunningBackfill(false);
+                }
+              }}
+              disabled={runningBackfill}
+            >
+              {runningBackfill ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <Database className="w-4 h-4 mr-2" />
+                  Ejecutar Backfill Completo
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {backfillResults && (
+            <div className="p-4 bg-muted rounded-lg space-y-2">
+              <p className="text-sm font-medium">Resultados del Backfill:</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="p-2 bg-background rounded border">
+                  <p className="text-muted-foreground">Total procesados</p>
+                  <p className="text-lg font-bold">{backfillResults.total_processed}</p>
+                </div>
+                <div className="p-2 bg-green-500/10 rounded border border-green-500/30">
+                  <p className="text-green-600">Creados</p>
+                  <p className="text-lg font-bold text-green-600">{backfillResults.created}</p>
+                </div>
+                <div className="p-2 bg-blue-500/10 rounded border border-blue-500/30">
+                  <p className="text-blue-600">Actualizados</p>
+                  <p className="text-lg font-bold text-blue-600">{backfillResults.updated}</p>
+                </div>
+                <div className="p-2 bg-amber-500/10 rounded border border-amber-500/30">
+                  <p className="text-amber-600">Rechazados (sin contacto)</p>
+                  <p className="text-lg font-bold text-amber-600">{backfillResults.rejected}</p>
+                </div>
+              </div>
+              {backfillResults.errors > 0 && (
+                <p className="text-sm text-destructive">Errores: {backfillResults.errors}</p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
