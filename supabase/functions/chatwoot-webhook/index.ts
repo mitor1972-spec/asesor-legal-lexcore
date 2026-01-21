@@ -15,10 +15,14 @@ const ALIAS_REGEX = /^[a-z]+-[a-z]+-\d+$/i;
 
 // Regex para extracción de datos del texto
 const EMAIL_REGEX = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
-const PHONE_REGEX_ES = /(?:\+34\s?)?(?:6|7|8|9)\d{8}/g;
+
+// IMPROVED: Spanish phone regex - more comprehensive
+// Matches: 647989870, +34 647 989 870, 647 98 98 70, etc.
+const PHONE_REGEX_ES = /(?:\+34[\s.-]?)?(?:6|7|8|9)[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}|(?:\+34[\s.-]?)?(?:6|7|8|9)\d{8}/g;
+
 const NAME_PATTERNS = [
   /(?:me llamo|soy|mi nombre es|llamo)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+){0,4})/i,
-  /^([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,4})$/m, // Nombre propio en línea sola
+  /^([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,4})$/m,
 ];
 
 interface ChatwootMessage {
@@ -52,27 +56,52 @@ function looksLikeAlias(name: string | null | undefined): boolean {
   return ALIAS_REGEX.test(name.trim());
 }
 
+// Strip HTML from content
+function stripHtml(input: string): string {
+  return input
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Extraer datos de contacto del texto completo
 function extractContactFromText(text: string): {
   email: string | null;
   phone: string | null;
   name: string | null;
 } {
-  const emailMatches = text.match(EMAIL_REGEX);
-  const phoneMatches = text.match(PHONE_REGEX_ES);
+  // Strip HTML first
+  const cleanText = stripHtml(text);
+  
+  const emailMatches = cleanText.match(EMAIL_REGEX);
+  const phoneMatches = cleanText.match(PHONE_REGEX_ES);
   
   let name: string | null = null;
   for (const pattern of NAME_PATTERNS) {
-    const match = text.match(pattern);
+    const match = cleanText.match(pattern);
     if (match && match[1] && !looksLikeAlias(match[1])) {
       name = match[1].trim();
       break;
     }
   }
   
+  // Clean phone number - remove all non-digits except leading +
+  let phone: string | null = null;
+  if (phoneMatches) {
+    phone = phoneMatches[0].replace(/[\s.-]/g, "");
+    // Normalize to 9 digits if starts with +34
+    if (phone.startsWith("+34")) {
+      phone = phone.substring(3);
+    }
+  }
+  
   return {
     email: emailMatches ? emailMatches[0].toLowerCase() : null,
-    phone: phoneMatches ? phoneMatches[0].replace(/[\s.-]/g, "") : null,
+    phone,
     name,
   };
 }
@@ -83,7 +112,7 @@ function extractContactFromText(text: string): {
 async function fetchAllMessagesWithPagination(conversationId: number): Promise<{ messages: ChatwootMessage[]; stats: TranscriptStats }> {
   const allMessages: ChatwootMessage[] = [];
   let page = 1;
-  const perPage = 100; // Chatwoot default max
+  const perPage = 100;
   let hasMore = true;
   let pagesCount = 0;
   
@@ -120,12 +149,10 @@ async function fetchAllMessagesWithPagination(conversationId: number): Promise<{
       allMessages.push(...messages);
       pagesCount++;
       
-      // Check pagination
       if (messages.length < perPage) {
         hasMore = false;
       } else {
         page++;
-        // Rate limit protection
         await new Promise(resolve => setTimeout(resolve, 100));
       }
       
@@ -153,10 +180,10 @@ async function fetchAllMessagesWithPagination(conversationId: number): Promise<{
       ? new Date(allMessages[allMessages.length - 1].created_at * 1000).toISOString() 
       : null,
     last_incoming_excerpt: incomingMessages.length > 0 
-      ? (incomingMessages[incomingMessages.length - 1].content || "").substring(0, 50) 
+      ? stripHtml(incomingMessages[incomingMessages.length - 1].content || "").substring(0, 50) 
       : null,
     last_outgoing_excerpt: outgoingMessages.length > 0 
-      ? (outgoingMessages[outgoingMessages.length - 1].content || "").substring(0, 50) 
+      ? stripHtml(outgoingMessages[outgoingMessages.length - 1].content || "").substring(0, 50) 
       : null,
     pages_fetched: pagesCount,
   };
@@ -168,10 +195,11 @@ async function fetchAllMessagesWithPagination(conversationId: number): Promise<{
 
 // Detectar área legal basado en palabras clave
 function detectLegalArea(text: string): string | null {
+  const cleanText = stripHtml(text);
   const areaKeywords: Record<string, string[]> = {
     "Derecho de Familia": ["divorcio", "custodia", "pensión", "matrimonio", "hijos", "separación", "manutención"],
     "Derecho Laboral": ["despido", "trabajo", "contrato laboral", "finiquito", "empresa", "ERE", "ERTE", "nómina", "desempleo"],
-    "Derecho Penal": ["denuncia", "delito", "robo", "estafa", "penal", "juicio", "acusación", "víctima"],
+    "Derecho Penal": ["denuncia", "delito", "robo", "estafa", "penal", "juicio", "acusación", "víctima", "detenido", "detenida", "cárcel", "prisión"],
     "Derecho de Propiedad Intelectual": ["plagio", "copyright", "autor", "propiedad intelectual", "derechos de autor", "TFM", "TFG", "tesis"],
     "Derecho Civil": ["herencia", "testamento", "contrato", "deuda", "reclamación", "indemnización"],
     "Derecho de Extranjería": ["visado", "residencia", "NIE", "extranjería", "nacionalidad", "permiso de trabajo"],
@@ -183,7 +211,7 @@ function detectLegalArea(text: string): string | null {
     "Derecho Bancario": ["banco", "préstamo", "cláusula", "hipoteca", "tarjeta", "intereses"],
   };
   
-  const textLower = text.toLowerCase();
+  const textLower = cleanText.toLowerCase();
   
   for (const [area, keywords] of Object.entries(areaKeywords)) {
     for (const keyword of keywords) {
@@ -204,6 +232,57 @@ serve(async (req) => {
 
   const startTime = Date.now();
   
+  // ==========================================
+  // REQUISITO 1.1: LOG DE ENTRADA INMEDIATO
+  // Registrar ANTES de cualquier validación
+  // ==========================================
+  let rawPayload: any = null;
+  let eventType: string = "unknown";
+  let conversationId: number | null = null;
+  let messageId: number | null = null;
+  let messageType: number | string | null = null;
+  let senderType: string | null = null;
+  let senderName: string | null = null;
+  let inboxId: number | null = null;
+  
+  try {
+    rawPayload = await req.json();
+    eventType = rawPayload.event || "unknown";
+    
+    // Extract all identifiers for logging
+    const conversation = rawPayload.conversation ?? rawPayload;
+    conversationId = 
+      conversation?.id ?? 
+      rawPayload.conversation_id ?? 
+      conversation?.conversation_id ?? 
+      null;
+    
+    messageId = rawPayload.id ?? rawPayload.message?.id ?? null;
+    messageType = rawPayload.message_type ?? rawPayload.message?.message_type ?? null;
+    senderType = rawPayload.sender?.type ?? null;
+    senderName = rawPayload.sender?.name ?? null;
+    inboxId = rawPayload.inbox?.id ?? conversation?.inbox_id ?? null;
+    
+  } catch (parseError) {
+    console.error(`[WEBHOOK_ENTRY] PARSE_ERROR: Could not parse JSON payload`);
+    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  
+  // CRITICAL: Log EVERY webhook received with full context
+  console.log(`[WEBHOOK_ENTRY] ${JSON.stringify({
+    timestamp: new Date().toISOString(),
+    event: eventType,
+    conversation_id: conversationId,
+    message_id: messageId,
+    message_type: messageType,
+    sender_type: senderType,
+    sender_name: senderName,
+    inbox_id: inboxId,
+  })}`);
+
   try {
     // Verificar token de seguridad
     const url = new URL(req.url);
@@ -211,67 +290,37 @@ serve(async (req) => {
     const expectedToken = "6b8f29d7-d55f-41ed-829d-70c31f3ada4c";
     
     if (token !== expectedToken) {
-      console.error("[Webhook] Invalid token");
+      console.log(`[WEBHOOK_ENTRY] REJECTED: Invalid token`);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const payload = await req.json();
-    const eventType = payload.event;
+    // ==========================================
+    // REQUISITO 1.2: LOG ACCEPTANCE/REJECTION REASON
+    // ==========================================
     
-    // ==========================================
-    // EXTRAER CONVERSATION_ID DE FORMA ROBUSTA
-    // ==========================================
-    const conversation = payload.conversation ?? payload;
-    const conversationId: number | null = 
-      conversation?.id ?? 
-      payload.conversation_id ?? 
-      conversation?.conversation_id ?? 
-      null;
+    // Extract contact info from payload
+    const contact = (rawPayload.sender?.type === "contact") 
+      ? rawPayload.sender 
+      : rawPayload.conversation?.meta?.sender;
     
-    // ==========================================
-    // EXTRAER DATOS DEL CONTACTO (METADATA CHATWOOT - NO ES EL NOMBRE REAL)
-    // ==========================================
-    const contact = (payload.sender?.type === "contact") 
-      ? payload.sender 
-      : conversation?.meta?.sender;
-    
-    const contactAlias: string | null = contact?.name ?? null; // Este es el ALIAS (floral-surf-101)
+    const contactAlias: string | null = contact?.name ?? null;
     const contactEmail: string | null = contact?.email ?? null;
     const contactPhone: string | null = contact?.phone_number ?? contact?.phone ?? null;
     const isAlias = looksLikeAlias(contactAlias);
-    
-    // ==========================================
-    // LOG DE ENTRADA DETALLADO (REQUISITO A)
-    // ==========================================
-    const payloadMessagesCount = Array.isArray(payload.messages) ? payload.messages.length : 0;
-    const messageType = payload.message_type;
-    const senderType = payload.sender?.type;
-    
-    console.log(`[WEBHOOK_ENTRY] ${JSON.stringify({
-      event: eventType,
-      conversation_id: conversationId,
-      sender_type: senderType,
-      message_type: messageType,
-      payload_messages_count: payloadMessagesCount,
-      contact_alias: contactAlias,
-      contact_email: contactEmail,
-      contact_phone: contactPhone,
-      is_alias: isAlias,
-    })}`);
     
     // Inicializar Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Registrar el webhook recibido
+    // Registrar el webhook recibido (SIEMPRE, incluso si luego se rechaza)
     const { data: logData } = await supabase.from("webhook_logs").insert({
       source: "chatwoot",
       event_type: eventType,
-      payload: payload,
+      payload: rawPayload,
       result: "processing",
     }).select().single();
 
@@ -279,26 +328,29 @@ serve(async (req) => {
     // VALIDAR CONVERSATION_ID
     // ==========================================
     if (!conversationId) {
-      console.warn("[Webhook] No conversation ID in payload");
+      const reason = "No conversation ID in payload";
+      console.log(`[WEBHOOK_ENTRY] ACCEPTED=false REASON="${reason}"`);
       
       if (logData?.id) {
         await supabase.from("webhook_logs").update({
-          result: "skipped",
-          error_message: "No conversation ID",
+          result: "ignored",
+          error_message: reason,
           processing_time_ms: Date.now() - startTime,
         }).eq("id", logData.id);
       }
       
       return new Response(JSON.stringify({ 
         status: "ignored", 
-        reason: "No conversation ID" 
+        reason 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log(`[WEBHOOK_ENTRY] ACCEPTED=true conversation_id=${conversationId} event=${eventType}`);
+
     // ==========================================
-    // REQUISITO D: DEDUPLICACIÓN POR TIMESTAMP
+    // DEDUPLICACIÓN POR TIMESTAMP
     // ==========================================
     const { data: existingLead } = await supabase
       .from("leads")
@@ -307,13 +359,12 @@ serve(async (req) => {
       .maybeSingle();
 
     // ==========================================
-    // REQUISITO #1: FETCH TRANSCRIPT COMPLETO CON PAGINACIÓN
+    // FETCH TRANSCRIPT COMPLETO CON PAGINACIÓN
     // ==========================================
-    console.log(`[Webhook] Fetching FULL transcript for conversation ${conversationId} (NOT using payload.messages)`);
+    console.log(`[Webhook] Fetching FULL transcript for conversation ${conversationId}`);
     
     const { messages: allMessages, stats: transcriptStats } = await fetchAllMessagesWithPagination(conversationId);
     
-    // Log del transcript (REQUISITO A - punto 3)
     console.log(`[TRANSCRIPT] ${JSON.stringify({
       conversation_id: conversationId,
       transcript_messages_count: transcriptStats.total_messages,
@@ -321,33 +372,32 @@ serve(async (req) => {
       outgoing_count: transcriptStats.outgoing_count,
       first_message_at: transcriptStats.first_message_at,
       last_message_at: transcriptStats.last_message_at,
-      last_incoming_excerpt: transcriptStats.last_incoming_excerpt,
-      last_outgoing_excerpt: transcriptStats.last_outgoing_excerpt,
       pages_fetched: transcriptStats.pages_fetched,
     })}`);
     
     // Validar que tenemos mensajes
     if (allMessages.length === 0) {
-      console.warn("[Webhook] No messages in transcript");
+      const reason = "No messages in transcript after full fetch";
+      console.log(`[WEBHOOK_ENTRY] ACCEPTED=false REASON="${reason}"`);
       
       if (logData?.id) {
         await supabase.from("webhook_logs").update({
           result: "skipped",
-          error_message: "No messages in transcript after full fetch",
+          error_message: reason,
           processing_time_ms: Date.now() - startTime,
         }).eq("id", logData.id);
       }
       
       return new Response(JSON.stringify({ 
         status: "skipped", 
-        reason: "No messages in transcript" 
+        reason 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // ==========================================
-    // REQUISITO D: DEDUPLICACIÓN - Comprobar si ya procesamos este estado
+    // DEDUPLICACIÓN - Comprobar si ya procesamos este estado
     // ==========================================
     const lastMessageTimestamp = transcriptStats.last_message_at;
     
@@ -356,14 +406,14 @@ serve(async (req) => {
       const lastMsgAt = new Date(existingLead.last_message_at).getTime();
       const currentLastMsgAt = lastMessageTimestamp ? new Date(lastMessageTimestamp).getTime() : 0;
       
-      // Si el último mensaje no ha cambiado desde el último procesamiento, skip
       if (currentLastMsgAt <= lastMsgAt && lastMsgAt <= lastProcessedAt) {
-        console.log(`[Webhook] DEDUPE: Skipping - no new messages since last processing (last_message_at=${existingLead.last_message_at}, last_processed_at=${existingLead.last_processed_at})`);
+        const reason = `Dedupe: no new messages since last processing (last_msg=${existingLead.last_message_at})`;
+        console.log(`[WEBHOOK_ENTRY] ACCEPTED=false REASON="${reason}"`);
         
         if (logData?.id) {
           await supabase.from("webhook_logs").update({
             result: "skipped",
-            error_message: "Dedupe: no new messages since last processing",
+            error_message: reason,
             processing_time_ms: Date.now() - startTime,
           }).eq("id", logData.id);
         }
@@ -381,30 +431,25 @@ serve(async (req) => {
     // ==========================================
     // CONSTRUIR TRANSCRIPT COMPLETO
     // ==========================================
-    // Incluir TODOS los mensajes para contexto de IA, pero priorizar incoming para extracción
     const incomingMessages = allMessages.filter(m => m.message_type === 0 && m.content);
     const allMessageContents = allMessages.filter(m => m.content);
     
-    // Transcript completo (incoming + outgoing) para IA
+    // Transcript completo con HTML stripped
     const fullTranscript = allMessageContents
-      .map(m => `[${m.message_type === 0 ? 'USER' : 'AGENT'}]: ${m.content}`)
+      .map(m => `[${m.message_type === 0 ? 'USER' : 'AGENT'}]: ${stripHtml(m.content || '')}`)
       .join("\n\n");
     
-    // Texto solo de usuario (incoming) para extracción de contacto
-    const userText = incomingMessages.map(m => m.content).join("\n\n");
+    // Texto solo de usuario para extracción
+    const userText = incomingMessages.map(m => stripHtml(m.content || '')).join("\n\n");
     
     console.log(`[Webhook] Built transcripts: fullTranscript=${fullTranscript.length} chars, userText=${userText.length} chars`);
 
     // ==========================================
-    // REQUISITO #3: EXTRAER DATOS - Priorizar INCOMING del contacto
+    // EXTRAER DATOS - Priorizar texto del contacto
     // ==========================================
     const extractedFromText = extractContactFromText(userText);
     
-    // IMPORTANTE: Usar solo datos extraídos del texto, NO el alias de Chatwoot
-    // El campo contact_alias guardará el alias de Chatwoot (floral-surf-101)
-    // El campo nombre (structured_fields.nombre) solo se llena si hay nombre real en el texto
-    
-    // Detectar área legal del texto completo
+    // Detectar área legal
     const legalArea = detectLegalArea(fullTranscript);
     
     console.log(`[EXTRACTION] ${JSON.stringify({
@@ -421,25 +466,19 @@ serve(async (req) => {
     // ==========================================
     const finalEmail = extractedFromText.email || contactEmail;
     const finalPhone = extractedFromText.phone || contactPhone;
-    const finalName = extractedFromText.name; // Solo nombre extraído del texto, NUNCA el alias
+    const finalName = extractedFromText.name;
     
     const structuredFields: Record<string, unknown> = {
-      nombre: finalName, // NULL si no hay nombre real extraído
+      nombre: finalName,
       telefono: finalPhone,
       email: finalEmail,
       area_legal: legalArea,
-      _contact_alias: contactAlias, // Guardar alias por separado (REQUISITO #3)
+      _contact_alias: contactAlias,
       _transcript_stats: transcriptStats,
     };
-    
-    // Eliminar _incomplete flag si tenemos datos de contacto
-    if (finalEmail || finalPhone || finalName) {
-      delete structuredFields._incomplete;
-    }
 
     // ==========================================
-    // GOLDEN RULE VALIDATION: Lead must have email OR phone
-    // Leads without contact info are NOT commercial leads
+    // GOLDEN RULE: Lead must have email OR phone
     // ==========================================
     const hasValidContact = !!(finalEmail || finalPhone);
     const now = new Date().toISOString();
@@ -447,8 +486,6 @@ serve(async (req) => {
     if (!hasValidContact) {
       console.log(`[Webhook] GOLDEN RULE: Lead invalid - no email and no phone for conversation ${conversationId}`);
       
-      // Create/update lead with discarded_at flag (soft-delete pattern)
-      // This allows the lead to be reactivated if contact info arrives later
       const discardedLeadData = {
         conversation_id: conversationId,
         lead_text: fullTranscript,
@@ -461,10 +498,9 @@ serve(async (req) => {
         last_message_at: lastMessageTimestamp,
         last_processed_at: now,
         updated_at: now,
-        // CRITICAL: Mark as discarded with reason
         discarded_at: now,
         discard_reason: "missing_contact",
-        price_final: 0, // No commercial value without contact
+        price_final: 0,
       };
       
       const { data: discardedLead, error: discardError } = await supabase
@@ -475,7 +511,10 @@ serve(async (req) => {
         .select()
         .single();
       
-      // Log the conversation for debugging
+      if (discardError) {
+        console.error(`[Webhook] Error upserting discarded lead:`, discardError);
+      }
+      
       await supabase.from("chatwoot_conversations").upsert({
         chatwoot_conversation_id: conversationId,
         chatwoot_account_id: parseInt(CHATWOOT_ACCOUNT_ID),
@@ -495,7 +534,7 @@ serve(async (req) => {
         status: "discarded_no_contact",
         payload_json: {
           transcript_stats: transcriptStats,
-          reason: "GOLDEN RULE: No email AND no phone - lead discarded",
+          reason: "GOLDEN RULE: No email AND no phone",
           contact_alias: contactAlias,
           lead_id: discardedLead?.id,
         },
@@ -504,18 +543,17 @@ serve(async (req) => {
       if (logData?.id) {
         await supabase.from("webhook_logs").update({
           result: "discarded",
-          error_message: "GOLDEN RULE: No email AND no phone - lead stored but discarded",
+          error_message: "GOLDEN RULE: No email AND no phone",
           processing_time_ms: Date.now() - startTime,
         }).eq("id", logData.id);
       }
       
       return new Response(JSON.stringify({ 
         status: "discarded", 
-        reason: "GOLDEN RULE: Lead must have email OR phone to be commercial",
+        reason: "GOLDEN RULE: Lead must have email OR phone",
         conversation_id: conversationId,
         contact_alias: contactAlias,
         lead_id: discardedLead?.id,
-        note: "Lead stored in 'Leads Descartados' - can be reactivated if contact info arrives",
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -524,13 +562,11 @@ serve(async (req) => {
     console.log(`[Webhook] GOLDEN RULE: Lead VALID - has ${finalEmail ? 'email' : ''}${finalEmail && finalPhone ? ' and ' : ''}${finalPhone ? 'phone' : ''}`);
 
     // ==========================================
-    // UPSERT LEAD CON TIMESTAMPS (REQUISITO #4)
-    // INCLUDING REACTIVATION: Clear discarded_at if lead was previously discarded
+    // UPSERT LEAD
     // ==========================================
-    
     const leadData = {
       conversation_id: conversationId,
-      lead_text: fullTranscript, // Transcript COMPLETO para IA
+      lead_text: fullTranscript,
       structured_fields: existingLead 
         ? { ...(existingLead.structured_fields as Record<string, unknown> || {}), ...structuredFields }
         : structuredFields,
@@ -539,20 +575,11 @@ serve(async (req) => {
       last_message_at: lastMessageTimestamp,
       last_processed_at: now,
       updated_at: now,
-      // REACTIVATION: Clear discarded status since we now have valid contact
       discarded_at: null,
       discard_reason: null,
     };
     
-    console.log(`[Webhook] Upserting lead with data: ${JSON.stringify({
-      conversation_id: conversationId,
-      has_name: !!finalName,
-      has_email: !!finalEmail,
-      has_phone: !!finalPhone,
-      transcript_length: fullTranscript.length,
-      last_message_at: lastMessageTimestamp,
-      reactivating: !!(existingLead?.discarded_at),
-    })}`);
+    console.log(`[Webhook] Upserting lead for conversation ${conversationId}`);
 
     const { data: upsertedLead, error: upsertError } = await supabase
       .from("leads")
@@ -576,14 +603,14 @@ serve(async (req) => {
       throw upsertError;
     }
 
-    console.log(`[Webhook] Upsert lead OK - lead_id=${upsertedLead.id}, conversation_id=${conversationId}, action=${existingLead ? 'updated' : 'created'}`);
+    console.log(`[Webhook] Upsert lead OK - lead_id=${upsertedLead.id}, action=${existingLead ? 'updated' : 'created'}`);
 
-    // Registrar en chatwoot_conversations con UPSERT
+    // Registrar en chatwoot_conversations
     await supabase.from("chatwoot_conversations").upsert({
       chatwoot_conversation_id: conversationId,
       chatwoot_account_id: parseInt(CHATWOOT_ACCOUNT_ID),
       chatwoot_contact_id: contact?.id || null,
-      contact_name: finalName || contactAlias, // Para referencia visual
+      contact_name: finalName || contactAlias,
       contact_phone: finalPhone,
       contact_email: finalEmail,
       conversation_content: fullTranscript.substring(0, 10000),
@@ -611,7 +638,7 @@ serve(async (req) => {
       },
     });
 
-    // Actualizar log como éxito
+    // Actualizar log
     if (logData?.id) {
       await supabase.from("webhook_logs").update({
         result: "success",
@@ -621,12 +648,12 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // PIPELINE IA COMPLETO: Extract → POST-IA GATE → Lexcore → Summary
+    // PIPELINE IA: Extract → Lexcore → Summary
     // ==========================================
-    let finalLeadValid = true; // Track if lead is still valid after AI extraction
+    let finalLeadValid = true;
     
     try {
-      // Paso 1: Reprocesar con IA para extraer datos estructurados del texto COMPLETO
+      // Paso 1: Reprocesar con IA
       const reprocessUrl = `${supabaseUrl}/functions/v1/reprocess-lead`;
       const reprocessResponse = await fetch(reprocessUrl, {
         method: "POST",
@@ -639,11 +666,9 @@ serve(async (req) => {
       
       if (reprocessResponse.ok) {
         const reprocessData = await reprocessResponse.json();
-        console.log(`[Webhook] AI extraction completed for lead ${upsertedLead.id}:`, JSON.stringify(reprocessData.results?.[0]?.changes_made || []));
+        console.log(`[Webhook] AI extraction completed for lead ${upsertedLead.id}`);
         
-        // ==========================================
-        // GATE POST-IA: Re-verify contact after AI extraction
-        // ==========================================
+        // Re-verify contact after AI extraction
         const { data: updatedLead } = await supabase
           .from("leads")
           .select("id, structured_fields")
@@ -660,7 +685,7 @@ serve(async (req) => {
           );
           
           if (!postAiHasContact) {
-            console.log(`[Webhook] POST-IA GATE: Lead ${upsertedLead.id} has no contact after AI extraction - marking as discarded`);
+            console.log(`[Webhook] POST-AI: Lead ${upsertedLead.id} has no contact after AI - discarding`);
             
             await supabase
               .from("leads")
@@ -672,15 +697,12 @@ serve(async (req) => {
               .eq("id", upsertedLead.id);
             
             finalLeadValid = false;
-          } else {
-            console.log(`[Webhook] POST-IA GATE: Lead ${upsertedLead.id} confirmed valid - email=${!!postAiEmail}, phone=${!!postAiPhone}`);
           }
         }
       } else {
-        console.warn(`[Webhook] AI extraction failed (${reprocessResponse.status}) - continuing with Lexcore`);
+        console.warn(`[Webhook] AI extraction failed (${reprocessResponse.status})`);
       }
       
-      // Only run Lexcore and Summary if lead is still valid
       if (finalLeadValid) {
         // Paso 2: Calcular Lexcore
         const lexcoreUrl = `${supabaseUrl}/functions/v1/calculate-lexcore`;
@@ -697,9 +719,9 @@ serve(async (req) => {
             source_channel: "Web chat",
           }),
         });
-        console.log(`[Webhook] Lexcore calculation triggered for lead ${upsertedLead.id}`);
+        console.log(`[Webhook] Lexcore triggered for lead ${upsertedLead.id}`);
         
-        // Paso 3: Generar resumen estructurado AUTOMÁTICAMENTE (REQUISITO FASE 2)
+        // Paso 3: Generar resumen
         const summaryUrl = `${supabaseUrl}/functions/v1/generate-case-summary`;
         const summaryResponse = await fetch(summaryUrl, {
           method: "POST",
@@ -711,13 +733,11 @@ serve(async (req) => {
         });
         
         if (summaryResponse.ok) {
-          console.log(`[Webhook] Case summary generated for lead ${upsertedLead.id}`);
-        } else {
-          console.warn(`[Webhook] Case summary generation failed (${summaryResponse.status})`);
+          console.log(`[Webhook] Summary generated for lead ${upsertedLead.id}`);
         }
       }
     } catch (pipelineError) {
-      console.warn("[Webhook] Pipeline (AI+Lexcore+Summary) failed (non-blocking):", pipelineError);
+      console.warn("[Webhook] Pipeline failed (non-blocking):", pipelineError);
     }
 
     return new Response(JSON.stringify({ 
