@@ -17,6 +17,14 @@ export interface LawfirmCase {
   result_notes: string | null;
   service_type: string | null;
   lost_reason: string | null;
+  // Economic fields (Phase 7C)
+  lead_cost: number | null;
+  client_fee: number | null;
+  success_percentage: number | null;
+  claimed_amount: number | null;
+  fee_accepted_at: string | null;
+  won_amount: number | null;
+  won_percentage: number | null;
   lead: {
     id: string;
     lead_text: string;
