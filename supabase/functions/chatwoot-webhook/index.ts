@@ -438,9 +438,62 @@ serve(async (req) => {
     }
 
     // ==========================================
+    // GOLDEN RULE VALIDATION: Lead must have email OR phone
+    // Leads without contact info are NOT commercial leads
+    // ==========================================
+    const hasValidContact = !!(finalEmail || finalPhone);
+    const now = new Date().toISOString();
+    
+    if (!hasValidContact) {
+      console.log(`[Webhook] GOLDEN RULE: Lead rejected - no email and no phone for conversation ${conversationId}`);
+      
+      // Still log the conversation for debugging, but mark as incomplete
+      await supabase.from("chatwoot_conversations").upsert({
+        chatwoot_conversation_id: conversationId,
+        chatwoot_account_id: parseInt(CHATWOOT_ACCOUNT_ID),
+        contact_name: contactAlias,
+        conversation_content: fullTranscript.substring(0, 10000),
+        messages_count: allMessages.length,
+        status: "incomplete_no_contact",
+        processed_at: now,
+      }, {
+        onConflict: "chatwoot_conversation_id",
+      });
+      
+      await supabase.from("chatwoot_import_logs").insert({
+        chatwoot_conversation_id: conversationId,
+        event_type: eventType,
+        status: "rejected_no_contact",
+        payload_json: {
+          transcript_stats: transcriptStats,
+          reason: "GOLDEN RULE: No email AND no phone - lead not created",
+          contact_alias: contactAlias,
+        },
+      });
+      
+      if (logData?.id) {
+        await supabase.from("webhook_logs").update({
+          result: "rejected",
+          error_message: "GOLDEN RULE: No email AND no phone",
+          processing_time_ms: Date.now() - startTime,
+        }).eq("id", logData.id);
+      }
+      
+      return new Response(JSON.stringify({ 
+        status: "rejected", 
+        reason: "GOLDEN RULE: Lead must have email OR phone to be created",
+        conversation_id: conversationId,
+        contact_alias: contactAlias,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log(`[Webhook] GOLDEN RULE: Lead VALID - has ${finalEmail ? 'email' : ''}${finalEmail && finalPhone ? ' and ' : ''}${finalPhone ? 'phone' : ''}`);
+
+    // ==========================================
     // UPSERT LEAD CON TIMESTAMPS (REQUISITO #4)
     // ==========================================
-    const now = new Date().toISOString();
     
     const leadData = {
       conversation_id: conversationId,
@@ -531,7 +584,7 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // PIPELINE IA: Extraer datos + Calcular Lexcore
+    // PIPELINE IA COMPLETO: Extract → Lexcore → Summary
     // ==========================================
     try {
       // Paso 1: Reprocesar con IA para extraer datos estructurados del texto COMPLETO
@@ -568,8 +621,25 @@ serve(async (req) => {
         }),
       });
       console.log(`[Webhook] Lexcore calculation triggered for lead ${upsertedLead.id}`);
+      
+      // Paso 3: Generar resumen estructurado AUTOMÁTICAMENTE (REQUISITO FASE 2)
+      const summaryUrl = `${supabaseUrl}/functions/v1/generate-case-summary`;
+      const summaryResponse = await fetch(summaryUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({ lead_id: upsertedLead.id }),
+      });
+      
+      if (summaryResponse.ok) {
+        console.log(`[Webhook] Case summary generated for lead ${upsertedLead.id}`);
+      } else {
+        console.warn(`[Webhook] Case summary generation failed (${summaryResponse.status})`);
+      }
     } catch (pipelineError) {
-      console.warn("[Webhook] Pipeline (AI+Lexcore) failed (non-blocking):", pipelineError);
+      console.warn("[Webhook] Pipeline (AI+Lexcore+Summary) failed (non-blocking):", pipelineError);
     }
 
     return new Response(JSON.stringify({ 
