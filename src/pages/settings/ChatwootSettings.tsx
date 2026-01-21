@@ -378,15 +378,18 @@ export default function ChatwootSettings() {
               className="max-w-[200px]"
             />
             <Button 
-              onClick={async () => {
-                if (!manualConvId.trim()) {
-                  toast.error('Ingresa un ID de conversación');
+            onClick={async () => {
+                const trimmedId = manualConvId.trim();
+                const parsedId = parseInt(trimmedId, 10);
+                
+                if (!trimmedId || isNaN(parsedId)) {
+                  toast.error('Ingresa un ID de conversación válido (número)');
                   return;
                 }
                 setProcessingManual(true);
                 try {
                   const { data, error } = await supabase.functions.invoke('process-chatwoot-conversation', {
-                    body: { conversation_id: parseInt(manualConvId) }
+                    body: { conversation_id: parsedId }
                   });
                   
                   if (error) throw error;
