@@ -824,6 +824,7 @@ export type Database = {
           id: string
           initial_credit: number | null
           is_active: boolean | null
+          is_demo: boolean | null
           leadsmarket_enabled: boolean | null
           logo_url: string | null
           marketplace_alerts_enabled: boolean | null
@@ -870,6 +871,7 @@ export type Database = {
           id?: string
           initial_credit?: number | null
           is_active?: boolean | null
+          is_demo?: boolean | null
           leadsmarket_enabled?: boolean | null
           logo_url?: string | null
           marketplace_alerts_enabled?: boolean | null
@@ -916,6 +918,7 @@ export type Database = {
           id?: string
           initial_credit?: number | null
           is_active?: boolean | null
+          is_demo?: boolean | null
           leadsmarket_enabled?: boolean | null
           logo_url?: string | null
           marketplace_alerts_enabled?: boolean | null
@@ -947,6 +950,7 @@ export type Database = {
           firm_notes: string | null
           firm_status: string | null
           id: string
+          is_demo: boolean | null
           last_contact_at: string | null
           lawfirm_id: string | null
           lead_id: string | null
@@ -967,6 +971,7 @@ export type Database = {
           firm_notes?: string | null
           firm_status?: string | null
           id?: string
+          is_demo?: boolean | null
           last_contact_at?: string | null
           lawfirm_id?: string | null
           lead_id?: string | null
@@ -989,6 +994,7 @@ export type Database = {
           firm_notes?: string | null
           firm_status?: string | null
           id?: string
+          is_demo?: boolean | null
           last_contact_at?: string | null
           lawfirm_id?: string | null
           lead_id?: string | null
@@ -1261,6 +1267,7 @@ export type Database = {
           discard_reason: string | null
           discarded_at: string | null
           id: string
+          is_demo: boolean | null
           is_in_marketplace: boolean | null
           last_message_at: string | null
           last_processed_at: string | null
@@ -1284,6 +1291,7 @@ export type Database = {
           discard_reason?: string | null
           discarded_at?: string | null
           id?: string
+          is_demo?: boolean | null
           is_in_marketplace?: boolean | null
           last_message_at?: string | null
           last_processed_at?: string | null
@@ -1307,6 +1315,7 @@ export type Database = {
           discard_reason?: string | null
           discarded_at?: string | null
           id?: string
+          is_demo?: boolean | null
           is_in_marketplace?: boolean | null
           last_message_at?: string | null
           last_processed_at?: string | null
@@ -1613,6 +1622,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_active: boolean | null
+          is_demo: boolean | null
           lawfirm_id: string | null
           theme_pref: Database["public"]["Enums"]["theme_pref"] | null
           updated_at: string | null
@@ -1624,6 +1634,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_active?: boolean | null
+          is_demo?: boolean | null
           lawfirm_id?: string | null
           theme_pref?: Database["public"]["Enums"]["theme_pref"] | null
           updated_at?: string | null
@@ -1635,6 +1646,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_active?: boolean | null
+          is_demo?: boolean | null
           lawfirm_id?: string | null
           theme_pref?: Database["public"]["Enums"]["theme_pref"] | null
           updated_at?: string | null
