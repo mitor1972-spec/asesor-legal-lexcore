@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.backfill-chatwoot]
 verify_jwt = false
+
+[functions.process-document]
+verify_jwt = false

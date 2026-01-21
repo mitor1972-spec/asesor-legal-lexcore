@@ -946,13 +946,17 @@ export type Database = {
           assigned_by_user_id: string | null
           assigned_lawyer_id: string | null
           branch_id: string | null
+          claimed_amount: number | null
+          client_fee: number | null
           contacted_at: string | null
+          fee_accepted_at: string | null
           firm_notes: string | null
           firm_status: string | null
           id: string
           is_demo: boolean | null
           last_contact_at: string | null
           lawfirm_id: string | null
+          lead_cost: number | null
           lead_id: string | null
           lost_reason: string | null
           next_action_date: string | null
@@ -961,19 +965,26 @@ export type Database = {
           result_notes: string | null
           service_type: string | null
           status_delivery: Database["public"]["Enums"]["delivery_status"] | null
+          success_percentage: number | null
+          won_amount: number | null
+          won_percentage: number | null
         }
         Insert: {
           assigned_at?: string | null
           assigned_by_user_id?: string | null
           assigned_lawyer_id?: string | null
           branch_id?: string | null
+          claimed_amount?: number | null
+          client_fee?: number | null
           contacted_at?: string | null
+          fee_accepted_at?: string | null
           firm_notes?: string | null
           firm_status?: string | null
           id?: string
           is_demo?: boolean | null
           last_contact_at?: string | null
           lawfirm_id?: string | null
+          lead_cost?: number | null
           lead_id?: string | null
           lost_reason?: string | null
           next_action_date?: string | null
@@ -984,19 +995,26 @@ export type Database = {
           status_delivery?:
             | Database["public"]["Enums"]["delivery_status"]
             | null
+          success_percentage?: number | null
+          won_amount?: number | null
+          won_percentage?: number | null
         }
         Update: {
           assigned_at?: string | null
           assigned_by_user_id?: string | null
           assigned_lawyer_id?: string | null
           branch_id?: string | null
+          claimed_amount?: number | null
+          client_fee?: number | null
           contacted_at?: string | null
+          fee_accepted_at?: string | null
           firm_notes?: string | null
           firm_status?: string | null
           id?: string
           is_demo?: boolean | null
           last_contact_at?: string | null
           lawfirm_id?: string | null
+          lead_cost?: number | null
           lead_id?: string | null
           lost_reason?: string | null
           next_action_date?: string | null
@@ -1007,6 +1025,9 @@ export type Database = {
           status_delivery?:
             | Database["public"]["Enums"]["delivery_status"]
             | null
+          success_percentage?: number | null
+          won_amount?: number | null
+          won_percentage?: number | null
         }
         Relationships: [
           {
@@ -1048,40 +1069,52 @@ export type Database = {
       }
       lead_attachments: {
         Row: {
+          ai_extracted_data: Json | null
+          ai_summary: string | null
           attachment_context:
             | Database["public"]["Enums"]["attachment_context"]
             | null
+          category: string | null
           file_name: string
           file_size: number | null
           file_type: string | null
           id: string
           lead_id: string | null
+          processed_at: string | null
           storage_path: string
           uploaded_at: string | null
           uploaded_by_user_id: string | null
         }
         Insert: {
+          ai_extracted_data?: Json | null
+          ai_summary?: string | null
           attachment_context?:
             | Database["public"]["Enums"]["attachment_context"]
             | null
+          category?: string | null
           file_name: string
           file_size?: number | null
           file_type?: string | null
           id?: string
           lead_id?: string | null
+          processed_at?: string | null
           storage_path: string
           uploaded_at?: string | null
           uploaded_by_user_id?: string | null
         }
         Update: {
+          ai_extracted_data?: Json | null
+          ai_summary?: string | null
           attachment_context?:
             | Database["public"]["Enums"]["attachment_context"]
             | null
+          category?: string | null
           file_name?: string
           file_size?: number | null
           file_type?: string | null
           id?: string
           lead_id?: string | null
+          processed_at?: string | null
           storage_path?: string
           uploaded_at?: string | null
           uploaded_by_user_id?: string | null
@@ -1819,6 +1852,12 @@ export type Database = {
         | "lawfirm_admin"
         | "lawfirm_manager"
         | "lawfirm_lawyer"
+      attachment_category:
+        | "datos_personales"
+        | "notificaciones_juzgado"
+        | "documentacion_caso"
+        | "fotografias"
+        | "comunicaciones"
       attachment_context: "initial" | "update"
       delivery_status: "pending" | "sent" | "delivered" | "failed"
       firm_case_status:
@@ -1967,6 +2006,13 @@ export const Constants = {
         "lawfirm_admin",
         "lawfirm_manager",
         "lawfirm_lawyer",
+      ],
+      attachment_category: [
+        "datos_personales",
+        "notificaciones_juzgado",
+        "documentacion_caso",
+        "fotografias",
+        "comunicaciones",
       ],
       attachment_context: ["initial", "update"],
       delivery_status: ["pending", "sent", "delivered", "failed"],

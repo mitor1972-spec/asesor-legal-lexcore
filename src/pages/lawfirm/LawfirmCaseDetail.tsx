@@ -11,6 +11,8 @@ import { useLegalHelp, useGenerateLegalHelp } from '@/hooks/useLegalHelp';
 import { LeadTemperature } from '@/components/lead/LeadTemperature';
 import { ScoringHeader } from '@/components/lead/ScoringHeader';
 import { CaseTrackingTab } from '@/components/lawfirm/CaseTrackingTab';
+import { CaseDocumentsTab } from '@/components/lawfirm/CaseDocumentsTab';
+import { CaseEconomicsSection } from '@/components/lawfirm/CaseEconomicsSection';
 import { CaseResultDialog } from '@/components/lawfirm/CaseResultDialog';
 import { processAndSanitize } from '@/lib/sanitize';
 import { formatLocation } from '@/lib/cityProvinceMapping';
@@ -40,7 +42,9 @@ import {
   Inbox,
   ClipboardList,
   Calendar,
-  Hash
+  Hash,
+  FolderOpen,
+  Calculator
 } from 'lucide-react';
 
 // More detailed status labels for lawyers
@@ -303,12 +307,32 @@ ${legalHelp.estimated_complexity}
         </Card>
       </div>
 
-      {/* ROW 4: Tabs */}
+      {/* ROW 4: Economics Section */}
+      <CaseEconomicsSection
+        assignmentId={id!}
+        leadPrice={caseData.lead?.price_final || null}
+        firmStatus={caseData.firm_status}
+        initialData={{
+          lead_cost: (caseData as any).lead_cost,
+          client_fee: (caseData as any).client_fee,
+          success_percentage: (caseData as any).success_percentage,
+          claimed_amount: (caseData as any).claimed_amount,
+          fee_accepted_at: (caseData as any).fee_accepted_at,
+          won_amount: (caseData as any).won_amount,
+          won_percentage: (caseData as any).won_percentage,
+        }}
+      />
+
+      {/* ROW 5: Tabs */}
       <Tabs defaultValue="summary">
-        <TabsList className="w-full justify-start">
+        <TabsList className="w-full justify-start flex-wrap">
           <TabsTrigger value="summary">
             <FileText className="h-4 w-4 mr-2" />
             Resumen
+          </TabsTrigger>
+          <TabsTrigger value="documents">
+            <FolderOpen className="h-4 w-4 mr-2" />
+            Documentos
           </TabsTrigger>
           <TabsTrigger value="legal-help">
             <Sparkles className="h-4 w-4 mr-2" />
@@ -345,6 +369,11 @@ ${legalHelp.estimated_complexity}
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Documents Tab */}
+        <TabsContent value="documents" className="mt-3">
+          {caseData.lead_id && <CaseDocumentsTab leadId={caseData.lead_id} />}
         </TabsContent>
 
         {/* Legal Help Tab - KEY FEATURE */}
