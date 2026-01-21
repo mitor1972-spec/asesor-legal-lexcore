@@ -18,6 +18,7 @@ export interface VisibleLeadsOptions {
   includeIncomplete?: boolean; // Include leads marked as _incomplete
   includeArchived?: boolean;   // Include archived leads
   includeInvalid?: boolean;    // Include leads without email/phone (for debugging only)
+  includeDemo?: boolean;       // Include demo data (default: false, excludes demo)
   dateFrom?: Date;
   dateTo?: Date;
   status?: string;
@@ -46,6 +47,12 @@ export function applyVisibleLeadsFilters(
   query: any,
   options: VisibleLeadsOptions = {}
 ): any {
+  // CRITICAL: Exclude demo data from production views (unless explicitly included)
+  // Demo data is isolated with is_demo = true flag
+  if (!options.includeDemo) {
+    query = query.or('is_demo.is.null,is_demo.eq.false');
+  }
+
   // CRITICAL: Always exclude discarded leads from operational views
   // Discarded leads go to Settings > Leads Descartados
   if (!options.includeInvalid) {

@@ -72,6 +72,7 @@ export default function LeadsMarket() {
           )
         `)
         .is('archived_at', null)
+        .or('is_demo.is.null,is_demo.eq.false') // Exclude demo data
         .or('structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false')
         .eq('status_internal', 'Pendiente')
         // GOLDEN RULE: Lead must have email OR phone to be shown in marketplace
