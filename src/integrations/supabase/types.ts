@@ -203,6 +203,7 @@ export type Database = {
           created_at: string | null
           email_derivations: string | null
           id: string
+          is_demo: boolean | null
           lawfirm_id: string | null
           name: string
           province: string | null
@@ -211,6 +212,7 @@ export type Database = {
           created_at?: string | null
           email_derivations?: string | null
           id?: string
+          is_demo?: boolean | null
           lawfirm_id?: string | null
           name: string
           province?: string | null
@@ -219,6 +221,7 @@ export type Database = {
           created_at?: string | null
           email_derivations?: string | null
           id?: string
+          is_demo?: boolean | null
           lawfirm_id?: string | null
           name?: string
           province?: string | null
