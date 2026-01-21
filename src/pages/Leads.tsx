@@ -403,9 +403,7 @@ export default function Leads() {
                   </TableCell>
                   <TableCell className="text-sm">{format(new Date(lead.created_at), 'dd MMM yyyy', { locale: es })}</TableCell>
                   <TableCell className="font-medium">
-                    <span className={getDisplayName(lead.structured_fields as Record<string, unknown>) === 'No consta' ? 'text-muted-foreground italic' : ''}>
-                      {getDisplayName(lead.structured_fields as Record<string, unknown>)}
-                    </span>
+                    {getDisplayName(lead.structured_fields as Record<string, unknown>) || <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell><Badge variant="outline">{lead.source_channel}</Badge></TableCell>
                   <TableCell className="text-sm text-muted-foreground">{lead.structured_fields?.area_legal || '-'}</TableCell>

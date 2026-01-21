@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { startOfDay, endOfDay, subDays, startOfWeek, startOfMonth, startOfQuarter, startOfYear, subWeeks, subMonths, subQuarters, subYears } from 'date-fns';
+import { applyVisibleLeadsFilters } from '@/lib/leadsQuery';
 
 export type DatePeriod = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
 
@@ -82,6 +83,11 @@ export interface DashboardMetrics {
   }[];
 }
 
+/**
+ * Dashboard metrics hook - uses unified filtering from leadsQuery.ts
+ * 
+ * GOLDEN RULE: Only counts leads with email OR phone (valid contact)
+ */
 export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange) {
   const dateRange = getDateRange(period, customRange);
   const prevRange = getPreviousDateRange(period, customRange);
@@ -89,25 +95,30 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
   return useQuery({
     queryKey: ['dashboard-metrics', period, customRange?.start?.toISOString(), customRange?.end?.toISOString()],
     queryFn: async (): Promise<DashboardMetrics> => {
-      // Fetch current period leads - UNIFIED QUERY matching Leads list
-      const { data: currentLeads, error: leadsError } = await supabase
+      // Fetch current period leads - UNIFIED QUERY with GOLDEN RULE
+      let currentQuery = supabase
         .from('leads')
-        .select('*, lead_assignments(lawfirm_id, firm_status, lawfirms(name))')
-        .is('archived_at', null)
-        .or('structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false')
-        .gte('created_at', dateRange.start.toISOString())
-        .lte('created_at', dateRange.end.toISOString());
+        .select('*, lead_assignments(lawfirm_id, firm_status, lawfirms(name))');
+      
+      currentQuery = applyVisibleLeadsFilters(currentQuery, {
+        dateFrom: dateRange.start,
+        dateTo: dateRange.end,
+      });
+      
+      const { data: currentLeads, error: leadsError } = await currentQuery;
       if (leadsError) throw leadsError;
 
-      // Fetch previous period leads for comparison - UNIFIED QUERY
-      const { data: prevLeads, error: prevError } = await supabase
+      // Fetch previous period leads for comparison - UNIFIED QUERY with GOLDEN RULE
+      let prevQuery = supabase
         .from('leads')
-        .select('id, price_final, status_internal')
-        .is('archived_at', null)
-        .or('structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false')
-        .gte('created_at', prevRange.start.toISOString())
-        .lte('created_at', prevRange.end.toISOString());
+        .select('id, price_final, status_internal');
       
+      prevQuery = applyVisibleLeadsFilters(prevQuery, {
+        dateFrom: prevRange.start,
+        dateTo: prevRange.end,
+      });
+      
+      const { data: prevLeads, error: prevError } = await prevQuery;
       if (prevError) throw prevError;
 
       // Calculate current period metrics
@@ -211,7 +222,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
         .map(([date, stats]) => ({ date, ...stats }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
-      // Recent leads
+      // Recent leads - NO "Sin nombre" placeholder, empty string instead
       const recentLeads = leads
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, 5)
@@ -220,10 +231,14 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
           const assignments = l.lead_assignments as any[];
           const lawfirm = assignments?.[0]?.lawfirms?.name || null;
           
+          // Build name from real fields only, never placeholder
+          const nameParts = [fields?.nombre, fields?.apellidos].filter(Boolean);
+          const name = nameParts.length > 0 ? nameParts.join(' ') : '';
+          
           return {
             id: l.id,
             date: l.created_at,
-            name: [fields?.nombre, fields?.apellidos].filter(Boolean).join(' ') || 'Sin nombre',
+            name,
             area: fields?.area_legal || '-',
             lawfirm,
             score: l.score_final,
