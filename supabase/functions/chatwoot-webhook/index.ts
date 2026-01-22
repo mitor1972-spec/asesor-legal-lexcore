@@ -462,104 +462,31 @@ serve(async (req) => {
     })}`);
 
     // ==========================================
-    // PREPARAR STRUCTURED_FIELDS
+    // PREPARAR STRUCTURED_FIELDS (regex initial values)
     // ==========================================
-    const finalEmail = extractedFromText.email || contactEmail;
-    const finalPhone = extractedFromText.phone || contactPhone;
-    const finalName = extractedFromText.name;
+    const regexEmail = extractedFromText.email || contactEmail;
+    const regexPhone = extractedFromText.phone || contactPhone;
+    const regexName = extractedFromText.name;
     
     const structuredFields: Record<string, unknown> = {
-      nombre: finalName,
-      telefono: finalPhone,
-      email: finalEmail,
+      nombre: regexName,
+      telefono: regexPhone,
+      email: regexEmail,
       area_legal: legalArea,
       _contact_alias: contactAlias,
       _transcript_stats: transcriptStats,
+      _pending_ai_validation: true, // Mark for AI processing
     };
 
     // ==========================================
-    // GOLDEN RULE: Lead must have email OR phone
+    // CRITICAL FIX: NO Golden Rule aquí - SIEMPRE crear lead primero
+    // La validación se hace DESPUÉS de la extracción por IA
     // ==========================================
-    const hasValidContact = !!(finalEmail || finalPhone);
+    const hasRegexContact = !!(regexEmail || regexPhone);
     const now = new Date().toISOString();
     
-    if (!hasValidContact) {
-      console.log(`[Webhook] GOLDEN RULE: Lead invalid - no email and no phone for conversation ${conversationId}`);
-      
-      const discardedLeadData = {
-        conversation_id: conversationId,
-        lead_text: fullTranscript,
-        structured_fields: {
-          ...structuredFields,
-          _incomplete: true,
-        },
-        source_channel: "Web chat",
-        status_internal: "Pendiente",
-        last_message_at: lastMessageTimestamp,
-        last_processed_at: now,
-        updated_at: now,
-        discarded_at: now,
-        discard_reason: "missing_contact",
-        price_final: 0,
-      };
-      
-      const { data: discardedLead, error: discardError } = await supabase
-        .from("leads")
-        .upsert(discardedLeadData, {
-          onConflict: "conversation_id",
-        })
-        .select()
-        .single();
-      
-      if (discardError) {
-        console.error(`[Webhook] Error upserting discarded lead:`, discardError);
-      }
-      
-      await supabase.from("chatwoot_conversations").upsert({
-        chatwoot_conversation_id: conversationId,
-        chatwoot_account_id: parseInt(CHATWOOT_ACCOUNT_ID),
-        contact_name: contactAlias,
-        conversation_content: fullTranscript.substring(0, 10000),
-        messages_count: allMessages.length,
-        status: "discarded_no_contact",
-        processed_at: now,
-        lead_id: discardedLead?.id,
-      }, {
-        onConflict: "chatwoot_conversation_id",
-      });
-      
-      await supabase.from("chatwoot_import_logs").insert({
-        chatwoot_conversation_id: conversationId,
-        event_type: eventType,
-        status: "discarded_no_contact",
-        payload_json: {
-          transcript_stats: transcriptStats,
-          reason: "GOLDEN RULE: No email AND no phone",
-          contact_alias: contactAlias,
-          lead_id: discardedLead?.id,
-        },
-      });
-      
-      if (logData?.id) {
-        await supabase.from("webhook_logs").update({
-          result: "discarded",
-          error_message: "GOLDEN RULE: No email AND no phone",
-          processing_time_ms: Date.now() - startTime,
-        }).eq("id", logData.id);
-      }
-      
-      return new Response(JSON.stringify({ 
-        status: "discarded", 
-        reason: "GOLDEN RULE: Lead must have email OR phone",
-        conversation_id: conversationId,
-        contact_alias: contactAlias,
-        lead_id: discardedLead?.id,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    console.log(`[Webhook] GOLDEN RULE: Lead VALID - has ${finalEmail ? 'email' : ''}${finalEmail && finalPhone ? ' and ' : ''}${finalPhone ? 'phone' : ''}`);
+    console.log(`[Webhook] Regex extraction: email=${regexEmail}, phone=${regexPhone}, name=${regexName}, hasContact=${hasRegexContact}`);
+    console.log(`[Webhook] Creating/updating lead BEFORE AI validation for conversation ${conversationId}`);
 
     // ==========================================
     // UPSERT LEAD
@@ -605,34 +532,34 @@ serve(async (req) => {
 
     console.log(`[Webhook] Upsert lead OK - lead_id=${upsertedLead.id}, action=${existingLead ? 'updated' : 'created'}`);
 
-    // Registrar en chatwoot_conversations
+    // Registrar en chatwoot_conversations (with regex-extracted data initially)
     await supabase.from("chatwoot_conversations").upsert({
       chatwoot_conversation_id: conversationId,
       chatwoot_account_id: parseInt(CHATWOOT_ACCOUNT_ID),
       chatwoot_contact_id: contact?.id || null,
-      contact_name: finalName || contactAlias,
-      contact_phone: finalPhone,
-      contact_email: finalEmail,
+      contact_name: regexName || contactAlias,
+      contact_phone: regexPhone,
+      contact_email: regexEmail,
       conversation_content: fullTranscript.substring(0, 10000),
       messages_count: allMessages.length,
       lead_id: upsertedLead.id,
       processed_at: now,
-      status: "processed",
+      status: "processing", // Will be updated after AI
     }, {
       onConflict: "chatwoot_conversation_id",
     });
 
-    // Registrar en import logs
+    // Registrar en import logs (initial entry, will be updated after AI)
     await supabase.from("chatwoot_import_logs").insert({
       chatwoot_conversation_id: conversationId,
       event_type: eventType,
-      status: "success",
+      status: "processing",
       payload_json: {
         transcript_stats: transcriptStats,
-        extracted: {
-          name: finalName,
-          email: finalEmail,
-          phone: finalPhone,
+        regex_extracted: {
+          name: regexName,
+          email: regexEmail,
+          phone: regexPhone,
           area: legalArea,
         },
       },
@@ -648,12 +575,16 @@ serve(async (req) => {
     }
 
     // ==========================================
-    // PIPELINE IA: Extract → Lexcore → Summary
+    // PIPELINE IA: Extract → Golden Rule → Lexcore → Summary
+    // CRITICAL: La Golden Rule se aplica DESPUÉS de la IA, no antes
     // ==========================================
     let finalLeadValid = true;
+    let postAiEmail: string | null = regexEmail;
+    let postAiPhone: string | null = regexPhone;
     
     try {
-      // Paso 1: Reprocesar con IA
+      // Paso 1: SIEMPRE ejecutar extracción por IA
+      console.log(`[Webhook] Step 1: AI extraction for lead ${upsertedLead.id}`);
       const reprocessUrl = `${supabaseUrl}/functions/v1/reprocess-lead`;
       const reprocessResponse = await fetch(reprocessUrl, {
         method: "POST",
@@ -666,9 +597,9 @@ serve(async (req) => {
       
       if (reprocessResponse.ok) {
         const reprocessData = await reprocessResponse.json();
-        console.log(`[Webhook] AI extraction completed for lead ${upsertedLead.id}`);
+        console.log(`[Webhook] AI extraction completed: ${JSON.stringify(reprocessData.results?.[0]?.changes_made || [])}`);
         
-        // Re-verify contact after AI extraction
+        // Paso 2: GOLDEN RULE POST-IA - Re-verify contact after AI extraction
         const { data: updatedLead } = await supabase
           .from("leads")
           .select("id, structured_fields")
@@ -677,15 +608,18 @@ serve(async (req) => {
         
         if (updatedLead) {
           const sf = updatedLead.structured_fields as Record<string, unknown>;
-          const postAiEmail = sf?.email as string;
-          const postAiPhone = sf?.telefono as string;
+          postAiEmail = (sf?.email as string) || null;
+          postAiPhone = (sf?.telefono as string) || null;
+          
           const postAiHasContact = !!(
             (postAiEmail && postAiEmail.trim() !== '') || 
             (postAiPhone && postAiPhone.trim() !== '')
           );
           
+          console.log(`[Webhook] POST-AI Golden Rule check: email=${postAiEmail}, phone=${postAiPhone}, valid=${postAiHasContact}`);
+          
           if (!postAiHasContact) {
-            console.log(`[Webhook] POST-AI: Lead ${upsertedLead.id} has no contact after AI - discarding`);
+            console.log(`[Webhook] GOLDEN RULE POST-AI: Lead ${upsertedLead.id} has no contact after AI - discarding`);
             
             await supabase
               .from("leads")
@@ -693,18 +627,86 @@ serve(async (req) => {
                 discarded_at: new Date().toISOString(),
                 discard_reason: "missing_contact_post_ai",
                 price_final: 0,
+                structured_fields: {
+                  ...sf,
+                  _pending_ai_validation: false,
+                  _incomplete: true,
+                },
               })
               .eq("id", upsertedLead.id);
             
+            // Update logs
+            await supabase.from("chatwoot_conversations").upsert({
+              chatwoot_conversation_id: conversationId,
+              chatwoot_account_id: parseInt(CHATWOOT_ACCOUNT_ID),
+              contact_name: contactAlias,
+              conversation_content: fullTranscript.substring(0, 10000),
+              messages_count: allMessages.length,
+              status: "discarded_no_contact_post_ai",
+              processed_at: now,
+              lead_id: upsertedLead.id,
+            }, {
+              onConflict: "chatwoot_conversation_id",
+            });
+            
+            await supabase.from("chatwoot_import_logs").insert({
+              chatwoot_conversation_id: conversationId,
+              event_type: eventType,
+              status: "discarded_no_contact_post_ai",
+              payload_json: {
+                transcript_stats: transcriptStats,
+                reason: "GOLDEN RULE POST-AI: No email AND no phone after AI extraction",
+                contact_alias: contactAlias,
+                lead_id: upsertedLead.id,
+              },
+            });
+            
+            if (logData?.id) {
+              await supabase.from("webhook_logs").update({
+                result: "discarded",
+                error_message: "GOLDEN RULE POST-AI: No email AND no phone",
+                processing_time_ms: Date.now() - startTime,
+              }).eq("id", logData.id);
+            }
+            
             finalLeadValid = false;
+          } else {
+            // Remove pending flag, mark as valid
+            await supabase
+              .from("leads")
+              .update({
+                structured_fields: {
+                  ...sf,
+                  _pending_ai_validation: false,
+                  _incomplete: false,
+                },
+              })
+              .eq("id", upsertedLead.id);
           }
         }
       } else {
-        console.warn(`[Webhook] AI extraction failed (${reprocessResponse.status})`);
+        console.warn(`[Webhook] AI extraction failed (${reprocessResponse.status}) - will keep lead with regex data only`);
+        
+        // If AI fails but we have regex contact, proceed; otherwise discard
+        if (!hasRegexContact) {
+          console.log(`[Webhook] AI failed AND no regex contact - discarding lead ${upsertedLead.id}`);
+          
+          await supabase
+            .from("leads")
+            .update({
+              discarded_at: new Date().toISOString(),
+              discard_reason: "missing_contact_ai_failed",
+              price_final: 0,
+            })
+            .eq("id", upsertedLead.id);
+          
+          finalLeadValid = false;
+        }
       }
       
       if (finalLeadValid) {
-        // Paso 2: Calcular Lexcore
+        // Paso 3: Calcular Lexcore
+        console.log(`[Webhook] Step 3: Lexcore for lead ${upsertedLead.id}`);
         const lexcoreUrl = `${supabaseUrl}/functions/v1/calculate-lexcore`;
         await fetch(lexcoreUrl, {
           method: "POST",
@@ -721,7 +723,8 @@ serve(async (req) => {
         });
         console.log(`[Webhook] Lexcore triggered for lead ${upsertedLead.id}`);
         
-        // Paso 3: Generar resumen
+        // Paso 4: Generar resumen
+        console.log(`[Webhook] Step 4: Summary for lead ${upsertedLead.id}`);
         const summaryUrl = `${supabaseUrl}/functions/v1/generate-case-summary`;
         const summaryResponse = await fetch(summaryUrl, {
           method: "POST",
@@ -735,21 +738,58 @@ serve(async (req) => {
         if (summaryResponse.ok) {
           console.log(`[Webhook] Summary generated for lead ${upsertedLead.id}`);
         }
+        
+        // Update chatwoot_conversations with final status after AI
+        await supabase.from("chatwoot_conversations").upsert({
+          chatwoot_conversation_id: conversationId,
+          chatwoot_account_id: parseInt(CHATWOOT_ACCOUNT_ID),
+          contact_name: regexName || contactAlias,
+          contact_phone: postAiPhone || regexPhone,
+          contact_email: postAiEmail || regexEmail,
+          lead_id: upsertedLead.id,
+          processed_at: new Date().toISOString(),
+          status: "processed_success",
+        }, {
+          onConflict: "chatwoot_conversation_id",
+        });
+        
+        // Update import logs with success
+        await supabase.from("chatwoot_import_logs").insert({
+          chatwoot_conversation_id: conversationId,
+          event_type: eventType,
+          status: "success",
+          payload_json: {
+            transcript_stats: transcriptStats,
+            post_ai_extracted: {
+              email: postAiEmail,
+              phone: postAiPhone,
+            },
+          },
+        });
+        
+        if (logData?.id) {
+          await supabase.from("webhook_logs").update({
+            result: "success",
+            error_message: null,
+            processing_time_ms: Date.now() - startTime,
+          }).eq("id", logData.id);
+        }
       }
     } catch (pipelineError) {
       console.warn("[Webhook] Pipeline failed (non-blocking):", pipelineError);
     }
 
     return new Response(JSON.stringify({ 
-      status: "success", 
+      status: finalLeadValid ? "success" : "discarded",
       action: existingLead ? "updated" : "created",
       lead_id: upsertedLead.id,
       conversation_id: conversationId,
       transcript_stats: transcriptStats,
+      valid: finalLeadValid,
       extracted: {
-        nombre: finalName,
-        email: finalEmail,
-        telefono: finalPhone,
+        nombre: regexName,
+        email: postAiEmail || regexEmail,
+        telefono: postAiPhone || regexPhone,
         area: legalArea,
         contact_alias: contactAlias,
       }

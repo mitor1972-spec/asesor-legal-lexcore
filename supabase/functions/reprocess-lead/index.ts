@@ -156,8 +156,8 @@ ${leadText}
 Extrae y devuelve SOLO un JSON válido con esta estructura (usa null si no encuentras el dato):
 
 {
-  "nombre": "string o null",
-  "apellidos": "string o null", 
+  "nombre": "string o null - SOLO el nombre propio, SIN frases ni conectores",
+  "apellidos": "string o null - SOLO los apellidos, SIN frases",
   "telefono": "string o null - formato español 9 dígitos",
   "email": "string o null",
   "ciudad": "string o null",
@@ -176,12 +176,24 @@ Extrae y devuelve SOLO un JSON válido con esta estructura (usa null si no encue
 ÁREAS LEGALES VÁLIDAS:
 ${AREAS_LEGALES.join(", ")}
 
-REGLAS:
-- Si hay teléfono, normalízalo a formato español (9 dígitos sin prefijo, o con +34)
-- Si hay fechas límite, plazos o riesgo inmediato: urgencia_aplica = true
-- NO inventes datos que no estén en el texto
-- Si el usuario menciona una ciudad, infiere la provincia
-- Devuelve SOLO el JSON, sin explicaciones`;
+REGLAS CRÍTICAS:
+1. NOMBRE y APELLIDOS: Devuelve SOLO el nombre propio y apellidos, NUNCA frases.
+   - CORRECTO: "nombre": "Carlos", "apellidos": "Abello Alonso"
+   - INCORRECTO: "nombre": "Carlos y me gustaría hacerle", "apellidos": "Abello Alonso"
+   - Si el usuario dice "soy Carlos y me gustaría...", extrae SOLO "Carlos"
+   - Si el usuario dice "me llamo María García", extrae nombre="María", apellidos="García"
+   - ELIMINA cualquier texto que NO sea parte del nombre real (verbos, conectores, frases)
+
+2. TELÉFONO: Busca patrones de 9 dígitos (puede tener espacios/guiones). Normaliza a 9 dígitos.
+   - Ejemplos válidos: 657159588, 657 15 95 88, 657-159-588, +34 657 159 588
+   
+3. EMAIL: Busca patrones tipo usuario@dominio.extension
+
+4. CIUDAD y PROVINCIA: Si mencionan una ciudad, infiere la provincia.
+
+5. NO inventes datos. Si no está claro, usa null.
+
+Devuelve SOLO el JSON, sin explicaciones.`;
 
     const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -254,17 +266,33 @@ REGLAS:
       ["pretension_cliente", "pretension_cliente"],
     ];
 
+    // Helper to detect if a value looks like a malformed name (contains phrases)
+    const looksLikeBadName = (value: unknown): boolean => {
+      if (typeof value !== "string") return false;
+      const v = value.toLowerCase();
+      // Detect phrases that indicate extraction went wrong
+      return v.includes(" y ") || 
+             v.includes("me gustaría") || 
+             v.includes("quisiera") ||
+             v.includes("tengo") ||
+             v.includes("soy ") ||
+             v.includes("me llamo") ||
+             v.length > 40; // Names longer than 40 chars are suspicious
+    };
+
     for (const [extractedKey, dbKey] of fieldMappings) {
       const newValue = extractedData[extractedKey];
       const currentValue = currentFields[dbKey];
 
-      // Only update if we have new data and current is empty/null/alias
+      // Only update if we have new data and current is empty/null/alias/bad
       if (newValue !== null && newValue !== undefined && newValue !== "") {
         const isEmpty = currentValue === null || currentValue === undefined || currentValue === "";
         const isAlias = typeof currentValue === "string" && ALIAS_REGEX.test(currentValue);
         const isSinNombre = currentValue === "Sin nombre";
+        // For nombre field, also replace if it looks like a bad extraction
+        const isBadName = dbKey === "nombre" && looksLikeBadName(currentValue);
 
-        if (isEmpty || isAlias || isSinNombre) {
+        if (isEmpty || isAlias || isSinNombre || isBadName) {
           updatedFields[dbKey] = newValue;
           result.changes_made.push(`${dbKey}: ${currentValue} -> ${newValue}`);
           hasChanges = true;
