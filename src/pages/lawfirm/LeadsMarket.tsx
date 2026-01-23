@@ -11,13 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { toast } from 'sonner';
-import { ShoppingCart, Wallet, Filter, LayoutGrid, List } from 'lucide-react';
+import { ShoppingCart, Wallet, Filter, LayoutGrid, List, FileDown } from 'lucide-react';
 import { LEGAL_AREAS, PROVINCES } from '@/lib/constants';
 import { LeadMarketCard } from '@/components/leadsmarket/LeadMarketCard';
 import { LeadMarketListItem } from '@/components/leadsmarket/LeadMarketListItem';
 import { LeadDetailModal } from '@/components/leadsmarket/LeadDetailModal';
 import { ShoppingCart as ShoppingCartPanel, CartButton } from '@/components/leadsmarket/ShoppingCart';
 import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
+import { exportLeadsToExcel } from '@/lib/exportToExcel';
 
 export default function LeadsMarket() {
   const { user } = useAuthContext();
@@ -224,6 +225,41 @@ export default function LeadsMarket() {
     setShowCart(false);
   };
 
+  // Export visible leads to Excel
+  const handleExportLeads = () => {
+    if (!leads || leads.length === 0) {
+      toast.error('No hay leads para exportar');
+      return;
+    }
+
+    const exportData = leads.map(lead => {
+      const fields = lead.structured_fields || {};
+      return {
+        id: lead.id,
+        created_at: lead.created_at,
+        source_channel: lead.source_channel,
+        status_internal: 'Pendiente',
+        score_final: lead.score_final,
+        price_final: lead.marketplace_price,
+        structured_fields: {
+          ...fields,
+          nombre: fields.nombre || fields.name || '',
+          apellidos: fields.apellidos || '',
+          telefono: fields.telefono || fields.phone || '',
+          email: fields.email || fields.correo || '',
+          ciudad: fields.ciudad || fields.city || '',
+          provincia: fields.provincia || fields.province || '',
+          area_legal: fields.area_legal || fields.legal_area || '',
+          subarea: fields.subarea || '',
+          cuantia: fields.cuantia,
+        },
+      };
+    });
+
+    exportLeadsToExcel(exportData as any, `leadsmarket_${mode}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success(`${leads.length} leads exportados correctamente`);
+  };
+
   // Check if lead is in cart
   const isInCart = (id: string) => cartItems.some(item => item.id === id);
 
@@ -242,6 +278,10 @@ export default function LeadsMarket() {
         </div>
         
         <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={handleExportLeads} disabled={!leads || leads.length === 0}>
+            <FileDown className="mr-2 h-4 w-4" />
+            Exportar Excel
+          </Button>
           <Card className="bg-gradient-to-r from-lawfirm-primary/10 to-lawfirm-primary/5 border-lawfirm-primary/20">
             <CardContent className="py-3 px-4 flex items-center gap-3">
               <Wallet className="h-5 w-5 text-lawfirm-primary" />
