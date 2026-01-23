@@ -15,7 +15,7 @@ export function ViewSwitcher({ onClose }: ViewSwitcherProps) {
   const navigate = useNavigate();
   const { impersonatedLawfirm, isImpersonating, startImpersonation } = useImpersonation();
   const { data: lawfirms, isLoading } = useLawfirms();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   const activeLawfirms = lawfirms?.filter(l => l.is_active !== false) || [];
 

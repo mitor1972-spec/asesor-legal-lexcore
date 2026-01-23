@@ -116,7 +116,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6">
+        <ScrollArea className="flex-1 min-h-0 px-6">
           <div className="space-y-6 py-4">
             {/* Scoring Section */}
             <Card>
