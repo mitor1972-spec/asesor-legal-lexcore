@@ -143,10 +143,10 @@ async function processLead(
 
     console.log(`[Reprocess] Extracting data from lead ${leadId}`);
 
-    // Call OpenAI to extract data
-    const extractionPrompt = `Eres un asistente legal especializado en extraer información de conversaciones con clientes en España.
+    // Call OpenAI to extract data with IMPROVED LEGAL AREA CLASSIFICATION
+    const extractionPrompt = `Eres un asistente legal EXPERTO en clasificar consultas legales en España.
 
-Analiza el siguiente texto de un lead/consulta legal y extrae la información en formato JSON.
+TAREA PRINCIPAL: Analiza el texto y clasifica CORRECTAMENTE el área legal.
 
 TEXTO DEL LEAD:
 """
@@ -162,7 +162,7 @@ Extrae y devuelve SOLO un JSON válido con esta estructura (usa null si no encue
   "email": "string o null",
   "ciudad": "string o null",
   "provincia": "string o null - SIEMPRE incluir aunque debas inferirla de la ciudad",
-  "area_legal": "una de la lista o null",
+  "area_legal": "una de la lista o null - CRÍTICO: clasificar correctamente",
   "subarea": "string o null - especificar si se puede determinar",
   "cuantia": "número o null",
   "cuantia_texto": "string original si aparece",
@@ -176,21 +176,78 @@ Extrae y devuelve SOLO un JSON válido con esta estructura (usa null si no encue
 ÁREAS LEGALES VÁLIDAS:
 ${AREAS_LEGALES.join(", ")}
 
-REGLAS CRÍTICAS:
+=== REGLAS CRÍTICAS DE CLASIFICACIÓN DE ÁREA LEGAL ===
+
+⚠️ IMPORTANTE: "Derecho Laboral" SOLO aplica cuando hay relación empleador-empleado.
+
+GUÍA DE CLASIFICACIÓN:
+
+1. "Derecho de Consumidores" - Problemas con:
+   - Compras online que no llegan, envíos perdidos
+   - Productos defectuosos o que no cumplen
+   - Gimnasios, academias, suscripciones
+   - Reclamaciones a empresas de transporte (UPS, SEUR, Correos...)
+   - Garantías, devoluciones, cobros indebidos
+   - Cualquier conflicto COMPRADOR vs VENDEDOR/EMPRESA
+
+2. "Derecho Laboral" - SOLO si:
+   - Despido, ERE, ERTE
+   - Reclamación de salarios/nóminas
+   - Acoso laboral
+   - Finiquito, liquidación
+   - Contrato de TRABAJO (no contrato de servicios)
+   - El usuario ES EMPLEADO de la empresa
+
+3. "Derecho Inmobiliario" - Temas de:
+   - Alquiler, arrendamiento
+   - Okupas, desahucios
+   - Compraventa de viviendas
+   - Problemas con inquilinos/propietarios
+   - Comunidades de vecinos
+
+4. "Derecho Penal" - Cuando hay:
+   - Delitos (robo, estafa, amenazas, coacciones)
+   - Denuncias, juicios penales
+   - Víctimas de delitos
+
+5. "Derecho Civil" - Para:
+   - Herencias, testamentos
+   - Deudas, reclamación de cantidad
+   - Contratos civiles (no laborales)
+   - Responsabilidad civil
+
+6. "Derecho de Familia" - Temas de:
+   - Divorcio, separación
+   - Custodia de hijos
+   - Pensiones alimenticias
+   - Régimen de visitas
+
+7. "Derecho de Tráfico" - Para:
+   - Accidentes de tráfico
+   - Multas de tráfico
+   - Puntos del carnet
+
+8. "Derecho Bancario" - Problemas con:
+   - Bancos, hipotecas
+   - Cláusulas abusivas
+   - Préstamos, tarjetas
+
+=== EJEMPLOS DE CLASIFICACIÓN CORRECTA ===
+
+❌ INCORRECTO → ✅ CORRECTO:
+- "UPS me perdió un paquete" → Consumidores (NO Laboral)
+- "El gimnasio me sigue cobrando" → Consumidores (NO Laboral)
+- "Pedido que no llega" → Consumidores (NO Laboral)
+- "Okupas en mi casa" → Inmobiliario (NO Laboral)
+- "Me estafaron en una compra" → Consumidores o Penal (NO Laboral)
+- "Accidente de coche" → Tráfico (NO Laboral)
+
+=== OTRAS REGLAS ===
+
 1. NOMBRE y APELLIDOS: Devuelve SOLO el nombre propio y apellidos, NUNCA frases.
-   - CORRECTO: "nombre": "Carlos", "apellidos": "Abello Alonso"
-   - INCORRECTO: "nombre": "Carlos y me gustaría hacerle", "apellidos": "Abello Alonso"
-   - Si el usuario dice "soy Carlos y me gustaría...", extrae SOLO "Carlos"
-   - Si el usuario dice "me llamo María García", extrae nombre="María", apellidos="García"
-   - ELIMINA cualquier texto que NO sea parte del nombre real (verbos, conectores, frases)
-
-2. TELÉFONO: Busca patrones de 9 dígitos (puede tener espacios/guiones). Normaliza a 9 dígitos.
-   - Ejemplos válidos: 657159588, 657 15 95 88, 657-159-588, +34 657 159 588
-   
+2. TELÉFONO: Busca patrones de 9 dígitos (puede tener espacios/guiones).
 3. EMAIL: Busca patrones tipo usuario@dominio.extension
-
 4. CIUDAD y PROVINCIA: Si mencionan una ciudad, infiere la provincia.
-
 5. NO inventes datos. Si no está claro, usa null.
 
 Devuelve SOLO el JSON, sin explicaciones.`;
@@ -284,18 +341,24 @@ Devuelve SOLO el JSON, sin explicaciones.`;
       const newValue = extractedData[extractedKey];
       const currentValue = currentFields[dbKey];
 
-      // Only update if we have new data and current is empty/null/alias/bad
+      // Only update if we have new data
       if (newValue !== null && newValue !== undefined && newValue !== "") {
         const isEmpty = currentValue === null || currentValue === undefined || currentValue === "";
         const isAlias = typeof currentValue === "string" && ALIAS_REGEX.test(currentValue);
         const isSinNombre = currentValue === "Sin nombre";
         // For nombre field, also replace if it looks like a bad extraction
         const isBadName = dbKey === "nombre" && looksLikeBadName(currentValue);
+        
+        // CRITICAL: area_legal ALWAYS gets updated from AI classification
+        // This ensures proper classification overrides any previous (possibly wrong) value
+        const isAreaLegal = dbKey === "area_legal";
 
-        if (isEmpty || isAlias || isSinNombre || isBadName) {
-          updatedFields[dbKey] = newValue;
-          result.changes_made.push(`${dbKey}: ${currentValue} -> ${newValue}`);
-          hasChanges = true;
+        if (isEmpty || isAlias || isSinNombre || isBadName || isAreaLegal) {
+          if (currentValue !== newValue) {
+            updatedFields[dbKey] = newValue;
+            result.changes_made.push(`${dbKey}: ${currentValue} -> ${newValue}`);
+            hasChanges = true;
+          }
         }
       }
     }
