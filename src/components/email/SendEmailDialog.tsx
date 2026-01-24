@@ -43,16 +43,16 @@ export function SendEmailDialog({ open, onOpenChange, lead }: SendEmailDialogPro
     let body = template.body_html;
 
     const variables: Record<string, string> = {
-      nombre_cliente: nombre || 'Sin nombre',
-      telefono: (f.telefono as string) || 'No disponible',
-      email: (f.email as string) || 'No disponible',
+      nombre_cliente: nombre || '',
+      telefono: (f.telefono as string) || '',
+      email: (f.email as string) || '',
       ciudad: (f.ciudad as string) || '',
       provincia: (f.provincia as string) || '',
-      area_legal: (f.area_legal as string) || 'No especificada',
-      resumen_caso: includeSummary && lead.case_summary ? lead.case_summary : 'Sin resumen',
+      area_legal: (f.area_legal as string) || '',
+      resumen_caso: includeSummary && lead.case_summary ? lead.case_summary : '',
       link_caso: `${window.location.origin}/despacho/casos/${lead.id}`,
-      score: lead.score_final?.toString() || 'N/A',
-      precio: lead.price_final?.toString() || 'N/A',
+      score: lead.score_final?.toString() || '',
+      precio: lead.price_final?.toString() || '',
     };
 
     for (const [key, value] of Object.entries(variables)) {
@@ -73,16 +73,16 @@ export function SendEmailDialog({ open, onOpenChange, lead }: SendEmailDialogPro
     }
 
     const variables: Record<string, string> = {
-      nombre_cliente: nombre || 'Sin nombre',
-      telefono: (f.telefono as string) || 'No disponible',
-      email: (f.email as string) || 'No disponible',
+      nombre_cliente: nombre || '',
+      telefono: (f.telefono as string) || '',
+      email: (f.email as string) || '',
       ciudad: (f.ciudad as string) || '',
       provincia: (f.provincia as string) || '',
-      area_legal: (f.area_legal as string) || 'No especificada',
-      resumen_caso: includeSummary && lead.case_summary ? lead.case_summary : 'Sin resumen',
+      area_legal: (f.area_legal as string) || '',
+      resumen_caso: includeSummary && lead.case_summary ? lead.case_summary : '',
       link_caso: `${window.location.origin}/despacho/casos/${lead.id}`,
-      score: lead.score_final?.toString() || 'N/A',
-      precio: lead.price_final?.toString() || 'N/A',
+      score: lead.score_final?.toString() || '',
+      precio: lead.price_final?.toString() || '',
     };
 
     try {
