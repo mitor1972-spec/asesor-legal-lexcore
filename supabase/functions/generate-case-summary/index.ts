@@ -208,7 +208,7 @@ serve(async (req) => {
 Tu tarea es analizar la conversación del cliente y generar un resumen siguiendo EXACTAMENTE la plantilla proporcionada.
 
 REGLAS ESTRICTAS:
-1. Si un dato no aparece en la conversación, escribe "No consta"
+1. Si un dato no aparece en la conversación, DEJA EL CAMPO EN BLANCO (no escribas "No consta", "N/A", "No disponible", etc.)
 2. NO inventes ni supongas información que no esté explícita
 3. Usa bullets con "•" 
 4. Fechas en formato dd/mm/aaaa
@@ -216,25 +216,26 @@ REGLAS ESTRICTAS:
 6. Sé conciso pero completo
 7. En "Hechos y Cronología" lista cada hecho como "• Hecho N: descripción"
 8. En "Qué falta por confirmar" lista puntos para preguntar en la primera llamada
+9. OMITE completamente las líneas donde no haya información (no incluyas líneas vacías o con guiones)
 
 DATOS YA EXTRAÍDOS:
-- Nombre: ${sf.nombre || 'No consta'}
-- Apellidos: ${sf.apellidos || 'No consta'}
-- Teléfono: ${sf.telefono || 'No consta'}
-- Email: ${sf.email || 'No consta'}
-- Ciudad: ${sf.ciudad || 'No consta'}
-- Provincia: ${sf.provincia || 'No consta'}
-- Área legal: ${sf.area_legal || 'No consta'}
-- Subárea: ${sf.subarea || 'No consta'}
-- Cuantía: ${sf.cuantia ? sf.cuantia.toLocaleString() + '€' : 'No consta'}
-- Urgencia: ${sf.urgencia_aplica ? sf.urgencia_nivel : 'No aplica'}
-- Canal: ${source_channel || 'No consta'}
+- Nombre: ${sf.nombre || ''}
+- Apellidos: ${sf.apellidos || ''}
+- Teléfono: ${sf.telefono || ''}
+- Email: ${sf.email || ''}
+- Ciudad: ${sf.ciudad || ''}
+- Provincia: ${sf.provincia || ''}
+- Área legal: ${sf.area_legal || ''}
+- Subárea: ${sf.subarea || ''}
+- Cuantía: ${sf.cuantia ? sf.cuantia.toLocaleString() + '€' : ''}
+- Urgencia: ${sf.urgencia_aplica ? sf.urgencia_nivel : ''}
+- Canal: ${source_channel || ''}
 
 DATOS DE SCORING:
-- Score final: ${scoring.score_final || 'No calculado'}
-- Precio: ${scoring.price_lexcore ? scoring.price_lexcore + '€' : 'No calculado'}
-- VJ (Viabilidad): ${scoring.vj_json?.score || 'No calculado'}
-- Conclusión VJ: ${scoring.vj_json?.conclusion || 'No disponible'}`;
+- Score final: ${scoring.score_final || ''}
+- Precio: ${scoring.price_lexcore ? scoring.price_lexcore + '€' : ''}
+- VJ (Viabilidad): ${scoring.vj_json?.score || ''}
+- Conclusión VJ: ${scoring.vj_json?.conclusion || ''}`;
 
     const userPrompt = `Genera el resumen estructurado para esta conversación de cliente:
 
@@ -242,7 +243,7 @@ DATOS DE SCORING:
 ${lead_text}
 ---FIN CONVERSACIÓN---
 
-Sigue la plantilla EXACTAMENTE. Completa cada campo con la información de la conversación. Si no hay información para un campo, escribe "No consta".
+Sigue la plantilla EXACTAMENTE. Completa cada campo con la información de la conversación. Si no hay información para un campo, DÉJALO EN BLANCO (no escribas "No consta" ni ningún placeholder).
 
 PLANTILLA A SEGUIR:
 ${SUMMARY_TEMPLATE}

@@ -17,14 +17,24 @@ const PHRASES_TO_FILTER = [
   'Buenos días,',
 ];
 
-// Values to hide when they are empty/undefined
+// Values to hide when they are empty/undefined/placeholder
 const VALUES_TO_HIDE = [
   'Email: No consta',
   'Email: undefined',
   'Email: null',
+  'Email:',
+  'Teléfono: No consta',
+  'Teléfono:',
   'Urgencia: undefined',
   'Urgencia: null',
+  'Urgencia:',
+  'No consta',
+  'No disponible',
+  'No especificada',
+  'No especificado',
+  'N/A',
   'undefined',
+  'null',
 ];
 
 function filterSummaryPhrases(text: string): string {

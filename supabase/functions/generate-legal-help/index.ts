@@ -137,13 +137,13 @@ ${caseSummary}
 
 DATOS ESTRUCTURADOS:
 """
-Área legal: ${structuredFields.area_legal || 'No especificada'}
-Provincia: ${structuredFields.provincia || 'No especificada'}
-Urgencia: ${structuredFields.urgencia_nivel || 'No especificada'}
-Cuantía estimada: ${structuredFields.cuantia_estimada || 'No especificada'}
-Documentación disponible: ${structuredFields.documentacion_disponible || 'No especificada'}
-Contacto preferido: ${structuredFields.preferencia_contacto || 'No especificada'}
-Horario contacto: ${structuredFields.horario_contacto || 'No especificado'}
+Área legal: ${structuredFields.area_legal || ''}
+Provincia: ${structuredFields.provincia || ''}
+Urgencia: ${structuredFields.urgencia_nivel || ''}
+Cuantía estimada: ${structuredFields.cuantia_estimada || ''}
+Documentación disponible: ${structuredFields.documentacion_disponible || ''}
+Contacto preferido: ${structuredFields.preferencia_contacto || ''}
+Horario contacto: ${structuredFields.horario_contacto || ''}
 """
 
 CONVERSACIÓN ORIGINAL:
