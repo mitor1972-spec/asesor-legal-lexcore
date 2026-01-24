@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.find-orphan-conversations]
 verify_jwt = false
+
+[functions.reclassify-leads]
+verify_jwt = false
