@@ -7,9 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Scale, MapPin, Zap, Phone, User, FileText, Gavel, Target, 
   TrendingUp, MessageSquareQuote, ShoppingCart, AlertTriangle, 
-  CheckCircle, ClipboardList, BookOpen, Euro
+  CheckCircle, ClipboardList, BookOpen, Euro, Calendar
 } from 'lucide-react';
 import type { MarketplaceLead } from '@/types/marketplace';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface LeadDetailModalProps {
   lead: MarketplaceLead | null;
@@ -28,17 +30,28 @@ const SCORING_GROUPS = [
   { key: 'intent', label: 'Intención', icon: Target, maxDefault: 10 },
 ];
 
+function cleanValue(val: unknown): string | null {
+  if (val === null || val === undefined) return null;
+  const s = String(val).trim();
+  if (!s || s === 'null' || s === 'undefined' || s === 'N/A' || s === 'No consta' || s === 'No disponible' || s === 'Sin nombre') return null;
+  return s;
+}
+
 export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, canAfford }: LeadDetailModalProps) {
   if (!lead) return null;
 
   const fields = lead.structured_fields || {};
-  const legalArea = fields.legal_area || fields.area_legal || 'Sin área';
-  const province = fields.province || fields.provincia || 'Sin provincia';
-  const city = fields.city || fields.ciudad;
+  const legalArea = cleanValue(fields.legal_area || fields.area_legal) || 'Sin área';
+  const subarea = cleanValue(fields.subarea);
+  const province = cleanValue(fields.province || fields.provincia) || 'Sin provincia';
+  const city = cleanValue(fields.city || fields.ciudad);
   const location = city ? `${province} (${city})` : province;
   const isUrgent = fields.urgencia_aplica === true;
   const chatwootAlias = fields._contact_alias as string || null;
   const conversationId = lead.conversation_id;
+  const formattedDate = lead.created_at 
+    ? format(new Date(lead.created_at), "dd MMM yyyy, HH:mm", { locale: es })
+    : null;
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return 'text-green-600 bg-green-500/10 border-green-500/30';
