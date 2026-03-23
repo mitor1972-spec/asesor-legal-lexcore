@@ -96,6 +96,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               <div>
                 <DialogTitle className="text-xl flex items-center gap-2">
                   {legalArea}
+                  {subarea && <span className="text-base text-muted-foreground font-normal">· {subarea}</span>}
                 </DialogTitle>
                 <DialogDescription className="flex flex-wrap items-center gap-2 mt-1">
                   <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded" title={lead.id}>
