@@ -208,14 +208,18 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-3">
                   {Object.entries(fields)
-                    .filter(([key]) => !['nombre', 'telefono', 'email', 'phone', 'name', 'correo', 'direccion'].includes(key.toLowerCase()))
+                    .filter(([key]) => !['nombre', 'telefono', 'email', 'phone', 'name', 'correo', 'direccion', '_contact_alias', '_incomplete'].includes(key.toLowerCase()))
+                    .filter(([, value]) => {
+                      const cleaned = cleanValue(value);
+                      return cleaned !== null;
+                    })
                     .map(([key, value]) => (
                       <div key={key} className="flex justify-between items-start p-2 bg-muted/30 rounded">
                         <span className="text-sm text-muted-foreground capitalize">
                           {key.replace(/_/g, ' ')}:
                         </span>
                         <span className="text-sm font-medium text-right">
-                          {typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value || '-')}
+                          {typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value)}
                         </span>
                       </div>
                     ))}
