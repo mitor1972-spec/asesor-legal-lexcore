@@ -117,6 +117,22 @@ export default function LeadsMarket() {
         });
       }
       
+      // Sort based on selected option
+      if (sortBy === 'price_asc') {
+        filtered.sort((a, b) => (a.marketplace_price || a.price_final || 25) - (b.marketplace_price || b.price_final || 25));
+      } else if (sortBy === 'price_desc') {
+        filtered.sort((a, b) => (b.marketplace_price || b.price_final || 25) - (a.marketplace_price || a.price_final || 25));
+      } else if (sortBy === 'score_desc') {
+        filtered.sort((a, b) => (b.score_final || 0) - (a.score_final || 0));
+      } else if (sortBy === 'area') {
+        filtered.sort((a, b) => {
+          const aArea = (a.structured_fields as any)?.area_legal || '';
+          const bArea = (b.structured_fields as any)?.area_legal || '';
+          return aArea.localeCompare(bArea);
+        });
+      }
+      // date_desc is default from DB query
+      
       return filtered.map(l => {
         // Get latest lexcore run
         const latestRun = l.lexcore_runs?.[0];
