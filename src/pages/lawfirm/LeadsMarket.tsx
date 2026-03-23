@@ -34,6 +34,7 @@ export default function LeadsMarket() {
   const [showCart, setShowCart] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortBy, setSortBy] = useState<string>('date_desc');
 
   // Fetch lawfirm balance
   const { data: lawfirm } = useQuery({
