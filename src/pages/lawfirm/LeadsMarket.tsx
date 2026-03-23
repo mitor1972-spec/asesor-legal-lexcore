@@ -364,8 +364,23 @@ export default function LeadsMarket() {
               />
             </div>
 
+            <div className="flex-1 min-w-[150px] max-w-[200px]">
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger>
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Ordenar por" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date_desc">Más recientes</SelectItem>
+                  <SelectItem value="score_desc">Mayor puntuación</SelectItem>
+                  <SelectItem value="price_asc">Precio: menor a mayor</SelectItem>
+                  <SelectItem value="price_desc">Precio: mayor a menor</SelectItem>
+                  <SelectItem value="area">Área legal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Badge variant="secondary" className="h-9 px-3">
-              {leads?.length || 0} leads disponibles
             </Badge>
 
             <ToggleGroup 
