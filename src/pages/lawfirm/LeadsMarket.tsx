@@ -82,7 +82,7 @@ export default function LeadsMarket() {
         .eq('status_internal', 'Pendiente')
         // GOLDEN RULE: Lead must have email OR phone to be shown in marketplace
         .or('structured_fields->>email.neq.,structured_fields->>telefono.neq.')
-        .order('score_final', { ascending: false, nullsFirst: false });
+        .order('created_at', { ascending: false });
 
       // Apply demo mode filter
       if (mode === 'demo') {
