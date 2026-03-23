@@ -7,9 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Scale, MapPin, Zap, Phone, User, FileText, Gavel, Target, 
   TrendingUp, MessageSquareQuote, ShoppingCart, AlertTriangle, 
-  CheckCircle, ClipboardList, BookOpen, Euro
+  CheckCircle, ClipboardList, BookOpen, Euro, Calendar
 } from 'lucide-react';
 import type { MarketplaceLead } from '@/types/marketplace';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface LeadDetailModalProps {
   lead: MarketplaceLead | null;
@@ -28,17 +30,28 @@ const SCORING_GROUPS = [
   { key: 'intent', label: 'Intención', icon: Target, maxDefault: 10 },
 ];
 
+function cleanValue(val: unknown): string | null {
+  if (val === null || val === undefined) return null;
+  const s = String(val).trim();
+  if (!s || s === 'null' || s === 'undefined' || s === 'N/A' || s === 'No consta' || s === 'No disponible' || s === 'Sin nombre') return null;
+  return s;
+}
+
 export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, canAfford }: LeadDetailModalProps) {
   if (!lead) return null;
 
   const fields = lead.structured_fields || {};
-  const legalArea = fields.legal_area || fields.area_legal || 'Sin área';
-  const province = fields.province || fields.provincia || 'Sin provincia';
-  const city = fields.city || fields.ciudad;
+  const legalArea = cleanValue(fields.legal_area || fields.area_legal) || 'Sin área';
+  const subarea = cleanValue(fields.subarea);
+  const province = cleanValue(fields.province || fields.provincia) || 'Sin provincia';
+  const city = cleanValue(fields.city || fields.ciudad);
   const location = city ? `${province} (${city})` : province;
   const isUrgent = fields.urgencia_aplica === true;
   const chatwootAlias = fields._contact_alias as string || null;
   const conversationId = lead.conversation_id;
+  const formattedDate = lead.created_at 
+    ? format(new Date(lead.created_at), "dd MMM yyyy, HH:mm", { locale: es })
+    : null;
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return 'text-green-600 bg-green-500/10 border-green-500/30';
@@ -51,7 +64,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     if (!group) return null;
     
     const data = lead.raw_scores?.[key];
-    const score = data?.score ?? Math.floor(Math.random() * group.maxDefault);
+    const score = data?.score ?? 0;
     const max = data?.max ?? group.maxDefault;
     const percent = max > 0 ? (score / max) * 100 : 0;
     const Icon = group.icon;
@@ -83,6 +96,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               <div>
                 <DialogTitle className="text-xl flex items-center gap-2">
                   {legalArea}
+                  {subarea && <span className="text-base text-muted-foreground font-normal">· {subarea}</span>}
                 </DialogTitle>
                 <DialogDescription className="flex flex-wrap items-center gap-2 mt-1">
                   <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded" title={lead.id}>
@@ -95,6 +109,13 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                   )}
                   <MapPin className="h-3 w-3" />
                   {location}
+                  {formattedDate && (
+                    <>
+                      <span>•</span>
+                      <Calendar className="h-3 w-3" />
+                      <span>{formattedDate}</span>
+                    </>
+                  )}
                   {isUrgent && (
                     <>
                       <span>•</span>
@@ -187,14 +208,18 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-3">
                   {Object.entries(fields)
-                    .filter(([key]) => !['nombre', 'telefono', 'email', 'phone', 'name', 'correo', 'direccion'].includes(key.toLowerCase()))
+                    .filter(([key]) => !['nombre', 'telefono', 'email', 'phone', 'name', 'correo', 'direccion', '_contact_alias', '_incomplete'].includes(key.toLowerCase()))
+                    .filter(([, value]) => {
+                      const cleaned = cleanValue(value);
+                      return cleaned !== null;
+                    })
                     .map(([key, value]) => (
                       <div key={key} className="flex justify-between items-start p-2 bg-muted/30 rounded">
                         <span className="text-sm text-muted-foreground capitalize">
                           {key.replace(/_/g, ' ')}:
                         </span>
                         <span className="text-sm font-medium text-right">
-                          {typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value || '-')}
+                          {typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value)}
                         </span>
                       </div>
                     ))}

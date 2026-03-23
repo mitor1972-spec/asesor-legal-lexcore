@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { toast } from 'sonner';
-import { ShoppingCart, Wallet, Filter, LayoutGrid, List, FileDown } from 'lucide-react';
+import { ShoppingCart, Wallet, Filter, LayoutGrid, List, FileDown, ArrowUpDown } from 'lucide-react';
 import { LEGAL_AREAS, PROVINCES } from '@/lib/constants';
 import { LeadMarketCard } from '@/components/leadsmarket/LeadMarketCard';
 import { LeadMarketListItem } from '@/components/leadsmarket/LeadMarketListItem';
@@ -34,6 +34,7 @@ export default function LeadsMarket() {
   const [showCart, setShowCart] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortBy, setSortBy] = useState<string>('date_desc');
 
   // Fetch lawfirm balance
   const { data: lawfirm } = useQuery({
@@ -53,7 +54,7 @@ export default function LeadsMarket() {
 
   // Fetch marketplace leads with lexcore data
   const { data: leads, isLoading } = useQuery({
-    queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore, mode],
+    queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore, mode, sortBy],
     queryFn: async () => {
       let query = supabase
         .from('leads')
@@ -81,7 +82,7 @@ export default function LeadsMarket() {
         .eq('status_internal', 'Pendiente')
         // GOLDEN RULE: Lead must have email OR phone to be shown in marketplace
         .or('structured_fields->>email.neq.,structured_fields->>telefono.neq.')
-        .order('score_final', { ascending: false, nullsFirst: false });
+        .order('created_at', { ascending: false });
 
       // Apply demo mode filter
       if (mode === 'demo') {
@@ -115,6 +116,22 @@ export default function LeadsMarket() {
           return fields?.provincia === provinceFilter || fields?.province === provinceFilter;
         });
       }
+      
+      // Sort based on selected option
+      if (sortBy === 'price_asc') {
+        filtered.sort((a, b) => (a.marketplace_price || a.price_final || 25) - (b.marketplace_price || b.price_final || 25));
+      } else if (sortBy === 'price_desc') {
+        filtered.sort((a, b) => (b.marketplace_price || b.price_final || 25) - (a.marketplace_price || a.price_final || 25));
+      } else if (sortBy === 'score_desc') {
+        filtered.sort((a, b) => (b.score_final || 0) - (a.score_final || 0));
+      } else if (sortBy === 'area') {
+        filtered.sort((a, b) => {
+          const aArea = (a.structured_fields as any)?.area_legal || '';
+          const bArea = (b.structured_fields as any)?.area_legal || '';
+          return aArea.localeCompare(bArea);
+        });
+      }
+      // date_desc is default from DB query
       
       return filtered.map(l => {
         // Get latest lexcore run
@@ -347,8 +364,23 @@ export default function LeadsMarket() {
               />
             </div>
 
+            <div className="flex-1 min-w-[150px] max-w-[200px]">
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger>
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Ordenar por" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date_desc">Más recientes</SelectItem>
+                  <SelectItem value="score_desc">Mayor puntuación</SelectItem>
+                  <SelectItem value="price_asc">Precio: menor a mayor</SelectItem>
+                  <SelectItem value="price_desc">Precio: mayor a menor</SelectItem>
+                  <SelectItem value="area">Área legal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Badge variant="secondary" className="h-9 px-3">
-              {leads?.length || 0} leads disponibles
             </Badge>
 
             <ToggleGroup 

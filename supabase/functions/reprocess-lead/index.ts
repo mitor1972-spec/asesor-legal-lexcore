@@ -377,12 +377,36 @@ Devuelve SOLO el JSON, sin explicaciones.`;
 
     // Update lead if there are changes
     if (hasChanges) {
+      // Calculate a deterministic price based on score if price is missing or 0
+      const currentScore = lead.score_final || 0;
+      const currentPrice = lead.price_final || 0;
+      let priceToSet = currentPrice;
+      
+      if (currentPrice === 0 && currentScore > 0) {
+        // Deterministic price calculation based on score ranges
+        if (currentScore >= 80) priceToSet = 75;
+        else if (currentScore >= 65) priceToSet = 55;
+        else if (currentScore >= 50) priceToSet = 40;
+        else if (currentScore >= 35) priceToSet = 30;
+        else if (currentScore >= 20) priceToSet = 20;
+        else priceToSet = 10;
+      }
+
+      const updatePayload: Record<string, unknown> = {
+        structured_fields: updatedFields,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Set price if it was 0
+      if (currentPrice === 0 && priceToSet > 0) {
+        updatePayload.price_final = priceToSet;
+        updatePayload.marketplace_price = priceToSet;
+        result.changes_made.push(`price: 0 -> ${priceToSet}€ (auto-calculated from score ${currentScore})`);
+      }
+
       const { error: updateError } = await supabase
         .from("leads")
-        .update({
-          structured_fields: updatedFields,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", leadId);
 
       if (updateError) {

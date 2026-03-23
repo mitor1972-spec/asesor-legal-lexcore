@@ -378,15 +378,27 @@ Devuelve SOLO un JSON válido:
     // Update the lead with score, price, and marketplace summary
     // Cap score at 95 max (100 is impossible)
     const cappedScore = Math.max(0, Math.min(95, scoringResult.score_final || 0));
+    // Ensure price is never 0 - fallback based on score
+    let finalPrice = scoringResult.price_final || 0;
+    if (finalPrice <= 0 && cappedScore > 0) {
+      if (cappedScore >= 80) finalPrice = 75;
+      else if (cappedScore >= 65) finalPrice = 55;
+      else if (cappedScore >= 50) finalPrice = 40;
+      else if (cappedScore >= 35) finalPrice = 30;
+      else if (cappedScore >= 20) finalPrice = 20;
+      else finalPrice = 10;
+    }
+    if (finalPrice <= 0) finalPrice = 5; // absolute minimum
+
     const updateData: Record<string, any> = {
       score_final: cappedScore,
-      price_final: scoringResult.price_final,
+      price_final: finalPrice,
+      marketplace_price: finalPrice,
     };
     
     // Add marketplace summary if generated
     if (scoringResult.marketplace_summary) {
       updateData.marketplace_summary = scoringResult.marketplace_summary;
-      updateData.marketplace_price = scoringResult.price_final;
     }
 
     const { error: updateError } = await supabase

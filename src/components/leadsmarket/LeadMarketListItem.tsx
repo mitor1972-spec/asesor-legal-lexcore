@@ -3,9 +3,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LeadReference } from '@/components/common/LeadReference';
 import { 
-  Scale, MapPin, Zap, ShoppingCart, Eye, Euro
+  Scale, MapPin, Zap, ShoppingCart, Eye, Euro, Calendar
 } from 'lucide-react';
 import type { MarketplaceLead } from '@/types/marketplace';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface LeadMarketListItemProps {
   lead: MarketplaceLead;
@@ -15,14 +17,22 @@ interface LeadMarketListItemProps {
   canAfford: boolean;
 }
 
+function cleanValue(val: unknown): string | null {
+  if (val === null || val === undefined) return null;
+  const s = String(val).trim();
+  if (!s || s === 'null' || s === 'undefined' || s === 'N/A' || s === 'No consta' || s === 'No disponible') return null;
+  return s;
+}
+
 export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart, canAfford }: LeadMarketListItemProps) {
   const fields = lead.structured_fields || {};
-  const legalArea = fields.legal_area || fields.area_legal || 'Sin área';
-  const province = fields.province || fields.provincia || 'Sin provincia';
-  const city = fields.city || fields.ciudad;
+  const legalArea = cleanValue(fields.legal_area || fields.area_legal) || 'Sin área';
+  const subarea = cleanValue(fields.subarea);
+  const province = cleanValue(fields.province || fields.provincia) || 'Sin provincia';
+  const city = cleanValue(fields.city || fields.ciudad);
   const location = city ? `${province} (${city})` : province;
   const isUrgent = fields.urgencia_aplica === true;
-  const cuantia = fields.cuantia_aproximada;
+  const cuantia = cleanValue(fields.cuantia_aproximada);
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return 'text-green-600 bg-green-500/10 border-green-500/30';
@@ -36,6 +46,12 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
     if (score <= 70) return 'bg-yellow-400';
     return 'bg-green-500';
   };
+
+  const formattedDate = lead.created_at 
+    ? format(new Date(lead.created_at), "dd MMM, HH:mm", { locale: es })
+    : null;
+
+  const price = lead.marketplace_price || 0;
 
   return (
     <Card className="hover:shadow-md transition-all">
@@ -58,10 +74,13 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
           </div>
 
           {/* Main content */}
-          <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex-1 min-w-0 space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
               <Scale className="h-4 w-4 text-lawfirm-primary shrink-0" />
               <span className="font-semibold truncate">{legalArea}</span>
+              {subarea && (
+                <span className="text-sm text-muted-foreground">· {subarea}</span>
+              )}
               {isUrgent && (
                 <Badge variant="destructive" className="text-xs">
                   <Zap className="h-3 w-3 mr-1" />
@@ -75,6 +94,12 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
                 <MapPin className="h-3 w-3" />
                 {location}
               </span>
+              {formattedDate && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {formattedDate}
+                </span>
+              )}
               <span>{lead.source_channel || 'Web chat'}</span>
               {cuantia && (
                 <span className="flex items-center gap-1">
@@ -98,9 +123,10 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
 
           {/* Price & Actions */}
           <div className="flex flex-col items-end gap-2 shrink-0">
-            <span className="text-2xl font-bold text-lawfirm-primary">
-              {lead.marketplace_price?.toFixed(0) || '0'}€
-            </span>
+            <div className="bg-lawfirm-primary/10 border border-lawfirm-primary/30 rounded-lg px-3 py-1.5 text-center">
+              <span className="text-xs text-lawfirm-primary/70 block">PRECIO</span>
+              <span className="text-2xl font-bold text-lawfirm-primary">{price}€</span>
+            </div>
             <div className="flex gap-2">
               <Button 
                 variant="outline"
