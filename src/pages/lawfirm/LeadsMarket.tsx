@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { toast } from 'sonner';
-import { ShoppingCart, Wallet, Filter, LayoutGrid, List, FileDown } from 'lucide-react';
+import { ShoppingCart, Wallet, Filter, LayoutGrid, List, FileDown, ArrowUpDown } from 'lucide-react';
 import { LEGAL_AREAS, PROVINCES } from '@/lib/constants';
 import { LeadMarketCard } from '@/components/leadsmarket/LeadMarketCard';
 import { LeadMarketListItem } from '@/components/leadsmarket/LeadMarketListItem';
