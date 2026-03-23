@@ -64,7 +64,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     if (!group) return null;
     
     const data = lead.raw_scores?.[key];
-    const score = data?.score ?? Math.floor(Math.random() * group.maxDefault);
+    const score = data?.score ?? 0;
     const max = data?.max ?? group.maxDefault;
     const percent = max > 0 ? (score / max) * 100 : 0;
     const Icon = group.icon;
