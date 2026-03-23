@@ -54,7 +54,7 @@ export default function LeadsMarket() {
 
   // Fetch marketplace leads with lexcore data
   const { data: leads, isLoading } = useQuery({
-    queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore, mode],
+    queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore, mode, sortBy],
     queryFn: async () => {
       let query = supabase
         .from('leads')
