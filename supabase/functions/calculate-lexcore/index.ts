@@ -20,22 +20,31 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
     const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claims?.claims) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const isServiceRoleRequest = token === supabaseServiceRoleKey;
 
-    const userId = claims.claims.sub as string;
+    const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const supabase = isServiceRoleRequest
+      ? adminClient
+      : createClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: authHeader } },
+        });
+
+    let userId: string | null = null;
+    if (!isServiceRoleRequest) {
+      const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
+      if (claimsError || !claims?.claims) {
+        return new Response(JSON.stringify({ error: "Invalid token" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      userId = claims.claims.sub as string;
+    }
     const requestBody = await req.json();
     const { lead_id } = requestBody;
     let { lead_text, structured_fields, source_channel } = requestBody;
@@ -47,36 +56,27 @@ serve(async (req) => {
       });
     }
 
-    // If lead_text not provided, fetch from database (AUTO-FETCH mode)
-    // This ensures the full transcript is used, not truncated versions
-    if (!lead_text) {
-      console.log(`[Lexcore] Auto-fetching lead data from database for lead_id=${lead_id}`);
-      
-      const adminClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
-      
-      const { data: leadData, error: leadError } = await adminClient
-        .from("leads")
-        .select("lead_text, structured_fields, source_channel")
-        .eq("id", lead_id)
-        .single();
-      
-      if (leadError || !leadData) {
-        console.error("Lead fetch error:", leadError);
-        return new Response(JSON.stringify({ error: "Lead not found", lead_id }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      lead_text = leadData.lead_text;
-      structured_fields = leadData.structured_fields;
-      source_channel = leadData.source_channel;
-      
-      console.log(`[Lexcore] Auto-fetched: lead_text=${lead_text?.length || 0} chars, structured_fields keys=${Object.keys(structured_fields || {}).length}`);
+    console.log(`[Lexcore] Fetching latest lead snapshot for lead_id=${lead_id}`);
+
+    const { data: leadData, error: leadError } = await adminClient
+      .from("leads")
+      .select("lead_text, structured_fields, source_channel")
+      .eq("id", lead_id)
+      .single();
+
+    if (leadError || !leadData) {
+      console.error("Lead fetch error:", leadError);
+      return new Response(JSON.stringify({ error: "Lead not found", lead_id }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+
+    lead_text = leadData.lead_text || lead_text;
+    structured_fields = leadData.structured_fields ?? structured_fields;
+    source_channel = leadData.source_channel ?? source_channel;
+
+    console.log(`[Lexcore] Snapshot loaded: lead_text=${lead_text?.length || 0} chars, structured_fields keys=${Object.keys(structured_fields || {}).length}, internal=${isServiceRoleRequest}`);
 
     if (!lead_text) {
       return new Response(JSON.stringify({ error: "lead_text is required (or lead must have text in database)" }), {
@@ -101,11 +101,6 @@ serve(async (req) => {
     }
 
     // Get OpenAI API key from api_settings
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-    
     const { data: apiSetting, error: apiError } = await adminClient
       .from("api_settings")
       .select("key_value")
