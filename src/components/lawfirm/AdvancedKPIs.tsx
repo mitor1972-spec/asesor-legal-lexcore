@@ -116,16 +116,12 @@ export function AdvancedKPIs({ cases, availableLeadsCount }: AdvancedKPIsProps) 
     <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
       {kpis.map((kpi) => (
         <Card key={kpi.label} className="shadow-soft hover:shadow-medium transition-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${kpi.bgColor}`}>
-                <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">{kpi.label}</p>
-                <p className="text-lg font-bold">{kpi.value}</p>
-              </div>
+          <CardContent className="p-4 flex flex-col items-center text-center gap-2">
+            <div className={`p-2 rounded-lg ${kpi.bgColor}`}>
+              <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
             </div>
+            <p className="text-lg font-bold leading-tight">{kpi.value}</p>
+            <p className="text-xs text-muted-foreground leading-tight">{kpi.label}</p>
           </CardContent>
         </Card>
       ))}

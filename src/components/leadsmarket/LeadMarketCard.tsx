@@ -5,10 +5,12 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { 
   Scale, MapPin, Zap, Phone, User, FileText, Gavel, Target, 
-  TrendingUp, MessageSquareQuote, ShoppingCart, Eye, Euro
+  TrendingUp, ShoppingCart, Eye, Euro, Calendar
 } from 'lucide-react';
-import type { MarketplaceLead, RawScores } from '@/types/marketplace';
+import type { MarketplaceLead } from '@/types/marketplace';
 import { LeadReference } from '@/components/common/LeadReference';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface LeadMarketCardProps {
   lead: MarketplaceLead;
@@ -26,15 +28,24 @@ const SCORING_GROUPS = [
   { key: 'intent', label: 'Intención', icon: Target, maxDefault: 10, color: 'bg-pink-500' },
 ];
 
+// Helper to clean null/placeholder values
+function cleanValue(val: unknown): string | null {
+  if (val === null || val === undefined) return null;
+  const s = String(val).trim();
+  if (!s || s === 'null' || s === 'undefined' || s === 'N/A' || s === 'No consta' || s === 'No disponible' || s === 'Sin nombre') return null;
+  return s;
+}
+
 export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, canAfford }: LeadMarketCardProps) {
   const fields = lead.structured_fields || {};
-  const legalArea = fields.legal_area || fields.area_legal || 'Sin área';
-  const province = fields.province || fields.provincia || 'Sin provincia';
-  const city = fields.city || fields.ciudad;
+  const legalArea = cleanValue(fields.legal_area || fields.area_legal) || 'Sin área';
+  const subarea = cleanValue(fields.subarea);
+  const province = cleanValue(fields.province || fields.provincia) || 'Sin provincia';
+  const city = cleanValue(fields.city || fields.ciudad);
   const location = city ? `${province} (${city})` : province;
   const isUrgent = fields.urgencia_aplica === true;
-  const cuantia = fields.cuantia_aproximada;
-  const complejidad = fields.complejidad;
+  const cuantia = cleanValue(fields.cuantia_aproximada);
+  const complejidad = cleanValue(fields.complejidad);
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return 'text-green-600 bg-green-500/10 border-green-500/30';
@@ -54,7 +65,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
     if (!group) return null;
     
     const data = lead.raw_scores?.[key];
-    const score = data?.score ?? Math.floor(Math.random() * group.maxDefault);
+    const score = data?.score ?? 0;
     const max = data?.max ?? group.maxDefault;
     const percent = max > 0 ? (score / max) * 100 : 0;
     const Icon = group.icon;
@@ -73,16 +84,24 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
     );
   };
 
+  const formattedDate = lead.created_at 
+    ? format(new Date(lead.created_at), "dd MMM yyyy, HH:mm", { locale: es })
+    : null;
+
+  const price = lead.marketplace_price || 0;
+
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col">
-      {/* Header with Score */}
+      {/* Header with Score + Price */}
       <div className="flex items-center justify-between p-4 bg-muted/40 border-b">
         <div className="flex flex-col gap-1 flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <Scale className="h-5 w-5 text-lawfirm-primary flex-shrink-0" />
             <span className="font-semibold text-base truncate">{legalArea}</span>
           </div>
-          {/* Lead Reference with conversation_id and alias */}
+          {subarea && (
+            <span className="text-sm text-muted-foreground ml-7 truncate">{subarea}</span>
+          )}
           <LeadReference 
             leadId={lead.id}
             conversationId={lead.conversation_id}
@@ -91,19 +110,26 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
           />
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Mini thermometer bar */}
-          <div className="relative w-16 h-2.5 bg-muted rounded-full overflow-hidden">
-            <div 
-              className={`absolute left-0 top-0 h-full rounded-full transition-all ${getScoreBarColor(lead.score_final)}`}
-              style={{ width: `${Math.min(Math.max(lead.score_final, 0), 100)}%` }}
-            />
+          {/* Price badge - prominent */}
+          <div className="flex flex-col items-center bg-lawfirm-primary/10 border border-lawfirm-primary/30 rounded-lg px-3 py-1.5">
+            <span className="text-xs text-lawfirm-primary/70 font-medium">PRECIO</span>
+            <span className="text-xl font-bold text-lawfirm-primary">{price}€</span>
           </div>
-          <Badge 
-            variant="outline" 
-            className={`text-lg font-bold px-3 py-1.5 ${getScoreColor(lead.score_final)}`}
-          >
-            {lead.score_final}
-          </Badge>
+          {/* Score */}
+          <div className="flex flex-col items-center gap-1">
+            <div className="relative w-12 h-2 bg-muted rounded-full overflow-hidden">
+              <div 
+                className={`absolute left-0 top-0 h-full rounded-full transition-all ${getScoreBarColor(lead.score_final)}`}
+                style={{ width: `${Math.min(Math.max(lead.score_final, 0), 100)}%` }}
+              />
+            </div>
+            <Badge 
+              variant="outline" 
+              className={`text-sm font-bold px-2 py-0.5 ${getScoreColor(lead.score_final)}`}
+            >
+              {lead.score_final}
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -117,6 +143,12 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
                 <MapPin className="h-4 w-4 text-muted-foreground" />
                 <span>{location}</span>
               </div>
+              {formattedDate && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">{formattedDate}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">📥</span>
                 <span>{lead.source_channel || 'Web chat'}</span>
@@ -174,19 +206,11 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
 
           {/* Right Column - Scoring */}
           <div className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-lawfirm-primary" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Scoring LEXCORE™
-                </span>
-              </div>
-              <Badge 
-                variant="outline" 
-                className={`text-sm font-bold ${getScoreColor(lead.score_final)}`}
-              >
-                {lead.score_final}
-              </Badge>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-lawfirm-primary" />
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Scoring LEXCORE™
+              </span>
             </div>
 
             {/* Score Bars */}
@@ -209,34 +233,26 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
           </div>
         </div>
 
-        {/* Footer: Price + Actions */}
-        <div className="flex items-center justify-between p-4 border-t bg-muted/20">
-          <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">PRECIO</span>
-            <span className="text-2xl font-bold text-lawfirm-primary">
-              {lead.marketplace_price?.toFixed(0) || '0'}€
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={() => onViewDetails(lead)}
-              className="gap-1"
-            >
-              <Eye className="h-4 w-4" />
-              Ver informe
-            </Button>
-            <Button 
-              onClick={() => onAddToCart(lead)}
-              disabled={!canAfford || isInCart}
-              size="sm"
-              className="gap-1"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              {isInCart ? 'En carrito' : 'Añadir'}
-            </Button>
-          </div>
+        {/* Footer: Actions only (price moved to header) */}
+        <div className="flex items-center justify-end p-4 border-t bg-muted/20 gap-2">
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={() => onViewDetails(lead)}
+            className="gap-1"
+          >
+            <Eye className="h-4 w-4" />
+            Ver informe
+          </Button>
+          <Button 
+            onClick={() => onAddToCart(lead)}
+            disabled={!canAfford || isInCart}
+            size="sm"
+            className="gap-1"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            {isInCart ? 'En carrito' : 'Añadir'}
+          </Button>
         </div>
       </CardContent>
     </Card>
