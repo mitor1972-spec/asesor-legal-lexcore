@@ -109,6 +109,13 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                   )}
                   <MapPin className="h-3 w-3" />
                   {location}
+                  {formattedDate && (
+                    <>
+                      <span>•</span>
+                      <Calendar className="h-3 w-3" />
+                      <span>{formattedDate}</span>
+                    </>
+                  )}
                   {isUrgent && (
                     <>
                       <span>•</span>
