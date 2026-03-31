@@ -202,7 +202,10 @@ serve(async (req) => {
         assigned_by_user_id: user.id,
         status_delivery: 'delivered',
         firm_status: 'received',
-        service_type: 'marketplace',
+        service_type: is_commission ? 'commission' : 'marketplace',
+        is_commission: is_commission || false,
+        commission_percent: is_commission ? (commission_percent || 20) : null,
+        lead_cost: is_commission ? 0 : price,
       });
 
     if (assignmentError) {
