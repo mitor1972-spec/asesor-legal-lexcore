@@ -205,6 +205,7 @@ export default function LeadsMarket() {
     setCartItems(prev => prev.map(item => 
       item.id === id ? { ...item, isCommission } : item
     ));
+  };
 
   // View details
   const handleViewDetails = (lead: MarketplaceLead) => {
