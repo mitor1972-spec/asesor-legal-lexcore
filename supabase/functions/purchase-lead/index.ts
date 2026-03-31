@@ -120,10 +120,10 @@ serve(async (req) => {
       );
     }
 
-    const price = lead.marketplace_price || lead.price_final || 0;
+    const price = is_commission ? 0 : (lead.marketplace_price || lead.price_final || 0);
     const currentBalance = lawfirm.marketplace_balance || 0;
 
-    if (currentBalance < price) {
+    if (!is_commission && currentBalance < price) {
       return new Response(
         JSON.stringify({ error: 'Saldo insuficiente' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
