@@ -30,6 +30,7 @@ import {
   Mail,
   BarChart3,
   Handshake,
+  Percent,
 } from 'lucide-react';
 
 interface LawfirmSidebarProps {
