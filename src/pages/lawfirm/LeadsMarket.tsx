@@ -52,6 +52,21 @@ export default function LeadsMarket() {
     enabled: !!user?.profile?.lawfirm_id,
   });
 
+  // Fetch commission areas
+  const { data: commissionAreas } = useQuery({
+    queryKey: ['commission-areas-map'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('commission_areas')
+        .select('legal_area, commission_percent')
+        .eq('is_active', true);
+      if (error) return {};
+      const map: Record<string, number> = {};
+      (data || []).forEach(a => { map[a.legal_area] = a.commission_percent; });
+      return map;
+    },
+  });
+
   // Fetch marketplace leads with lexcore data
   const { data: leads, isLoading } = useQuery({
     queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore, mode, sortBy],
