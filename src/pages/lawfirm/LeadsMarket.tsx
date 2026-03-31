@@ -193,11 +193,18 @@ export default function LeadsMarket() {
       province: fields.province || fields.provincia || 'Sin provincia',
       score: lead.score_final,
       price: lead.marketplace_price,
+      commissionPercent: lead.commission_percent,
     };
     
     setCartItems(prev => [...prev, newItem]);
     toast.success('Lead añadido al carrito');
   };
+
+  // Toggle commission model for a cart item
+  const handleToggleCommission = (id: string, isCommission: boolean) => {
+    setCartItems(prev => prev.map(item => 
+      item.id === id ? { ...item, isCommission } : item
+    ));
 
   // View details
   const handleViewDetails = (lead: MarketplaceLead) => {
