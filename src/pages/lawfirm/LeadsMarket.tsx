@@ -468,7 +468,7 @@ export default function LeadsMarket() {
         }}
         onAddToCart={handleAddToCart}
         isInCart={selectedLead ? isInCart(selectedLead.id) : false}
-        canAfford={selectedLead ? balance >= selectedLead.marketplace_price : false}
+        canAfford={isDemoMode || (selectedLead ? balance >= selectedLead.marketplace_price : false)}
       />
     </div>
   );
