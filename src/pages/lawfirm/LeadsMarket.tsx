@@ -440,7 +440,7 @@ export default function LeadsMarket() {
               onAddToCart={handleAddToCart}
               onViewDetails={handleViewDetails}
               isInCart={isInCart(lead.id)}
-              canAfford={balance >= lead.marketplace_price}
+              canAfford={isDemoMode || balance >= lead.marketplace_price}
             />
           ))}
         </div>
