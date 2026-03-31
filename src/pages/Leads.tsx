@@ -19,7 +19,7 @@ import { BulkAssignDialog } from '@/components/lead/BulkAssignDialog';
 import { CleanupLeadsDialog } from '@/components/admin/CleanupLeadsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { exportLeadsToExcel } from '@/lib/exportToExcel';
-import { getDisplayName } from '@/lib/contactUtils';
+import { getDisplayName, cleanField } from '@/lib/contactUtils';
 
 const statusColors: Record<LeadStatus, string> = {
   'Pendiente': 'bg-warning/10 text-warning border-warning/20',
@@ -406,7 +406,7 @@ export default function Leads() {
                     {getDisplayName(lead.structured_fields as Record<string, unknown>) || <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell><Badge variant="outline">{lead.source_channel}</Badge></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{lead.structured_fields?.area_legal || '-'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{cleanField(lead.structured_fields?.area_legal) || <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell className="text-center">
                     {lead.score_final !== null ? (
                       <LeadTemperature score={lead.score_final} variant="mini" />
