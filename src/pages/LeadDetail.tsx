@@ -27,7 +27,7 @@ import { EditContactDialog } from '@/components/lead/EditContactDialog';
 import { EditCaseDialog } from '@/components/lead/EditCaseDialog';
 import { DeleteLeadDialog } from '@/components/lead/DeleteLeadDialog';
 import { formatLocation } from '@/lib/cityProvinceMapping';
-import { getDisplayName, getChatwootAlias, getContactEmail, getContactPhone } from '@/lib/contactUtils';
+import { getDisplayName, getChatwootAlias, getContactEmail, getContactPhone, cleanField } from '@/lib/contactUtils';
 
 const statusColors: Record<LeadStatus, string> = {
   'Pendiente': 'bg-warning/10 text-warning border-warning/20',
