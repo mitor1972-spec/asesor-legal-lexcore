@@ -52,6 +52,21 @@ export default function LeadsMarket() {
     enabled: !!user?.profile?.lawfirm_id,
   });
 
+  // Fetch commission areas
+  const { data: commissionAreas } = useQuery({
+    queryKey: ['commission-areas-map'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('commission_areas')
+        .select('legal_area, commission_percent')
+        .eq('is_active', true);
+      if (error) return {};
+      const map: Record<string, number> = {};
+      (data || []).forEach(a => { map[a.legal_area] = a.commission_percent; });
+      return map;
+    },
+  });
+
   // Fetch marketplace leads with lexcore data
   const { data: leads, isLoading } = useQuery({
     queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore, mode, sortBy],
@@ -133,12 +148,14 @@ export default function LeadsMarket() {
       }
       // date_desc is default from DB query
       
-      return filtered.map(l => {
+        return filtered.map(l => {
         // Get latest lexcore run
         const latestRun = l.lexcore_runs?.[0];
         const vjData = latestRun?.vj_json as any;
         const rawScores = latestRun?.raw_scores_json as unknown as RawScores | null;
         const llmResponse = latestRun?.llm_response_json as any;
+        const legalArea = (l.structured_fields as any)?.area_legal || (l.structured_fields as any)?.legal_area || '';
+        const commPct = commissionAreas?.[legalArea];
         
         return {
           id: l.id,
@@ -152,6 +169,8 @@ export default function LeadsMarket() {
           vj_key_phrases: llmResponse?.key_phrases || [],
           raw_scores: rawScores || llmResponse?.raw_scores || null,
           case_summary: l.case_summary,
+          commission_available: commPct != null,
+          commission_percent: commPct ?? undefined,
         } as MarketplaceLead;
       });
     },
@@ -174,10 +193,18 @@ export default function LeadsMarket() {
       province: fields.province || fields.provincia || 'Sin provincia',
       score: lead.score_final,
       price: lead.marketplace_price,
+      commissionPercent: lead.commission_percent,
     };
     
     setCartItems(prev => [...prev, newItem]);
     toast.success('Lead añadido al carrito');
+  };
+
+  // Toggle commission model for a cart item
+  const handleToggleCommission = (id: string, isCommission: boolean) => {
+    setCartItems(prev => prev.map(item => 
+      item.id === id ? { ...item, isCommission } : item
+    ));
   };
 
   // View details
@@ -206,11 +233,14 @@ export default function LeadsMarket() {
     let errorCount = 0;
 
     for (const leadId of selectedIds) {
+      const cartItem = cartItems.find(i => i.id === leadId);
       try {
         const { data, error } = await supabase.functions.invoke('purchase-lead', {
           body: {
             lead_id: leadId,
             lawfirm_id: user?.profile?.lawfirm_id,
+            is_commission: cartItem?.isCommission || false,
+            commission_percent: cartItem?.isCommission ? (cartItem.commissionPercent || 20) : undefined,
           },
         });
         if (error) throw error;
@@ -454,6 +484,7 @@ export default function LeadsMarket() {
         onRemoveItem={handleRemoveFromCart}
         onClearCart={handleClearCart}
         onCheckout={handleCheckout}
+        onToggleCommission={handleToggleCommission}
         balance={balance}
         isCheckingOut={isCheckingOut}
       />

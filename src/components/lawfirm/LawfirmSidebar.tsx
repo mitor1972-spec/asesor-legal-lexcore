@@ -30,6 +30,7 @@ import {
   Mail,
   BarChart3,
   Handshake,
+  Percent,
 } from 'lucide-react';
 
 interface LawfirmSidebarProps {
@@ -41,6 +42,7 @@ const navigation = [
   { name: 'Dashboard', href: '/despacho/dashboard', icon: LayoutDashboard },
   { name: 'Mis Casos', href: '/despacho/casos', icon: Briefcase },
   { name: 'LeadsMarket', href: '/despacho/leadsmarket', icon: ShoppingCart, hasBadge: true },
+  { name: 'Casos a Comisión', href: '/despacho/comision', icon: Percent },
   { name: 'Venta de Servicios', href: '/despacho/servicios', icon: ShoppingBag },
   { name: 'Informes', href: '/despacho/informes', icon: BarChart3 },
 ];

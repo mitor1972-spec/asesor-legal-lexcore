@@ -484,6 +484,33 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_areas: {
+        Row: {
+          commission_percent: number
+          created_at: string | null
+          id: string
+          is_active: boolean
+          legal_area: string
+          updated_at: string | null
+        }
+        Insert: {
+          commission_percent?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          legal_area: string
+          updated_at?: string | null
+        }
+        Update: {
+          commission_percent?: number
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          legal_area?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       company_settings: {
         Row: {
           address: string | null
@@ -948,11 +975,13 @@ export type Database = {
           branch_id: string | null
           claimed_amount: number | null
           client_fee: number | null
+          commission_percent: number | null
           contacted_at: string | null
           fee_accepted_at: string | null
           firm_notes: string | null
           firm_status: string | null
           id: string
+          is_commission: boolean | null
           is_demo: boolean | null
           last_contact_at: string | null
           lawfirm_id: string | null
@@ -976,11 +1005,13 @@ export type Database = {
           branch_id?: string | null
           claimed_amount?: number | null
           client_fee?: number | null
+          commission_percent?: number | null
           contacted_at?: string | null
           fee_accepted_at?: string | null
           firm_notes?: string | null
           firm_status?: string | null
           id?: string
+          is_commission?: boolean | null
           is_demo?: boolean | null
           last_contact_at?: string | null
           lawfirm_id?: string | null
@@ -1006,11 +1037,13 @@ export type Database = {
           branch_id?: string | null
           claimed_amount?: number | null
           client_fee?: number | null
+          commission_percent?: number | null
           contacted_at?: string | null
           fee_accepted_at?: string | null
           firm_notes?: string | null
           firm_status?: string | null
           id?: string
+          is_commission?: boolean | null
           is_demo?: boolean | null
           last_contact_at?: string | null
           lawfirm_id?: string | null

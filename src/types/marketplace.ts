@@ -38,12 +38,17 @@ export interface MarketplaceLead {
     cuantia_aproximada?: string;
     complejidad?: string;
     _contact_alias?: string;
+    subarea?: string;
     [key: string]: any;
   };
   vj_value?: number;
   vj_key_phrases?: string[];
   raw_scores?: RawScores;
   case_summary?: string;
+  /** Whether this lead's area supports commission-based acquisition */
+  commission_available?: boolean;
+  /** The commission % for this area if available */
+  commission_percent?: number;
 }
 
 export interface CartItem {
@@ -52,6 +57,10 @@ export interface CartItem {
   province: string;
   score: number;
   price: number;
+  /** Whether the user chose commission model for this item */
+  isCommission?: boolean;
+  /** Commission percentage if commission model */
+  commissionPercent?: number;
 }
 
 export const SCORING_GROUPS = [

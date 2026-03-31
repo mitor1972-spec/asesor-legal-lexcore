@@ -31,7 +31,7 @@ serve(async (req) => {
       );
     }
 
-    const { lead_id, lawfirm_id } = await req.json();
+    const { lead_id, lawfirm_id, is_commission, commission_percent } = await req.json();
 
     if (!lead_id || !lawfirm_id) {
       return new Response(
@@ -120,10 +120,10 @@ serve(async (req) => {
       );
     }
 
-    const price = lead.marketplace_price || lead.price_final || 0;
+    const price = is_commission ? 0 : (lead.marketplace_price || lead.price_final || 0);
     const currentBalance = lawfirm.marketplace_balance || 0;
 
-    if (currentBalance < price) {
+    if (!is_commission && currentBalance < price) {
       return new Response(
         JSON.stringify({ error: 'Saldo insuficiente' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -202,7 +202,10 @@ serve(async (req) => {
         assigned_by_user_id: user.id,
         status_delivery: 'delivered',
         firm_status: 'received',
-        service_type: 'marketplace',
+        service_type: is_commission ? 'commission' : 'marketplace',
+        is_commission: is_commission || false,
+        commission_percent: is_commission ? (commission_percent || 20) : null,
+        lead_cost: is_commission ? 0 : price,
       });
 
     if (assignmentError) {
