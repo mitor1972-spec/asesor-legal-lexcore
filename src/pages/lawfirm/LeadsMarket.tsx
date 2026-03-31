@@ -484,6 +484,7 @@ export default function LeadsMarket() {
         onRemoveItem={handleRemoveFromCart}
         onClearCart={handleClearCart}
         onCheckout={handleCheckout}
+        onToggleCommission={handleToggleCommission}
         balance={balance}
         isCheckingOut={isCheckingOut}
       />
