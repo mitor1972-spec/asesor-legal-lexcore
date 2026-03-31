@@ -5,17 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { 
-  ShoppingCart as CartIcon, Trash2, Scale, MapPin, AlertCircle, Loader2, Wallet 
+  ShoppingCart as CartIcon, Trash2, Scale, MapPin, AlertCircle, Loader2, Wallet, Percent 
 } from 'lucide-react';
-
-interface CartItem {
-  id: string;
-  legalArea: string;
-  province: string;
-  score: number;
-  price: number;
-}
+import type { CartItem } from '@/types/marketplace';
 
 interface ShoppingCartProps {
   items: CartItem[];
@@ -24,6 +18,7 @@ interface ShoppingCartProps {
   onRemoveItem: (id: string) => void;
   onClearCart: () => void;
   onCheckout: (selectedIds: string[]) => void;
+  onToggleCommission: (id: string, isCommission: boolean) => void;
   balance: number;
   isCheckingOut: boolean;
 }
@@ -35,6 +30,7 @@ export function ShoppingCart({
   onRemoveItem, 
   onClearCart, 
   onCheckout,
+  onToggleCommission,
   balance,
   isCheckingOut
 }: ShoppingCartProps) {
@@ -59,7 +55,8 @@ export function ShoppingCart({
   };
 
   const selectedItems = items.filter(i => selectedIds.has(i.id));
-  const subtotal = selectedItems.reduce((sum, i) => sum + i.price, 0);
+  const subtotal = selectedItems.reduce((sum, i) => sum + (i.isCommission ? 0 : i.price), 0);
+  const commissionCount = selectedItems.filter(i => i.isCommission).length;
   const canAfford = balance >= subtotal;
   const newBalance = balance - subtotal;
 
@@ -132,9 +129,15 @@ export function ShoppingCart({
                         <Badge variant="outline" className={getScoreColor(item.score)}>
                           {item.score} pts
                         </Badge>
-                        <p className="font-bold text-lawfirm-primary mt-1">
-                          {item.price.toFixed(0)}€
-                        </p>
+                        {item.isCommission ? (
+                          <p className="font-bold text-green-600 mt-1 text-sm">
+                            0€ <span className="text-xs font-normal">({item.commissionPercent}% comisión)</span>
+                          </p>
+                        ) : (
+                          <p className="font-bold text-lawfirm-primary mt-1">
+                            {item.price.toFixed(0)}€
+                          </p>
+                        )}
                       </div>
                       <Button
                         variant="ghost"
@@ -145,6 +148,22 @@ export function ShoppingCart({
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+
+                    {/* Commission toggle - only for eligible areas */}
+                    {item.commissionPercent != null && item.commissionPercent > 0 && (
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-dashed">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Percent className="h-3.5 w-3.5 text-green-600" />
+                          <span className="text-muted-foreground">
+                            Modelo comisión ({item.commissionPercent}%)
+                          </span>
+                        </div>
+                        <Switch
+                          checked={item.isCommission || false}
+                          onCheckedChange={(checked) => onToggleCommission(item.id, checked)}
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -156,10 +175,19 @@ export function ShoppingCart({
             <div className="space-y-3 py-4">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
-                  Subtotal ({selectedItems.length} leads):
+                  Precio fijo ({selectedItems.length - commissionCount} leads):
                 </span>
                 <span className="font-medium">{subtotal.toFixed(2)}€</span>
               </div>
+              {commissionCount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-green-600 flex items-center gap-1">
+                    <Percent className="h-3.5 w-3.5" />
+                    A comisión ({commissionCount} leads):
+                  </span>
+                  <span className="font-medium text-green-600">0€</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <Wallet className="h-4 w-4" />
@@ -179,6 +207,15 @@ export function ShoppingCart({
                 <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg">
                   <AlertCircle className="h-4 w-4" />
                   Saldo insuficiente para esta compra
+                </div>
+              )}
+
+              {commissionCount > 0 && (
+                <div className="flex items-start gap-2 text-sm bg-green-500/10 p-3 rounded-lg text-green-700 dark:text-green-400">
+                  <Percent className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>
+                    Los leads a comisión no tienen coste inicial. Se aplica un {selectedItems.find(i => i.isCommission)?.commissionPercent || 20}% sobre los honorarios cobrados al cliente y sobre el éxito obtenido.
+                  </span>
                 </div>
               )}
             </div>
@@ -207,7 +244,9 @@ export function ShoppingCart({
                   </>
                 ) : (
                   <>
-                    💰 Comprar {selectedItems.length} lead{selectedItems.length !== 1 ? 's' : ''} - {subtotal.toFixed(0)}€
+                    💰 Comprar {selectedItems.length} lead{selectedItems.length !== 1 ? 's' : ''} 
+                    {subtotal > 0 ? ` - ${subtotal.toFixed(0)}€` : ''}
+                    {commissionCount > 0 ? ` + ${commissionCount} a comisión` : ''}
                   </>
                 )}
               </Button>
