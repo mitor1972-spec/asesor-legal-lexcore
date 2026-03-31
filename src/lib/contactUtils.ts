@@ -120,3 +120,16 @@ export function hasValidContact(structuredFields: Record<string, unknown> | null
   const phone = getContactPhone(structuredFields);
   return !!email || !!phone;
 }
+
+/**
+ * Clean a field value: returns null for "null", "undefined", "N/A", "No consta", empty strings, etc.
+ * Use this whenever displaying any structured_fields value in the UI.
+ */
+const EMPTY_VALUES = ['null', 'undefined', 'n/a', 'no consta', 'no disponible', 'no especificado', 'no especificada', 'sin especificar', 'none', ''];
+
+export function cleanField(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  const str = String(value).trim();
+  if (EMPTY_VALUES.includes(str.toLowerCase())) return null;
+  return str;
+}

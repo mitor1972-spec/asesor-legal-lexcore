@@ -236,10 +236,10 @@ export default function LeadDetail() {
             </Button>
           </CardHeader>
           <CardContent className="space-y-1 text-sm py-2 px-3">
-            <p className="flex items-center gap-2"><Scale className="h-3.5 w-3.5 text-muted-foreground" /><strong>Área:</strong> {(f?.area_legal as string) || ''}</p>
-            <p className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-muted-foreground" /><strong>Subárea:</strong> {(f?.subarea as string) || ''}</p>
-            <p className="flex items-center gap-2"><Euro className="h-3.5 w-3.5 text-muted-foreground" /><strong>Cuantía:</strong> {(f?.cuantia as number) ? `${(f.cuantia as number).toLocaleString()}€` : ''}</p>
-            <p className="flex items-center gap-2"><Zap className="h-3.5 w-3.5 text-muted-foreground" /><strong>Urgencia:</strong> {(f?.urgencia_aplica as boolean) ? <Badge variant="outline" className="bg-destructive/10 text-destructive text-xs py-0">{(f?.urgencia_nivel as string) || 'Sí'}</Badge> : ''}</p>
+            <p className="flex items-center gap-2"><Scale className="h-3.5 w-3.5 text-muted-foreground" /><strong>Área:</strong> {cleanField(f?.area_legal) || <span className="text-muted-foreground">—</span>}</p>
+            <p className="flex items-center gap-2"><FileText className="h-3.5 w-3.5 text-muted-foreground" /><strong>Subárea:</strong> {cleanField(f?.subarea) || <span className="text-muted-foreground">—</span>}</p>
+            <p className="flex items-center gap-2"><Euro className="h-3.5 w-3.5 text-muted-foreground" /><strong>Cuantía:</strong> {cleanField(f?.cuantia) ? `${Number(f!.cuantia).toLocaleString()}€` : <span className="text-muted-foreground">—</span>}</p>
+            <p className="flex items-center gap-2"><Zap className="h-3.5 w-3.5 text-muted-foreground" /><strong>Urgencia:</strong> {(f?.urgencia_aplica as boolean) ? <Badge variant="outline" className="bg-destructive/10 text-destructive text-xs py-0">{cleanField(f?.urgencia_nivel) || 'Sí'}</Badge> : <span className="text-muted-foreground">—</span>}</p>
             <p className="flex items-center gap-2"><Inbox className="h-3.5 w-3.5 text-muted-foreground" /><strong>Canal:</strong> {lead.source_channel ? <Badge variant="outline" className="text-xs py-0">{lead.source_channel}</Badge> : ''}</p>
           </CardContent>
         </Card>
