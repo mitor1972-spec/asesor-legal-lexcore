@@ -148,12 +148,14 @@ export default function LeadsMarket() {
       }
       // date_desc is default from DB query
       
-      return filtered.map(l => {
+        return filtered.map(l => {
         // Get latest lexcore run
         const latestRun = l.lexcore_runs?.[0];
         const vjData = latestRun?.vj_json as any;
         const rawScores = latestRun?.raw_scores_json as unknown as RawScores | null;
         const llmResponse = latestRun?.llm_response_json as any;
+        const legalArea = (l.structured_fields as any)?.area_legal || (l.structured_fields as any)?.legal_area || '';
+        const commPct = commissionAreas?.[legalArea];
         
         return {
           id: l.id,
@@ -167,6 +169,8 @@ export default function LeadsMarket() {
           vj_key_phrases: llmResponse?.key_phrases || [],
           raw_scores: rawScores || llmResponse?.raw_scores || null,
           case_summary: l.case_summary,
+          commission_available: commPct != null,
+          commission_percent: commPct ?? undefined,
         } as MarketplaceLead;
       });
     },
