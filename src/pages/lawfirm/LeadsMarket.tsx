@@ -233,11 +233,14 @@ export default function LeadsMarket() {
     let errorCount = 0;
 
     for (const leadId of selectedIds) {
+      const cartItem = cartItems.find(i => i.id === leadId);
       try {
         const { data, error } = await supabase.functions.invoke('purchase-lead', {
           body: {
             lead_id: leadId,
             lawfirm_id: user?.profile?.lawfirm_id,
+            is_commission: cartItem?.isCommission || false,
+            commission_percent: cartItem?.isCommission ? (cartItem.commissionPercent || 20) : undefined,
           },
         });
         if (error) throw error;
