@@ -88,7 +88,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 flex flex-col overflow-hidden">
+      <DialogContent className="max-w-4xl h-[90vh] p-0 flex flex-col overflow-hidden">
         <DialogHeader className="p-6 pb-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
