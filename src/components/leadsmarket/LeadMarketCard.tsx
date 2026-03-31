@@ -2,7 +2,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import { 
   Scale, MapPin, Zap, Phone, User, FileText, Gavel, Target, 
   TrendingUp, ShoppingCart, Eye, Euro, Calendar
@@ -28,7 +27,6 @@ const SCORING_GROUPS = [
   { key: 'intent', label: 'Intención', icon: Target, maxDefault: 10, color: 'bg-pink-500' },
 ];
 
-// Helper to clean null/placeholder values
 function cleanValue(val: unknown): string | null {
   if (val === null || val === undefined) return null;
   const s = String(val).trim();
@@ -51,13 +49,6 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
     if (score >= 70) return 'text-green-600 bg-green-500/10 border-green-500/30';
     if (score >= 40) return 'text-amber-600 bg-amber-500/10 border-amber-500/30';
     return 'text-muted-foreground bg-muted border-border';
-  };
-
-  const getScoreBarColor = (score: number) => {
-    if (score <= 30) return 'bg-red-500';
-    if (score <= 50) return 'bg-orange-500';
-    if (score <= 70) return 'bg-yellow-400';
-    return 'bg-green-500';
   };
 
   const renderScoreBar = (key: string) => {
@@ -91,9 +82,9 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
   const price = lead.marketplace_price || 0;
 
   return (
-    <Card className="overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col">
+    <Card className={`overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col ${isUrgent ? 'border-red-500 shadow-red-500/20' : ''}`}>
       {/* Header with Score + Price */}
-      <div className="flex items-center justify-between p-4 bg-muted/40 border-b">
+      <div className={`flex items-center justify-between p-4 border-b ${isUrgent ? 'bg-red-500/5' : 'bg-muted/40'}`}>
         <div className="flex flex-col gap-1 flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <Scale className="h-5 w-5 text-lawfirm-primary flex-shrink-0" />
@@ -124,10 +115,10 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
       </div>
 
       <CardContent className="p-0 flex-1 flex flex-col">
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-2 gap-0 flex-1">
+        {/* Two Column Layout: Case Info + Scoring */}
+        <div className="grid grid-cols-2 gap-0">
           {/* Left Column - Case Info */}
-          <div className="p-4 border-r space-y-3">
+          <div className="p-4 border-r space-y-2">
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -145,8 +136,8 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
               </div>
               {isUrgent && (
                 <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-amber-500" />
-                  <span className="text-amber-600 font-medium">URGENTE</span>
+                  <Zap className="h-4 w-4 text-red-500" />
+                  <span className="text-red-600 font-bold">⚠ URGENTE</span>
                 </div>
               )}
               {cuantia && (
@@ -162,36 +153,6 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
                 </div>
               )}
             </div>
-
-            <Separator />
-
-            {/* Summary */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                📝 Resumen:
-              </p>
-              <div className="bg-muted/30 p-3 rounded-lg border">
-                <p className="text-sm leading-relaxed text-foreground">
-                  {lead.marketplace_summary || 'Sin resumen disponible'}
-                </p>
-              </div>
-            </div>
-
-            {/* Key Phrases */}
-            {lead.vj_key_phrases && lead.vj_key_phrases.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  💬 Frases clave:
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {lead.vj_key_phrases.slice(0, 3).map((phrase, i) => (
-                    <Badge key={i} variant="secondary" className="text-xs">
-                      {phrase}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right Column - Scoring */}
@@ -202,13 +163,9 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
                 Scoring LEXCORE™
               </span>
             </div>
-
-            {/* Score Bars */}
             <div className="space-y-3">
               {SCORING_GROUPS.map(group => renderScoreBar(group.key))}
             </div>
-
-            {/* VJ */}
             {lead.vj_value !== null && lead.vj_value !== undefined && (
               <div className="flex items-center justify-between pt-2 border-t">
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -223,8 +180,29 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
           </div>
         </div>
 
-        {/* Footer: Actions only (price moved to header) */}
-        <div className="flex items-center justify-end p-4 border-t bg-muted/20 gap-2">
+        {/* Full-width Summary */}
+        <div className="px-4 pb-3 pt-2 border-t space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+            📝 Resumen:
+          </p>
+          <div className="bg-muted/30 p-3 rounded-lg border">
+            <p className="text-sm leading-relaxed text-foreground">
+              {lead.marketplace_summary || 'Sin resumen disponible'}
+            </p>
+          </div>
+          {lead.vj_key_phrases && lead.vj_key_phrases.length > 0 && (
+            <div className="flex flex-wrap gap-1 pt-1">
+              {lead.vj_key_phrases.slice(0, 3).map((phrase, i) => (
+                <Badge key={i} variant="secondary" className="text-xs">
+                  {phrase}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer: Actions */}
+        <div className="flex items-center justify-end p-4 border-t bg-muted/20 gap-2 mt-auto">
           <Button 
             variant="outline"
             size="sm"
