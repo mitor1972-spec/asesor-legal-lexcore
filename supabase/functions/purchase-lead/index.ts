@@ -31,7 +31,7 @@ serve(async (req) => {
       );
     }
 
-    const { lead_id, lawfirm_id } = await req.json();
+    const { lead_id, lawfirm_id, is_commission, commission_percent } = await req.json();
 
     if (!lead_id || !lawfirm_id) {
       return new Response(
