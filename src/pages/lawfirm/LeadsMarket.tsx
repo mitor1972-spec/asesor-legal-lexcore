@@ -158,6 +158,7 @@ export default function LeadsMarket() {
   });
 
   const balance = lawfirm?.marketplace_balance || 0;
+  const isDemoMode = mode === 'demo';
 
   // Add to cart
   const handleAddToCart = (lead: MarketplaceLead) => {
