@@ -41,6 +41,7 @@ import LawfirmBilling from "@/pages/lawfirm/LawfirmBilling";
 import LawfirmServices from "@/pages/lawfirm/LawfirmServices";
 import LawfirmReports from "@/pages/lawfirm/LawfirmReports";
 import LawfirmOutsourcing from "@/pages/lawfirm/LawfirmOutsourcing";
+import LawfirmCommission from "@/pages/lawfirm/LawfirmCommission";
 import RegistroDespacho from "@/pages/RegistroDespacho";
 import SalesReport from "@/pages/reports/SalesReport";
 import NotFound from "@/pages/NotFound";
