@@ -91,7 +91,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
   const price = lead.marketplace_price || 0;
 
   return (
-    <Card className="overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col">
+    <Card className={`overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col ${isUrgent ? 'border-red-500 shadow-red-500/20' : ''}`}>
       {/* Header with Score + Price */}
       <div className="flex items-center justify-between p-4 bg-muted/40 border-b">
         <div className="flex flex-col gap-1 flex-1 min-w-0">
