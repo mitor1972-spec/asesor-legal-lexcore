@@ -158,6 +158,7 @@ export default function LeadsMarket() {
   });
 
   const balance = lawfirm?.marketplace_balance || 0;
+  const isDemoMode = mode === 'demo';
 
   // Add to cart
   const handleAddToCart = (lead: MarketplaceLead) => {
@@ -426,7 +427,7 @@ export default function LeadsMarket() {
               onAddToCart={handleAddToCart}
               onViewDetails={handleViewDetails}
               isInCart={isInCart(lead.id)}
-              canAfford={balance >= lead.marketplace_price}
+              canAfford={isDemoMode || balance >= lead.marketplace_price}
             />
           ))}
         </div>
@@ -439,7 +440,7 @@ export default function LeadsMarket() {
               onAddToCart={handleAddToCart}
               onViewDetails={handleViewDetails}
               isInCart={isInCart(lead.id)}
-              canAfford={balance >= lead.marketplace_price}
+              canAfford={isDemoMode || balance >= lead.marketplace_price}
             />
           ))}
         </div>
@@ -467,7 +468,7 @@ export default function LeadsMarket() {
         }}
         onAddToCart={handleAddToCart}
         isInCart={selectedLead ? isInCart(selectedLead.id) : false}
-        canAfford={selectedLead ? balance >= selectedLead.marketplace_price : false}
+        canAfford={isDemoMode || (selectedLead ? balance >= selectedLead.marketplace_price : false)}
       />
     </div>
   );

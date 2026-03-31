@@ -110,25 +110,15 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
           />
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Price badge - prominent */}
+          {/* Score badge */}
+          <div className={`flex flex-col items-center rounded-lg px-3 py-1.5 border ${getScoreColor(lead.score_final)}`}>
+            <span className="text-xs font-medium opacity-70">SCORING</span>
+            <span className="text-xl font-bold">{lead.score_final}</span>
+          </div>
+          {/* Price badge */}
           <div className="flex flex-col items-center bg-lawfirm-primary/10 border border-lawfirm-primary/30 rounded-lg px-3 py-1.5">
             <span className="text-xs text-lawfirm-primary/70 font-medium">PRECIO</span>
             <span className="text-xl font-bold text-lawfirm-primary">{price}€</span>
-          </div>
-          {/* Score */}
-          <div className="flex flex-col items-center gap-1">
-            <div className="relative w-12 h-2 bg-muted rounded-full overflow-hidden">
-              <div 
-                className={`absolute left-0 top-0 h-full rounded-full transition-all ${getScoreBarColor(lead.score_final)}`}
-                style={{ width: `${Math.min(Math.max(lead.score_final, 0), 100)}%` }}
-              />
-            </div>
-            <Badge 
-              variant="outline" 
-              className={`text-sm font-bold px-2 py-0.5 ${getScoreColor(lead.score_final)}`}
-            >
-              {lead.score_final}
-            </Badge>
           </div>
         </div>
       </div>
