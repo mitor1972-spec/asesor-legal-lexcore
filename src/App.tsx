@@ -44,6 +44,7 @@ import LawfirmOutsourcing from "@/pages/lawfirm/LawfirmOutsourcing";
 import RegistroDespacho from "@/pages/RegistroDespacho";
 import SalesReport from "@/pages/reports/SalesReport";
 import NotFound from "@/pages/NotFound";
+import { RequireAdmin } from "@/components/auth/RequireAdmin";
 
 const queryClient = new QueryClient();
 
@@ -70,13 +71,13 @@ const App = () => (
                 <Route path="leads/:id" element={<LeadDetail />} />
                 <Route path="leads/:id/edit" element={<LeadEdit />} />
                 <Route path="leads/:id/preview" element={<LeadPreviewAsLawyer />} />
-                <Route path="users" element={<Users />} />
-                <Route path="settings/api-keys" element={<ApiKeys />} />
-                <Route path="settings/lexcore" element={<LexcoreConfig />} />
+                <Route path="users" element={<RequireAdmin><Users /></RequireAdmin>} />
+                <Route path="settings/api-keys" element={<RequireAdmin><ApiKeys /></RequireAdmin>} />
+                <Route path="settings/lexcore" element={<RequireAdmin><LexcoreConfig /></RequireAdmin>} />
                 <Route path="settings/ai-prompts" element={<AiPromptsSettings />} />
-                <Route path="settings/lawfirms" element={<LawfirmsManagement />} />
+                <Route path="settings/lawfirms" element={<RequireAdmin><LawfirmsManagement /></RequireAdmin>} />
                 <Route path="settings/solicitudes" element={<LawfirmApplications />} />
-                <Route path="settings/chatwoot" element={<ChatwootSettings />} />
+                <Route path="settings/chatwoot" element={<RequireAdmin><ChatwootSettings /></RequireAdmin>} />
                 <Route path="settings/discarded-leads" element={<DiscardedLeads />} />
                 <Route path="settings/profile" element={<ProfileSettings />} />
                 <Route path="informes/ventas" element={<SalesReport />} />
