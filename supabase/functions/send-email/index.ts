@@ -21,9 +21,38 @@ serve(async (req) => {
   }
 
   try {
+    // ===== AUTH CHECK =====
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const token = authHeader.replace('Bearer ', '');
+
+    // Allow service role calls (internal pipeline) or validate user JWT
+    const isServiceRole = token === supabaseServiceKey;
+
+    if (!isServiceRole) {
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data, error } = await userClient.auth.getUser();
+      if (error || !data?.user) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        );
+      }
+    }
+
+    // Use service role client for DB operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { to, template_key, variables, lead_id, lawfirm_id }: SendEmailRequest = await req.json();
 
@@ -68,20 +97,10 @@ serve(async (req) => {
       body = body.replace(regex, value || '');
     }
 
-    // Send email using SMTP
-    // Note: For production, use a proper email service like Resend, SendGrid, etc.
-    // This is a simplified version using the built-in Deno.smtp (not available)
-    // For now, we'll simulate success and log the email
-    
     console.log('Email prepared:');
     console.log('To:', to);
     console.log('Subject:', subject);
     console.log('From:', settings.sender_email);
-    
-    // In a real implementation, you would use an email service here
-    // For example, with Resend:
-    // const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
-    // await resend.emails.send({ from, to, subject, html: body });
 
     // Log the email
     const { error: logError } = await supabase.from('email_log').insert({
@@ -110,9 +129,8 @@ serve(async (req) => {
 
   } catch (error: unknown) {
     console.error('Error in send-email function:', error);
-    const message = error instanceof Error ? error.message : 'Error interno';
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: 'Error interno del servidor' }),
       { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
   }

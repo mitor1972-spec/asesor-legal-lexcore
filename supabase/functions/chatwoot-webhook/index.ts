@@ -784,15 +784,7 @@ serve(async (req) => {
       action: existingLead ? "updated" : "created",
       lead_id: upsertedLead.id,
       conversation_id: conversationId,
-      transcript_stats: transcriptStats,
       valid: finalLeadValid,
-      extracted: {
-        nombre: regexName,
-        email: postAiEmail || regexEmail,
-        telefono: postAiPhone || regexPhone,
-        area: legalArea,
-        contact_alias: contactAlias,
-      }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -802,7 +794,7 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ 
       status: "error", 
-      message: error instanceof Error ? error.message : String(error) 
+      message: "Processing error" 
     }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
