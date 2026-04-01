@@ -66,9 +66,9 @@ export function LawfirmHeader({ onMenuClick }: LawfirmHeaderProps) {
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-              <Avatar className="h-10 w-10 bg-lawfirm-primary">
-                <AvatarFallback className="bg-lawfirm-primary text-white">
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-blue-600 text-white font-semibold">
                   {initials}
                 </AvatarFallback>
               </Avatar>
