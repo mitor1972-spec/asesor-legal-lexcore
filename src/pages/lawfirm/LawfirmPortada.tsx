@@ -20,13 +20,17 @@ export default function LawfirmPortada() {
     queryKey: ['portada-stats', lawfirm?.id],
     queryFn: async () => {
       if (!lawfirm?.id) return null;
-      const [marketplace, cases] = await Promise.all([
+      const [marketplace, cases, urgent, commissionable] = await Promise.all([
         supabase.from('leads').select('*', { count: 'exact', head: true }).eq('is_in_marketplace', true),
         supabase.from('lead_assignments').select('*', { count: 'exact', head: true }).eq('lawfirm_id', lawfirm.id),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('is_in_marketplace', true).gte('score_final', 60),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('is_in_marketplace', true).eq('price_final', 0),
       ]);
       return {
         marketplaceCount: marketplace.count || 0,
         totalCases: cases.count || 0,
+        urgentCount: urgent.count || 0,
+        commissionableCount: commissionable.count || 0,
       };
     },
     enabled: !!lawfirm?.id,
