@@ -52,10 +52,10 @@ const mainNavigation = [
 ];
 
 const adminNavigation = [
+  { name: 'Datos del despacho', href: '/despacho/configuracion', icon: Settings },
   { name: 'Equipo', href: '/despacho/equipo', icon: Users },
   { name: 'Sucursales', href: '/despacho/sucursales', icon: Building },
-  { name: 'Datos del despacho', href: '/despacho/configuracion', icon: Settings },
-  { name: 'Facturación', href: '/despacho/facturacion', icon: CreditCard },
+  { name: 'Facturación y Pagos', href: '/despacho/facturacion', icon: CreditCard },
 ];
 
 const marketingNavigation = [
