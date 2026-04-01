@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Eye, ShoppingCart, MapPin, Scale, Clock, Radar, ArrowRight } from 'lucide-react';
-import { LeadTemperature } from '@/components/lead/LeadTemperature';
+import { Sparkles, Eye, MapPin, Scale, Zap, Radar, ArrowRight, Euro } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { MarketplaceLead } from '@/types/marketplace';
+import { redactContactFromText } from '@/lib/contactSanitizer';
 
 interface TopOpportunitiesCardProps {
   leads: MarketplaceLead[];
@@ -13,21 +13,27 @@ interface TopOpportunitiesCardProps {
   onPurchase: (lead: MarketplaceLead) => void;
 }
 
-export function TopOpportunitiesCard({ leads, balance, onViewDetails, onPurchase }: TopOpportunitiesCardProps) {
-  // Filter: urgent OR score > 50, then sort by score desc
+export function TopOpportunitiesCard({ leads, balance, onViewDetails }: TopOpportunitiesCardProps) {
+  // Filter: urgent OR score >= 60, sort urgent first then by score, max 6
   const relevantLeads = leads
     .filter(lead => {
       const fields = lead.structured_fields || {};
       const isUrgent = !!fields.urgencia_aplica || !!fields.urgencia_nivel;
-      const highScore = (lead.score_final || 0) > 50;
+      const highScore = (lead.score_final || 0) >= 60;
       return isUrgent || highScore;
     })
-    .sort((a, b) => (b.score_final || 0) - (a.score_final || 0))
-    .slice(0, 5);
+    .sort((a, b) => {
+      const aUrgent = !!(a.structured_fields?.urgencia_aplica || a.structured_fields?.urgencia_nivel);
+      const bUrgent = !!(b.structured_fields?.urgencia_aplica || b.structured_fields?.urgencia_nivel);
+      if (aUrgent !== bUrgent) return bUrgent ? 1 : -1;
+      if ((b.score_final || 0) !== (a.score_final || 0)) return (b.score_final || 0) - (a.score_final || 0);
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    })
+    .slice(0, 6);
 
   if (relevantLeads.length === 0) {
     return (
-      <Card className="bg-gradient-to-r from-lawfirm-primary/5 to-lawfirm-primary/10 border-lawfirm-primary/20">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Sparkles className="h-5 w-5 text-lawfirm-primary" />
@@ -36,7 +42,7 @@ export function TopOpportunitiesCard({ leads, balance, onViewDetails, onPurchase
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground text-center py-2">
-            No hay leads urgentes o con scoring alto en este momento.
+            No hay oportunidades destacadas en este momento.
           </p>
           <RadarCTA />
         </CardContent>
@@ -45,7 +51,7 @@ export function TopOpportunitiesCard({ leads, balance, onViewDetails, onPurchase
   }
 
   return (
-    <Card className="bg-gradient-to-r from-lawfirm-primary/5 to-lawfirm-primary/10 border-lawfirm-primary/20">
+    <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
@@ -60,73 +66,74 @@ export function TopOpportunitiesCard({ leads, balance, onViewDetails, onPurchase
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {relevantLeads.map((lead) => {
-          const fields = lead.structured_fields || {};
-          const canAfford = balance >= lead.marketplace_price;
-          const isUrgent = !!fields.urgencia_aplica || !!fields.urgencia_nivel;
-          const area = fields.area_legal || fields.legal_area || 'Legal';
-          const province = fields.provincia || fields.province || '';
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {relevantLeads.map((lead) => {
+            const fields = lead.structured_fields || {};
+            const isUrgent = !!fields.urgencia_aplica || !!fields.urgencia_nivel;
+            const area = fields.area_legal || fields.legal_area || 'Legal';
+            const province = fields.provincia || fields.province || 'Sin provincia';
+            const summary = redactContactFromText(lead.marketplace_summary, fields);
 
-          return (
-            <div 
-              key={lead.id}
-              className={`p-3 rounded-lg bg-card border transition-all hover:shadow-md ${isUrgent ? 'border-destructive/50' : ''}`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                {/* Left: key data */}
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <LeadTemperature score={lead.score_final} variant="mini" />
-                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+            const getScoreColor = (score: number) => {
+              if (score >= 70) return 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/40';
+              if (score >= 50) return 'text-amber-700 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/40';
+              return 'text-muted-foreground bg-muted';
+            };
+
+            return (
+              <Card 
+                key={lead.id}
+                className={`cursor-pointer hover:shadow-md transition-all border ${isUrgent ? 'border-red-400' : ''}`}
+                onClick={() => onViewDetails(lead)}
+              >
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Scale className="h-4 w-4 text-lawfirm-primary flex-shrink-0" />
+                      <span className="font-semibold text-sm truncate">{area}</span>
+                    </div>
                     {isUrgent && (
-                      <Badge variant="destructive" className="text-xs shrink-0">
-                        <Clock className="h-3 w-3 mr-1" />
+                      <Badge variant="destructive" className="text-xs shrink-0 px-1.5 py-0">
+                        <Zap className="h-3 w-3 mr-0.5" />
                         Urgente
                       </Badge>
                     )}
-                    <Badge variant="outline" className="text-xs shrink-0">
-                      <Scale className="h-3 w-3 mr-1" />
-                      {area}
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{province}</span>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                    {summary || 'Lead disponible'}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-1 border-t">
+                    <Badge variant="outline" className={`text-xs font-bold ${getScoreColor(lead.score_final)}`}>
+                      {lead.score_final} pts
                     </Badge>
-                    {province && (
-                      <Badge variant="secondary" className="text-xs shrink-0">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        {province}
-                      </Badge>
-                    )}
-                    <span className="text-sm font-bold text-lawfirm-primary shrink-0">
+                    <span className="text-sm font-bold text-lawfirm-primary flex items-center gap-0.5">
+                      <Euro className="h-3 w-3" />
                       {lead.marketplace_price}€
                     </span>
-                    <span className="text-xs text-muted-foreground font-mono shrink-0">
-                      #{lead.id.substring(0, 6)}
-                    </span>
                   </div>
-                </div>
 
-                {/* Right: actions */}
-                <div className="flex items-center gap-1 shrink-0">
                   <Button 
                     size="sm" 
-                    variant="ghost"
-                    onClick={() => onViewDetails(lead)}
-                    title="Ver informe"
+                    variant="outline"
+                    className="w-full gap-1 text-xs"
+                    onClick={(e) => { e.stopPropagation(); onViewDetails(lead); }}
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-3 w-3" />
+                    Ver informe
                   </Button>
-                  <Button 
-                    size="sm" 
-                    onClick={() => onPurchase(lead)}
-                    disabled={!canAfford}
-                    title={!canAfford ? 'Saldo insuficiente' : 'Comprar lead'}
-                  >
-                    <ShoppingCart className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
 
-        {/* Radar CTA */}
         <RadarCTA />
       </CardContent>
     </Card>

@@ -5,13 +5,15 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
-  Scale, MapPin, Zap, Phone, User, FileText, Gavel, Target, 
+  Scale, MapPin, Zap, Phone, Target, 
   TrendingUp, MessageSquareQuote, ShoppingCart, AlertTriangle, 
-  CheckCircle, ClipboardList, BookOpen, Euro, Calendar
+  CheckCircle, ClipboardList, BookOpen, Euro, Calendar,
+  FileText, Shield, Eye, Crosshair
 } from 'lucide-react';
 import type { MarketplaceLead } from '@/types/marketplace';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { redactContactFromText, isContactField, LEXCORE_SCORING_GROUPS } from '@/lib/contactSanitizer';
 
 interface LeadDetailModalProps {
   lead: MarketplaceLead | null;
@@ -22,13 +24,14 @@ interface LeadDetailModalProps {
   canAfford: boolean;
 }
 
-const SCORING_GROUPS = [
-  { key: 'contactability', label: 'Contactabilidad', icon: Phone, maxDefault: 20 },
-  { key: 'personal_data', label: 'Datos Personales', icon: User, maxDefault: 15 },
-  { key: 'case_facts', label: 'Hechos del Caso', icon: FileText, maxDefault: 25 },
-  { key: 'legal_fit', label: 'Adecuación Legal', icon: Gavel, maxDefault: 20 },
-  { key: 'intent', label: 'Intención', icon: Target, maxDefault: 10 },
-];
+const GROUP_ICONS: Record<string, typeof Phone> = {
+  contactability: Phone,
+  intent: Target,
+  urgency: Zap,
+  case_quality: FileText,
+  evidence: Shield,
+  clarity: Eye,
+};
 
 function cleanValue(val: unknown): string | null {
   if (val === null || val === undefined) return null;
@@ -59,18 +62,33 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     return 'text-muted-foreground bg-muted border-border';
   };
 
-  const renderScoreBar = (key: string) => {
-    const group = SCORING_GROUPS.find(g => g.key === key);
-    if (!group) return null;
-    
-    const data = lead.raw_scores?.[key];
+  // Check if there's a lexcore run with real data
+  const hasLexcoreRun = lead.raw_scores && Object.keys(lead.raw_scores).length > 0;
+
+  const renderScoreBar = (group: typeof LEXCORE_SCORING_GROUPS[number]) => {
+    const Icon = GROUP_ICONS[group.key] || Crosshair;
+    const data = lead.raw_scores?.[group.key];
     const score = data?.score ?? 0;
-    const max = data?.max ?? group.maxDefault;
+    const max = data?.max ?? group.max;
     const percent = max > 0 ? (score / max) * 100 : 0;
-    const Icon = group.icon;
+
+    // For urgency, check if mode A (urgencia_aplica)
+    if (group.key === 'urgency' && !isUrgent && (!data || data.score === 0)) {
+      return (
+        <div key={group.key} className="space-y-1">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2">
+              <Icon className="h-4 w-4 text-muted-foreground" />
+              <span>{group.label}</span>
+            </div>
+            <span className="text-xs text-muted-foreground italic">No aplica</span>
+          </div>
+        </div>
+      );
+    }
     
     return (
-      <div key={key} className="space-y-1">
+      <div key={group.key} className="space-y-1">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
             <Icon className="h-4 w-4 text-muted-foreground" />
@@ -85,6 +103,9 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
       </div>
     );
   };
+
+  // Redact contact info from summaries
+  const redactedSummary = redactContactFromText(lead.case_summary || lead.marketplace_summary, fields);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -139,6 +160,19 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
 
         <ScrollArea className="flex-1 min-h-0 px-6">
           <div className="space-y-6 py-4">
+            {/* Contact Info Blocked Notice */}
+            <Card className="border-amber-500/30 bg-amber-500/5">
+              <CardContent className="p-4 flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-amber-800 dark:text-amber-400">Datos de contacto ocultos</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-500">
+                    El nombre, teléfono y email del cliente se mostrarán tras la compra del lead
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Scoring Section */}
             <Card>
               <CardHeader className="pb-3">
@@ -147,24 +181,30 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                   Análisis LEXCORE™
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-4">
-                {SCORING_GROUPS.map(group => renderScoreBar(group.key))}
-                
-                {lead.vj_value !== null && lead.vj_value !== undefined && (
-                  <div className="md:col-span-2 flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <span className="font-medium flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4" />
-                      Viabilidad Jurídica (VJ)
-                    </span>
-                    <span className={`text-lg font-bold ${lead.vj_value > 0 ? 'text-green-600' : lead.vj_value < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
-                      {lead.vj_value > 0 ? '+' : ''}{lead.vj_value} puntos
-                    </span>
+              <CardContent>
+                {hasLexcoreRun ? (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {LEXCORE_SCORING_GROUPS.map(group => renderScoreBar(group))}
+                    
+                    {lead.vj_value !== null && lead.vj_value !== undefined && (
+                      <div className="md:col-span-2 flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <span className="font-medium flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4" />
+                          Viabilidad Jurídica (VJ)
+                        </span>
+                        <span className={`text-lg font-bold ${lead.vj_value > 0 ? 'text-green-600' : lead.vj_value < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                          {lead.vj_value > 0 ? '+' : ''}{lead.vj_value} puntos
+                        </span>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">Scoring pendiente</p>
                 )}
               </CardContent>
             </Card>
 
-            {/* Case Summary */}
+            {/* Case Summary (redacted) */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -175,7 +215,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               <CardContent>
                 <div className="bg-muted/30 p-4 rounded-lg">
                   <p className="text-sm leading-relaxed whitespace-pre-line">
-                    {lead.case_summary || lead.marketplace_summary}
+                    {redactedSummary || 'Sin resumen disponible'}
                   </p>
                 </div>
                 
@@ -208,21 +248,36 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-3">
                   {Object.entries(fields)
-                    .filter(([key]) => !['nombre', 'telefono', 'email', 'phone', 'name', 'correo', 'direccion', '_contact_alias', '_incomplete'].includes(key.toLowerCase()))
+                    .filter(([key]) => !isContactField(key) && !['_contact_alias', '_incomplete', 'transcript_stats'].includes(key))
                     .filter(([, value]) => {
                       const cleaned = cleanValue(value);
                       return cleaned !== null;
                     })
-                    .map(([key, value]) => (
-                      <div key={key} className="flex justify-between items-start p-2 bg-muted/30 rounded">
-                        <span className="text-sm text-muted-foreground capitalize">
-                          {key.replace(/_/g, ' ')}:
-                        </span>
-                        <span className="text-sm font-medium text-right">
-                          {typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value)}
-                        </span>
-                      </div>
-                    ))}
+                    .map(([key, value]) => {
+                      // Render objects properly
+                      let displayValue: string;
+                      if (typeof value === 'object' && value !== null) {
+                        displayValue = JSON.stringify(value);
+                        // Skip [object Object] type renders
+                        if (displayValue === '{}' || displayValue === '[]') return null;
+                      } else if (typeof value === 'boolean') {
+                        displayValue = value ? 'Sí' : 'No';
+                      } else {
+                        displayValue = String(value);
+                      }
+                      
+                      return (
+                        <div key={key} className="flex justify-between items-start p-2 bg-muted/30 rounded">
+                          <span className="text-sm text-muted-foreground capitalize">
+                            {key.replace(/_/g, ' ')}:
+                          </span>
+                          <span className="text-sm font-medium text-right max-w-[60%]">
+                            {displayValue}
+                          </span>
+                        </div>
+                      );
+                    })
+                    .filter(Boolean)}
                 </div>
               </CardContent>
             </Card>
@@ -265,19 +320,6 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                 </div>
               </CardContent>
             </Card>
-
-            {/* Contact Info Blocked Notice */}
-            <Card className="border-amber-500/30 bg-amber-500/5">
-              <CardContent className="p-4 flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
-                <div>
-                  <p className="font-medium text-amber-800">Datos de contacto ocultos</p>
-                  <p className="text-sm text-amber-700">
-                    El nombre, teléfono y email del cliente se mostrarán tras la compra del lead
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </ScrollArea>
 
@@ -296,7 +338,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               <Button 
                 onClick={() => { onAddToCart(lead); onClose(); }}
                 disabled={!canAfford || isInCart}
-                className="gap-2"
+                className="gap-2 cursor-pointer"
               >
                 <ShoppingCart className="h-4 w-4" />
                 {isInCart ? 'Ya en carrito' : 'Añadir al carrito'}

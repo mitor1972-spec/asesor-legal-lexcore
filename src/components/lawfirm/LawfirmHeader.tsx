@@ -11,7 +11,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { Menu, Moon, Sun, LogOut, User } from 'lucide-react';
-import { DemoModeToggle } from '@/components/layout/DemoModeToggle';
 
 interface LawfirmHeaderProps {
   onMenuClick: () => void;
@@ -51,9 +50,6 @@ export function LawfirmHeader({ onMenuClick }: LawfirmHeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Demo mode toggle */}
-        <DemoModeToggle />
-
         {/* Theme toggle */}
         <Button
           variant="ghost"

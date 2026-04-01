@@ -3,13 +3,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { 
-  Scale, MapPin, Zap, Phone, User, FileText, Gavel, Target, 
-  TrendingUp, ShoppingCart, Eye, Euro, Calendar
+  Scale, MapPin, Zap, Phone, Target, ShoppingCart, Eye, Euro, Calendar,
+  TrendingUp, FileText, Shield, Crosshair
 } from 'lucide-react';
 import type { MarketplaceLead } from '@/types/marketplace';
 import { LeadReference } from '@/components/common/LeadReference';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { redactContactFromText, LEXCORE_SCORING_GROUPS } from '@/lib/contactSanitizer';
 
 interface LeadMarketCardProps {
   lead: MarketplaceLead;
@@ -19,13 +20,14 @@ interface LeadMarketCardProps {
   canAfford: boolean;
 }
 
-const SCORING_GROUPS = [
-  { key: 'contactability', label: 'Contactabilidad', icon: Phone, maxDefault: 20, color: 'bg-blue-500' },
-  { key: 'personal_data', label: 'Datos Personales', icon: User, maxDefault: 15, color: 'bg-purple-500' },
-  { key: 'case_facts', label: 'Hechos del Caso', icon: FileText, maxDefault: 25, color: 'bg-green-500' },
-  { key: 'legal_fit', label: 'Adecuación Legal', icon: Gavel, maxDefault: 20, color: 'bg-orange-500' },
-  { key: 'intent', label: 'Intención', icon: Target, maxDefault: 10, color: 'bg-pink-500' },
-];
+const GROUP_ICONS: Record<string, typeof Phone> = {
+  contactability: Phone,
+  intent: Target,
+  urgency: Zap,
+  case_quality: FileText,
+  evidence: Shield,
+  clarity: Crosshair,
+};
 
 function cleanValue(val: unknown): string | null {
   if (val === null || val === undefined) return null;
@@ -44,6 +46,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
   const isUrgent = fields.urgencia_aplica === true;
   const cuantia = cleanValue(fields.cuantia_aproximada);
   const complejidad = cleanValue(fields.complejidad);
+  const hasLexcoreRun = lead.raw_scores && Object.keys(lead.raw_scores).length > 0;
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return 'text-green-600 bg-green-500/10 border-green-500/30';
@@ -51,18 +54,29 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
     return 'text-muted-foreground bg-muted border-border';
   };
 
-  const renderScoreBar = (key: string) => {
-    const group = SCORING_GROUPS.find(g => g.key === key);
-    if (!group) return null;
-    
-    const data = lead.raw_scores?.[key];
+  const renderScoreBar = (group: typeof LEXCORE_SCORING_GROUPS[number]) => {
+    const Icon = GROUP_ICONS[group.key] || Crosshair;
+    const data = lead.raw_scores?.[group.key];
     const score = data?.score ?? 0;
-    const max = data?.max ?? group.maxDefault;
+    const max = data?.max ?? group.max;
     const percent = max > 0 ? (score / max) * 100 : 0;
-    const Icon = group.icon;
+
+    if (group.key === 'urgency' && !isUrgent && (!data || data.score === 0)) {
+      return (
+        <div key={group.key} className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5">
+              <Icon className="h-3 w-3 text-muted-foreground" />
+              <span className="text-muted-foreground">{group.label}</span>
+            </div>
+            <span className="text-xs text-muted-foreground italic">N/A</span>
+          </div>
+        </div>
+      );
+    }
     
     return (
-      <div key={key} className="space-y-1">
+      <div key={group.key} className="space-y-1">
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5">
             <Icon className="h-3 w-3 text-muted-foreground" />
@@ -80,6 +94,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
     : null;
 
   const price = lead.marketplace_price || 0;
+  const redactedSummary = redactContactFromText(lead.marketplace_summary, fields);
 
   return (
     <Card className={`overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col ${isUrgent ? 'border-red-500 shadow-red-500/20' : ''}`}>
@@ -101,12 +116,10 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
           />
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Score badge */}
           <div className={`flex flex-col items-center rounded-lg px-3 py-1.5 border ${getScoreColor(lead.score_final)}`}>
             <span className="text-xs font-medium opacity-70">SCORING</span>
             <span className="text-xl font-bold">{lead.score_final}</span>
           </div>
-          {/* Price badge */}
           <div className="flex flex-col items-center bg-lawfirm-primary/10 border border-lawfirm-primary/30 rounded-lg px-3 py-1.5">
             <span className="text-xs text-lawfirm-primary/70 font-medium">PRECIO</span>
             <span className="text-xl font-bold text-lawfirm-primary">{price}€</span>
@@ -115,7 +128,6 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
       </div>
 
       <CardContent className="p-0 flex-1 flex flex-col">
-        {/* Two Column Layout: Case Info + Scoring */}
         <div className="grid grid-cols-2 gap-0">
           {/* Left Column - Case Info */}
           <div className="p-4 border-r space-y-2">
@@ -163,9 +175,13 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
                 Scoring LEXCORE™
               </span>
             </div>
-            <div className="space-y-3">
-              {SCORING_GROUPS.map(group => renderScoreBar(group.key))}
-            </div>
+            {hasLexcoreRun ? (
+              <div className="space-y-3">
+                {LEXCORE_SCORING_GROUPS.map(group => renderScoreBar(group))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground italic py-2">Scoring pendiente</p>
+            )}
             {lead.vj_value !== null && lead.vj_value !== undefined && (
               <div className="flex items-center justify-between pt-2 border-t">
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -180,14 +196,14 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
           </div>
         </div>
 
-        {/* Full-width Summary */}
+        {/* Full-width Summary (redacted) */}
         <div className="px-4 pb-3 pt-2 border-t space-y-2">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
             📝 Resumen:
           </p>
           <div className="bg-muted/30 p-3 rounded-lg border">
             <p className="text-sm leading-relaxed text-foreground">
-              {lead.marketplace_summary || 'Sin resumen disponible'}
+              {redactedSummary || 'Sin resumen disponible'}
             </p>
           </div>
           {lead.vj_key_phrases && lead.vj_key_phrases.length > 0 && (
@@ -207,7 +223,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
             variant="outline"
             size="sm"
             onClick={() => onViewDetails(lead)}
-            className="gap-1"
+            className="gap-1 cursor-pointer"
           >
             <Eye className="h-4 w-4" />
             Ver informe
@@ -216,7 +232,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
             onClick={() => onAddToCart(lead)}
             disabled={!canAfford || isInCart}
             size="sm"
-            className="gap-1"
+            className="gap-1 cursor-pointer"
           >
             <ShoppingCart className="h-4 w-4" />
             {isInCart ? 'En carrito' : 'Añadir'}

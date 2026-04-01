@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
-import { useDemoMode } from '@/contexts/DemoModeContext';
 
 export interface LawfirmCase {
   id: string;
@@ -18,7 +17,6 @@ export interface LawfirmCase {
   result_notes: string | null;
   service_type: string | null;
   lost_reason: string | null;
-  // Economic fields (Phase 7C)
   lead_cost: number | null;
   client_fee: number | null;
   success_percentage: number | null;
@@ -47,49 +45,30 @@ export interface LawfirmCase {
 export function useLawfirmCases() {
   const { user } = useAuthContext();
   const { impersonatedLawfirm, isImpersonating } = useImpersonation();
-  const { mode } = useDemoMode();
-  
-  // Use impersonated lawfirm ID if impersonating
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
 
   return useQuery({
-    queryKey: ['lawfirm-cases', lawfirmId, mode],
+    queryKey: ['lawfirm-cases', lawfirmId],
     queryFn: async () => {
       if (!lawfirmId) return [];
 
-      let query = supabase
+      const query = supabase
         .from('lead_assignments')
         .select(`
           *,
           lead:leads!lead_assignments_lead_id_fkey (
-            id,
-            lead_text,
-            case_summary,
-            score_final,
-            price_final,
-            source_channel,
-            structured_fields,
-            created_at,
-            conversation_id
+            id, lead_text, case_summary, score_final, price_final,
+            source_channel, structured_fields, created_at, conversation_id
           ),
           assigned_lawyer:profiles!lead_assignments_assigned_lawyer_id_fkey (
-            id,
-            full_name,
-            email
+            id, full_name, email
           )
         `)
         .eq('lawfirm_id', lawfirmId)
+        .or('is_demo.is.null,is_demo.eq.false')
         .order('assigned_at', { ascending: false });
 
-      // Apply demo mode filter
-      if (mode === 'demo') {
-        query = query.eq('is_demo', true);
-      } else {
-        query = query.or('is_demo.is.null,is_demo.eq.false');
-      }
-
       const { data, error } = await query;
-
       if (error) throw error;
       return (data || []) as unknown as LawfirmCase[];
     },
@@ -100,40 +79,27 @@ export function useLawfirmCases() {
 export function useLawfirmCase(assignmentId: string | undefined) {
   const { user } = useAuthContext();
   const { impersonatedLawfirm, isImpersonating } = useImpersonation();
-  
-  // Use impersonated lawfirm ID if impersonating
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
 
   return useQuery({
     queryKey: ['lawfirm-case', assignmentId],
     queryFn: async () => {
       if (!assignmentId || !lawfirmId) return null;
-
       const { data, error } = await supabase
         .from('lead_assignments')
         .select(`
           *,
           lead:leads!lead_assignments_lead_id_fkey (
-            id,
-            lead_text,
-            case_summary,
-            score_final,
-            price_final,
-            source_channel,
-            structured_fields,
-            created_at,
-            conversation_id
+            id, lead_text, case_summary, score_final, price_final,
+            source_channel, structured_fields, created_at, conversation_id
           ),
           assigned_lawyer:profiles!lead_assignments_assigned_lawyer_id_fkey (
-            id,
-            full_name,
-            email
+            id, full_name, email
           )
         `)
         .eq('id', assignmentId)
         .eq('lawfirm_id', lawfirmId)
         .single();
-
       if (error) throw error;
       return data as unknown as LawfirmCase;
     },
@@ -143,27 +109,11 @@ export function useLawfirmCase(assignmentId: string | undefined) {
 
 export function useUpdateCaseStatus() {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async ({ 
-      assignmentId, 
-      firmStatus, 
-      contactedAt 
-    }: { 
-      assignmentId: string; 
-      firmStatus: string;
-      contactedAt?: string;
-    }) => {
+    mutationFn: async ({ assignmentId, firmStatus, contactedAt }: { assignmentId: string; firmStatus: string; contactedAt?: string; }) => {
       const updateData: Record<string, unknown> = { firm_status: firmStatus };
-      if (contactedAt) {
-        updateData.contacted_at = contactedAt;
-      }
-
-      const { error } = await supabase
-        .from('lead_assignments')
-        .update(updateData)
-        .eq('id', assignmentId);
-
+      if (contactedAt) updateData.contacted_at = contactedAt;
+      const { error } = await supabase.from('lead_assignments').update(updateData).eq('id', assignmentId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -175,65 +125,25 @@ export function useUpdateCaseStatus() {
 
 export function useUpdateCaseNotes() {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async ({ 
-      assignmentId, 
-      firmNotes 
-    }: { 
-      assignmentId: string; 
-      firmNotes: string;
-    }) => {
-      const { error } = await supabase
-        .from('lead_assignments')
-        .update({ firm_notes: firmNotes })
-        .eq('id', assignmentId);
-
+    mutationFn: async ({ assignmentId, firmNotes }: { assignmentId: string; firmNotes: string; }) => {
+      const { error } = await supabase.from('lead_assignments').update({ firm_notes: firmNotes }).eq('id', assignmentId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lawfirm-case'] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['lawfirm-case'] }); },
   });
 }
 
 export function useCloseCaseResult() {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async ({ 
-      assignmentId, 
-      firmStatus,
-      resultAmount,
-      resultNotes,
-      serviceType,
-      lostReason
-    }: { 
-      assignmentId: string; 
-      firmStatus: 'won' | 'lost' | 'rejected';
-      resultAmount?: number;
-      resultNotes?: string;
-      serviceType?: string;
-      lostReason?: string;
+    mutationFn: async ({ assignmentId, firmStatus, resultAmount, resultNotes, serviceType, lostReason }: { 
+      assignmentId: string; firmStatus: 'won' | 'lost' | 'rejected'; resultAmount?: number; resultNotes?: string; serviceType?: string; lostReason?: string;
     }) => {
-      const updateData: Record<string, unknown> = { 
-        firm_status: firmStatus,
-        result_amount: resultAmount,
-        result_notes: resultNotes
-      };
-
-      if (serviceType) {
-        updateData.service_type = serviceType;
-      }
-      if (lostReason) {
-        updateData.lost_reason = lostReason;
-      }
-
-      const { error } = await supabase
-        .from('lead_assignments')
-        .update(updateData)
-        .eq('id', assignmentId);
-
+      const updateData: Record<string, unknown> = { firm_status: firmStatus, result_amount: resultAmount, result_notes: resultNotes };
+      if (serviceType) updateData.service_type = serviceType;
+      if (lostReason) updateData.lost_reason = lostReason;
+      const { error } = await supabase.from('lead_assignments').update(updateData).eq('id', assignmentId);
       if (error) throw error;
     },
     onSuccess: () => {

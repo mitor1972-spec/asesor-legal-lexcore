@@ -4,7 +4,7 @@ import type { Lead, StructuredFields } from '@/types';
 import type { LeadStatus, SourceChannel } from '@/lib/constants';
 import type { Json } from '@/integrations/supabase/types';
 import { applyVisibleLeadsFilters } from '@/lib/leadsQuery';
-import { useDemoMode } from '@/contexts/DemoModeContext';
+
 
 interface LeadFilters {
   search?: string;
@@ -35,10 +35,8 @@ interface UpdateLeadData extends Partial<CreateLeadData> {
  * GOLDEN RULE: Only leads with email OR phone are shown (unless showInvalid=true)
  */
 export function useLeads(filters?: LeadFilters, page = 1, pageSize = 20) {
-  const { mode } = useDemoMode();
-  
   return useQuery({
-    queryKey: ['leads', filters, page, pageSize, mode],
+    queryKey: ['leads', filters, page, pageSize],
     queryFn: async () => {
       let query = supabase
         .from('leads')
@@ -48,7 +46,7 @@ export function useLeads(filters?: LeadFilters, page = 1, pageSize = 20) {
 
       // Apply unified filters from leadsQuery.ts (GOLDEN RULE enforced here)
       query = applyVisibleLeadsFilters(query, {
-        demoMode: mode,
+        demoMode: 'real',
         includeArchived: filters?.showArchived,
         includeInvalid: filters?.showInvalid,
         status: filters?.status,
@@ -97,18 +95,15 @@ export function useLead(id: string | undefined) {
  * GOLDEN RULE: Only counts leads with email OR phone (valid contact)
  */
 export function useLeadStats() {
-  const { mode } = useDemoMode();
-  
   return useQuery({
-    queryKey: ['lead-stats', mode],
+    queryKey: ['lead-stats'],
     queryFn: async () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Apply GOLDEN RULE filter: must have email OR phone
       const validContactFilter = 'structured_fields->>email.neq.,structured_fields->>telefono.neq.';
       const incompleteFilter = 'structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false';
-      const demoFilter = mode === 'demo' ? 'is_demo.eq.true' : 'is_demo.is.null,is_demo.eq.false';
+      const demoFilter = 'is_demo.is.null,is_demo.eq.false';
 
       const [totalResult, pendingResult, derivedResult, todayResult] = await Promise.all([
         supabase
