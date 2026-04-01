@@ -19,7 +19,7 @@ interface LeadDetailModalProps {
   lead: MarketplaceLead | null;
   open: boolean;
   onClose: () => void;
-  onAddToCart: (lead: MarketplaceLead) => void;
+  onAddToCart: (lead: MarketplaceLead, isCommission?: boolean) => void;
   isInCart: boolean;
   canAfford: boolean;
 }
