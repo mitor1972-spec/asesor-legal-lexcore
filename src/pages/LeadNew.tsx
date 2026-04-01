@@ -218,7 +218,7 @@ export default function LeadNew() {
       leadId = lead.id;
 
       // Apply admin overrides after creation
-      const overrides: Record<string, unknown> = {};
+      const overrides: any = {};
       if (adminConfig.scoreManual != null && !adminConfig.autoCalcScore) overrides.score_final = adminConfig.scoreManual;
       if (adminConfig.priceManual != null) overrides.price_final = adminConfig.priceManual;
       if (adminConfig.marketplacePrice != null) overrides.marketplace_price = adminConfig.marketplacePrice;
