@@ -177,12 +177,13 @@ export default function LeadsMarket() {
 
   // Quick filter counts
   const quickFilterCounts = useMemo(() => {
-    if (!rawLeads) return { urgent: 0, commission: 0, highScore: 0, highPrice: 0 };
+    if (!rawLeads) return { total: 0, urgent: 0, commission: 0, highScore: 0, highPrice: 0 };
     return {
+      total: rawLeads.length,
       urgent: rawLeads.filter(l => l.structured_fields?.urgencia_aplica === true).length,
       commission: rawLeads.filter(l => l.commission_available).length,
       highScore: rawLeads.filter(l => l.score_final > 60).length,
-      highPrice: rawLeads.filter(l => (l.marketplace_price || 0) > 30).length,
+      highPrice: rawLeads.filter(l => (l.marketplace_price || 0) >= 30).length,
     };
   }, [rawLeads]);
 
