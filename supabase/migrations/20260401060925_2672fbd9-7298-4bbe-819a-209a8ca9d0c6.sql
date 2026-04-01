@@ -1,0 +1,1 @@
+UPDATE lawfirms SET marketplace_balance = 500.00 WHERE id = 'bdf40471-32f7-4bd2-a3b4-f7399acae543';
