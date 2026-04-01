@@ -410,10 +410,7 @@ serve(async (req) => {
     const contactPhone: string | null = contact?.phone_number ?? contact?.phone ?? null;
     const isAlias = looksLikeAlias(contactAlias);
     
-    // Inicializar Supabase
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Supabase already initialized above (token check)
 
     // Registrar el webhook recibido (SIEMPRE, incluso si luego se rechaza)
     const { data: logData } = await supabase.from("webhook_logs").insert({
