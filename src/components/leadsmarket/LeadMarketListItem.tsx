@@ -108,6 +108,11 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
                 </span>
               )}
               <span>{lead.source_channel || 'Web chat'}</span>
+              {lead.commission_available && (
+                <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs">
+                  Comisionable
+                </Badge>
+              )}
               {cuantia && (
                 <span className="flex items-center gap-1">
                   <Euro className="h-3 w-3" />
