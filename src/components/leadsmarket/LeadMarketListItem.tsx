@@ -8,6 +8,7 @@ import {
 import type { MarketplaceLead } from '@/types/marketplace';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { redactContactFromText } from '@/lib/contactSanitizer';
 
 interface LeadMarketListItemProps {
   lead: MarketplaceLead;
@@ -52,6 +53,10 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
     : null;
 
   const price = lead.marketplace_price || 0;
+  const redactedSummary = redactContactFromText(
+    lead.marketplace_summary || lead.case_summary?.substring(0, 150),
+    fields
+  );
 
   return (
     <Card className="hover:shadow-md transition-all">
@@ -110,7 +115,7 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
             </div>
 
             <p className="text-sm text-muted-foreground line-clamp-2">
-              {lead.marketplace_summary || lead.case_summary?.substring(0, 150) || 'Lead disponible para compra'}
+              {redactedSummary || 'Lead disponible para compra'}
             </p>
 
             <LeadReference 
@@ -132,6 +137,7 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
                 variant="outline"
                 size="sm"
                 onClick={() => onViewDetails(lead)}
+                className="cursor-pointer"
               >
                 <Eye className="h-4 w-4" />
               </Button>
@@ -139,6 +145,7 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
                 onClick={() => onAddToCart(lead)}
                 disabled={!canAfford || isInCart}
                 size="sm"
+                className="cursor-pointer"
               >
                 <ShoppingCart className="h-4 w-4 mr-1" />
                 {isInCart ? 'En carrito' : 'Añadir'}
