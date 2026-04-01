@@ -300,6 +300,12 @@ export default function LeadsMarket() {
   // Checkout
   const handleCheckout = async (selectedIds: string[]) => {
     if (selectedIds.length === 0) return;
+
+    // Profile gate check
+    if (!isImpersonating && !isProfileComplete) {
+      setShowProfileGate(true);
+      return;
+    }
     
     setIsCheckingOut(true);
     let successCount = 0;
