@@ -65,28 +65,40 @@ export function LawfirmFormDialog({ open, onOpenChange, lawfirmId }: LawfirmForm
   // Load existing data when editing
   useEffect(() => {
     if (existingLawfirm) {
+      const lf = existingLawfirm as any;
+      const defaultTiers = [
+        { from: 0, to: 20, percent: 20 },
+        { from: 21, to: 50, percent: 18 },
+        { from: 51, to: 100, percent: 16 },
+        { from: 101, to: 999999, percent: 15 },
+      ];
       setFormData({
-        name: existingLawfirm.name || '',
-        cif: existingLawfirm.cif || '',
-        phone: existingLawfirm.phone || '',
-        address: existingLawfirm.address || '',
-        city: existingLawfirm.city || '',
-        province: existingLawfirm.province || '',
-        postal_code: existingLawfirm.postal_code || '',
-        website: existingLawfirm.website || '',
-        contact_person: existingLawfirm.contact_person || '',
-        contact_email: existingLawfirm.contact_email || '',
-        contact_phone: existingLawfirm.contact_phone || '',
-        email_derivations: existingLawfirm.email_derivations || '',
-        monthly_capacity: existingLawfirm.monthly_capacity || 0,
-        max_lead_price: existingLawfirm.max_lead_price || 0,
-        min_lead_score: existingLawfirm.min_lead_score || 0,
-        is_active: existingLawfirm.is_active ?? true,
-        commercial_notes: existingLawfirm.commercial_notes || '',
+        name: lf.name || '',
+        cif: lf.cif || '',
+        phone: lf.phone || '',
+        address: lf.address || '',
+        city: lf.city || '',
+        province: lf.province || '',
+        postal_code: lf.postal_code || '',
+        website: lf.website || '',
+        contact_person: lf.contact_person || '',
+        contact_email: lf.contact_email || '',
+        contact_phone: lf.contact_phone || '',
+        email_derivations: lf.email_derivations || '',
+        monthly_capacity: lf.monthly_capacity || 0,
+        max_lead_price: lf.max_lead_price || 0,
+        min_lead_score: lf.min_lead_score || 0,
+        is_active: lf.is_active ?? true,
+        commercial_notes: lf.commercial_notes || '',
+        commission_enabled: lf.commission_enabled ?? true,
+        commission_global_percent: lf.commission_global_percent ?? null,
+        commission_progressive_enabled: lf.commission_progressive_enabled ?? false,
+        commission_progressive_tiers: (Array.isArray(lf.commission_progressive_tiers) && lf.commission_progressive_tiers.length > 0) ? lf.commission_progressive_tiers : defaultTiers,
+        commission_weekly_limit: lf.commission_weekly_limit ?? null,
       });
-      setAreasAccepted(existingLawfirm.areas_accepted || []);
-      setProvincesAccepted(existingLawfirm.provinces_accepted || []);
-      setAllSpain(existingLawfirm.provinces_accepted?.length === PROVINCIAS_ESPANA.length);
+      setAreasAccepted(lf.areas_accepted || []);
+      setProvincesAccepted(lf.provinces_accepted || []);
+      setAllSpain(lf.provinces_accepted?.length === PROVINCIAS_ESPANA.length);
     } else {
       // Reset form for new lawfirm
       setFormData({
