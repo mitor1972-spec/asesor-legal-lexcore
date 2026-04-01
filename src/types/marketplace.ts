@@ -38,6 +38,8 @@ export interface MarketplaceLead {
     urgencia_aplica?: boolean;
     urgencia_nivel?: string;
     cuantia_aproximada?: string;
+    cuantia?: string | number;
+    cuantia_texto?: string;
     complejidad?: string;
     _contact_alias?: string;
     subarea?: string;

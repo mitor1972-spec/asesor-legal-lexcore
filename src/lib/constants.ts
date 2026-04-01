@@ -17,6 +17,7 @@ export const AREAS_LEGALES = [
   "Derecho de Propiedad Industrial",
   "Derecho de Animales",
   "Derecho de Transporte",
+  "Derecho de Tráfico",
   "Derecho Bursátil",
   "Derecho de Propiedad Intelectual",
   "Derecho Deportivo",

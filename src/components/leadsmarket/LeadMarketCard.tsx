@@ -46,7 +46,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
     ? (city ? `${province} (${city})` : province)
     : (city || 'Sin ubicación');
   const isUrgent = fields.urgencia_aplica === true;
-  const cuantia = cleanValue(fields.cuantia_aproximada);
+  const cuantia = cleanValue(fields.cuantia_aproximada) || cleanValue(fields.cuantia) || cleanValue(fields.cuantia_texto);
   const complejidad = cleanValue(fields.complejidad);
   const hasLexcoreRun = lead.raw_scores && Object.keys(lead.raw_scores).length > 0;
 

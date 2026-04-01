@@ -12,13 +12,14 @@ const AREAS_LEGALES = [
   "Derecho Inmobiliario", "Derecho Médico", "Derecho de Seguros", "Derecho Concursal",
   "Derecho Militar", "Derecho Sanitario", "Derecho de Vivienda", "Derecho Bancario",
   "Derecho de Propiedad Industrial", "Derecho de Animales", "Derecho de Transporte",
-  "Derecho Bursátil", "Derecho de Propiedad Intelectual", "Derecho Deportivo",
-  "Derecho Marítimo", "Derecho Mercado de Valores", "Derecho de Protección de Datos",
-  "Derecho de Aguas", "Derecho Aeronáutico", "Mediación y arbitraje",
-  "Derecho de Nuevas Tecnologías", "Derecho Alimentario", "Derecho del Medio Ambiente",
-  "Derecho Urbanístico", "Derecho Fiscal", "Derecho Penal", "Derecho Administrativo",
-  "Derecho Laboral", "Derecho Procesal", "Derecho Mercantil", "Derecho Comunitario",
-  "Derecho Societario", "Derecho Constitucional", "Derecho Tributario", "Derecho Internacional"
+  "Derecho de Tráfico", "Derecho Bursátil", "Derecho de Propiedad Intelectual",
+  "Derecho Deportivo", "Derecho Marítimo", "Derecho Mercado de Valores",
+  "Derecho de Protección de Datos", "Derecho de Aguas", "Derecho Aeronáutico",
+  "Mediación y arbitraje", "Derecho de Nuevas Tecnologías", "Derecho Alimentario",
+  "Derecho del Medio Ambiente", "Derecho Urbanístico", "Derecho Fiscal",
+  "Derecho Penal", "Derecho Administrativo", "Derecho Laboral", "Derecho Procesal",
+  "Derecho Mercantil", "Derecho Comunitario", "Derecho Societario",
+  "Derecho Constitucional", "Derecho Tributario", "Derecho Internacional"
 ];
 
 interface ReclassifyResult {
