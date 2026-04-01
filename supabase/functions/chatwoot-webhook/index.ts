@@ -372,12 +372,23 @@ serve(async (req) => {
   })}`);
 
   try {
-    // Verificar token de seguridad
+    // Verificar token de seguridad - read from database
     const url = new URL(req.url);
     const token = url.searchParams.get("token");
-    const expectedToken = "6b8f29d7-d55f-41ed-829d-70c31f3ada4c";
     
-    if (token !== expectedToken) {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const { data: chatwootSettings } = await supabase
+      .from("chatwoot_settings")
+      .select("webhook_token, is_active")
+      .limit(1)
+      .single();
+    
+    const expectedToken = chatwootSettings?.webhook_token;
+    
+    if (!token || !expectedToken || token !== expectedToken) {
       console.log(`[WEBHOOK_ENTRY] REJECTED: Invalid token`);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
