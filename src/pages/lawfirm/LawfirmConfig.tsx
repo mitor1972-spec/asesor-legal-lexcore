@@ -33,9 +33,9 @@ export default function LawfirmConfig() {
     if (lawfirm) {
       setFormData({
         name: lawfirm.name || '',
-        firm_type: (lawfirm as any).firm_type || 'unipersonal',
+        firm_type: lawfirm.firm_type || 'unipersonal',
         contact_person: lawfirm.contact_person || '',
-        contact_role: (lawfirm as any).contact_role || '',
+        contact_role: lawfirm.contact_role || '',
         contact_email: lawfirm.contact_email || '',
         contact_phone: lawfirm.contact_phone || '',
         phone: lawfirm.phone || '',
