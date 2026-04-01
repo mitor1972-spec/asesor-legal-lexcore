@@ -46,6 +46,16 @@ export function LawfirmFormDialog({ open, onOpenChange, lawfirmId }: LawfirmForm
     min_lead_score: 0,
     is_active: true,
     commercial_notes: '',
+    commission_enabled: true,
+    commission_global_percent: null as number | null,
+    commission_progressive_enabled: false,
+    commission_progressive_tiers: [
+      { from: 0, to: 20, percent: 20 },
+      { from: 21, to: 50, percent: 18 },
+      { from: 51, to: 100, percent: 16 },
+      { from: 101, to: 999999, percent: 15 },
+    ] as { from: number; to: number; percent: number }[],
+    commission_weekly_limit: null as number | null,
   });
   
   const [areasAccepted, setAreasAccepted] = useState<string[]>([]);
