@@ -4,7 +4,7 @@ import type { Lead, StructuredFields } from '@/types';
 import type { LeadStatus, SourceChannel } from '@/lib/constants';
 import type { Json } from '@/integrations/supabase/types';
 import { applyVisibleLeadsFilters } from '@/lib/leadsQuery';
-import { useDemoMode } from '@/contexts/DemoModeContext';
+
 
 interface LeadFilters {
   search?: string;
