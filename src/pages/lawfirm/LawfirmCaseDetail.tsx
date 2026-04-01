@@ -220,7 +220,24 @@ ${legalHelp.estimated_complexity}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Report claim button - only within 7 days of purchase and not commission */}
+            {(() => {
+              const daysSincePurchase = differenceInDays(new Date(), new Date(caseData.assigned_at));
+              const canClaim = daysSincePurchase <= 7 && !caseData.is_commission && caseData.firm_status !== 'quality_review' && caseData.firm_status !== 'invalidated';
+              if (canClaim) {
+                return (
+                  <Button variant="outline" size="sm" onClick={() => setClaimDialogOpen(true)} className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                    <ShieldAlert className="mr-1.5 h-3.5 w-3.5" />
+                    Reportar incidencia
+                  </Button>
+                );
+              }
+              if (caseData.firm_status === 'quality_review') {
+                return <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">En revisión calidad</Badge>;
+              }
+              return null;
+            })()}
             <Select value={caseData.firm_status} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue />
