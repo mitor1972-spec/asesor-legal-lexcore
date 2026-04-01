@@ -78,6 +78,7 @@ export default function LawfirmCaseDetail() {
   const [isNotesLoaded, setIsNotesLoaded] = useState(false);
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const [resultType, setResultType] = useState<'won' | 'lost'>('won');
+  const [claimDialogOpen, setClaimDialogOpen] = useState(false);
 
   // Load notes when case data arrives
   if (caseData && !isNotesLoaded) {
