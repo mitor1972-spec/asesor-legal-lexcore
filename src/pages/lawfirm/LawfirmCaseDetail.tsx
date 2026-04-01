@@ -45,8 +45,10 @@ import {
   Calendar,
   Hash,
   FolderOpen,
-  Calculator
+  Calculator,
+  ShieldAlert
 } from 'lucide-react';
+import { ReportClaimDialog } from '@/components/lawfirm/ReportClaimDialog';
 
 // More detailed status labels for lawyers
 const statusLabels: Record<string, string> = {
