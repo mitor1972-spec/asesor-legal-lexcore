@@ -24,13 +24,6 @@ function getTemperatureConfig(score: number) {
       bgColor: 'bg-orange-500',
       textColor: 'text-orange-500',
     };
-  } else if (score <= 70) {
-    return {
-      label: 'Cálido',
-      color: 'from-yellow-400 to-yellow-500',
-      bgColor: 'bg-yellow-500',
-      textColor: 'text-yellow-500',
-    };
   } else {
     return {
       label: 'Caliente',
@@ -94,23 +87,15 @@ export function LeadTemperature({ score, structuredFields, variant = 'full' }: L
       ? 'bg-red-500' 
       : score <= 50 
         ? 'bg-orange-500' 
-        : score <= 70 
-          ? 'bg-yellow-400' 
-          : 'bg-green-500';
+        : 'bg-green-500';
     
-    const textColorClass = score <= 30 || score > 70 
-      ? 'text-white' 
-      : score <= 50 
-        ? 'text-white' 
-        : 'text-gray-900'; // yellow needs dark text
+    const textColorClass = 'text-white';
 
     const barBgColor = score <= 30 
       ? 'bg-red-500' 
       : score <= 50 
         ? 'bg-orange-500' 
-        : score <= 70 
-          ? 'bg-yellow-400' 
-          : 'bg-green-500';
+        : 'bg-green-500';
     
     return (
       <div className="flex items-center gap-2">
