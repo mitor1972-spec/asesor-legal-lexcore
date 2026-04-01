@@ -106,8 +106,7 @@ export default function LawfirmPortada() {
                 </Button>
                 <Button 
                   size="lg"
-                  variant="outline"
-                  className="border-white/30 text-white hover:bg-white/10 backdrop-blur-sm"
+                  className="bg-white text-lawfirm-primary hover:bg-white/90 font-semibold shadow-lg"
                   onClick={() => navigate('/despacho/leadsmarket')}
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
