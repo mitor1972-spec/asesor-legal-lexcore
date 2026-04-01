@@ -32,7 +32,7 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
   const province = cleanValue(fields.province || fields.provincia);
   const city = cleanValue(fields.city || fields.ciudad);
   const isUrgent = fields.urgencia_aplica === true;
-  const cuantia = cleanValue(fields.cuantia_aproximada);
+  const cuantia = cleanValue(fields.cuantia_aproximada) || cleanValue(fields.cuantia) || cleanValue(fields.cuantia_texto);
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return 'text-green-600 bg-green-500/10 border-green-500/30';
