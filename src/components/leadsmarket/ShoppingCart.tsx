@@ -191,13 +191,13 @@ export function ShoppingCart({
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <Wallet className="h-4 w-4" />
-                  Tu saldo:
+                  Crédito disponible:
                 </span>
                 <span className="font-medium">{balance.toFixed(2)}€</span>
               </div>
               <Separator />
               <div className="flex justify-between">
-                <span className="font-medium">Saldo tras compra:</span>
+                <span className="font-medium">Crédito tras compra:</span>
                 <span className={`font-bold text-lg ${canAfford ? 'text-green-600' : 'text-destructive'}`}>
                   {newBalance.toFixed(2)}€
                 </span>
