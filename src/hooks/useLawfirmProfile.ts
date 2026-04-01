@@ -33,6 +33,27 @@ export interface Lawfirm {
   marketplace_alerts_enabled: boolean | null;
   alert_frequency: string | null;
   is_active: boolean | null;
+  // New fields
+  firm_type: string | null;
+  description: string | null;
+  contact_role: string | null;
+  fiscal_name: string | null;
+  fiscal_email: string | null;
+  fiscal_address: string | null;
+  fiscal_city: string | null;
+  fiscal_province: string | null;
+  fiscal_postal_code: string | null;
+  fiscal_model: string | null;
+  credit_line_enabled: boolean | null;
+  credit_line_amount: number | null;
+  credit_line_status: string | null;
+  credit_line_requested_at: string | null;
+  has_valid_card: boolean | null;
+  commission_enabled: boolean | null;
+  commission_global_percent: number | null;
+  commission_progressive_enabled: boolean | null;
+  commission_progressive_tiers: Json | null;
+  commission_weekly_limit: number | null;
 }
 
 export function useLawfirmProfile() {
@@ -49,7 +70,7 @@ export function useLawfirmProfile() {
 
       // If impersonating, return the impersonated lawfirm directly
       if (isImpersonating && impersonatedLawfirm) {
-        return impersonatedLawfirm as Lawfirm;
+        return impersonatedLawfirm as unknown as Lawfirm;
       }
 
       const { data, error } = await supabase

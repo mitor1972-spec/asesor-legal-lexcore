@@ -1,64 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLawfirmProfile, useUpdateLawfirmProfile } from '@/hooks/useLawfirmProfile';
-import { Settings, Building2, CreditCard, Users, MapPin, Bell, Loader2, Save } from 'lucide-react';
+import { Settings, Building2, MapPin, Loader2, Save, User, Globe, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LawfirmConfig() {
   const { data: lawfirm, isLoading } = useLawfirmProfile();
   const updateProfile = useUpdateLawfirmProfile();
-  
+
   const [formData, setFormData] = useState({
     name: '',
-    cif: '',
+    firm_type: 'unipersonal',
+    contact_person: '',
+    contact_role: '',
+    contact_email: '',
+    contact_phone: '',
     phone: '',
     address: '',
     city: '',
     province: '',
     postal_code: '',
     website: '',
-    contact_person: '',
-    contact_email: '',
-    contact_phone: '',
-    marketplace_alerts_enabled: true,
-    alert_frequency: 'daily',
+    description: '',
   });
 
-  // Load data when lawfirm loads
-  useState(() => {
+  useEffect(() => {
     if (lawfirm) {
       setFormData({
         name: lawfirm.name || '',
-        cif: lawfirm.cif || '',
+        firm_type: lawfirm.firm_type || 'unipersonal',
+        contact_person: lawfirm.contact_person || '',
+        contact_role: lawfirm.contact_role || '',
+        contact_email: lawfirm.contact_email || '',
+        contact_phone: lawfirm.contact_phone || '',
         phone: lawfirm.phone || '',
         address: lawfirm.address || '',
         city: lawfirm.city || '',
         province: lawfirm.province || '',
         postal_code: lawfirm.postal_code || '',
         website: lawfirm.website || '',
-        contact_person: lawfirm.contact_person || '',
-        contact_email: lawfirm.contact_email || '',
-        contact_phone: lawfirm.contact_phone || '',
-        marketplace_alerts_enabled: lawfirm.marketplace_alerts_enabled ?? true,
-        alert_frequency: lawfirm.alert_frequency || 'daily',
+        description: lawfirm.description || '',
       });
     }
-  });
+  }, [lawfirm]);
 
-  const handleInputChange = (field: string, value: string | boolean) => {
+  const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSave = async () => {
     try {
       await updateProfile.mutateAsync(formData);
-      toast.success('Configuración guardada');
+      toast.success('Datos del despacho guardados');
     } catch {
       toast.error('Error al guardar');
     }
@@ -73,264 +71,138 @@ export default function LawfirmConfig() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold flex items-center gap-2">
-            <Settings className="h-6 w-6" />
-            Configuración
+            <Building2 className="h-6 w-6" />
+            Datos del Despacho
           </h1>
-          <p className="text-muted-foreground">Gestiona los datos y preferencias de tu despacho</p>
+          <p className="text-sm text-muted-foreground">Identidad y datos generales del despacho</p>
         </div>
-        <Button onClick={handleSave} disabled={updateProfile.isPending}>
-          {updateProfile.isPending ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="mr-2 h-4 w-4" />
-          )}
-          Guardar cambios
+        <Button onClick={handleSave} disabled={updateProfile.isPending} size="sm">
+          {updateProfile.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Guardar
         </Button>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="general">
-            <Building2 className="mr-2 h-4 w-4" />
-            Datos generales
-          </TabsTrigger>
-          <TabsTrigger value="billing">
-            <CreditCard className="mr-2 h-4 w-4" />
-            Facturación
-          </TabsTrigger>
-          <TabsTrigger value="notifications">
-            <Bell className="mr-2 h-4 w-4" />
-            Notificaciones
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Datos del Despacho</CardTitle>
-                <CardDescription>Información básica de tu despacho</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nombre del despacho</Label>
-                  <Input 
-                    id="name" 
-                    value={formData.name}
-                    onChange={e => handleInputChange('name', e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="cif">CIF</Label>
-                    <Input 
-                      id="cif" 
-                      value={formData.cif}
-                      onChange={e => handleInputChange('cif', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Teléfono</Label>
-                    <Input 
-                      id="phone" 
-                      value={formData.phone}
-                      onChange={e => handleInputChange('phone', e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="website">Web</Label>
-                  <Input 
-                    id="website" 
-                    value={formData.website}
-                    onChange={e => handleInputChange('website', e.target.value)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Dirección
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="address">Dirección</Label>
-                  <Input 
-                    id="address" 
-                    value={formData.address}
-                    onChange={e => handleInputChange('address', e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">Ciudad</Label>
-                    <Input 
-                      id="city" 
-                      value={formData.city}
-                      onChange={e => handleInputChange('city', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="province">Provincia</Label>
-                    <Input 
-                      id="province" 
-                      value={formData.province}
-                      onChange={e => handleInputChange('province', e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="postal_code">Código Postal</Label>
-                  <Input 
-                    id="postal_code" 
-                    value={formData.postal_code}
-                    onChange={e => handleInputChange('postal_code', e.target.value)}
-                    className="w-32"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Persona de Contacto
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="contact_person">Nombre</Label>
-                    <Input 
-                      id="contact_person" 
-                      value={formData.contact_person}
-                      onChange={e => handleInputChange('contact_person', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact_email">Email</Label>
-                    <Input 
-                      id="contact_email" 
-                      type="email"
-                      value={formData.contact_email}
-                      onChange={e => handleInputChange('contact_email', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact_phone">Teléfono</Label>
-                    <Input 
-                      id="contact_phone" 
-                      value={formData.contact_phone}
-                      onChange={e => handleInputChange('contact_phone', e.target.value)}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="billing">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Datos de Facturación</CardTitle>
-              <CardDescription>Información fiscal y métodos de pago</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Razón Social</Label>
-                  <Input value={formData.name} disabled />
-                </div>
-                <div className="space-y-2">
-                  <Label>CIF</Label>
-                  <Input value={formData.cif} disabled />
-                </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Identity */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Identidad</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nombre comercial</Label>
+              <Input value={formData.name} onChange={e => handleChange('name', e.target.value)} className="h-9" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tipo de despacho</Label>
+              <Select value={formData.firm_type} onValueChange={v => handleChange('firm_type', v)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unipersonal">Unipersonal</SelectItem>
+                  <SelectItem value="sociedad">Sociedad / Varios socios</SelectItem>
+                  <SelectItem value="corporativo">Corporativo con sucursales</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Teléfono principal</Label>
+                <Input value={formData.phone} onChange={e => handleChange('phone', e.target.value)} className="h-9" />
               </div>
-
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="font-medium">Método de Pago</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Configura tu tarjeta para compras en LeadsMarket
-                    </p>
-                  </div>
-                  <Badge variant="secondary">Próximamente</Badge>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-6 text-center">
-                  <CreditCard className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-sm text-muted-foreground">
-                    La integración con Stripe estará disponible próximamente
-                  </p>
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Página web</Label>
+                <Input value={formData.website} onChange={e => handleChange('website', e.target.value)} className="h-9" placeholder="https://" />
               </div>
-
-              <div className="border-t pt-6">
-                <h3 className="font-medium mb-4">Saldo actual</h3>
-                <div className="bg-lawfirm-primary/10 rounded-lg p-4 flex items-center justify-between">
-                  <span className="text-muted-foreground">Saldo en LeadsMarket</span>
-                  <span className="text-2xl font-bold text-lawfirm-primary">
-                    {lawfirm?.marketplace_balance?.toFixed(2) || '0.00'}€
-                  </span>
-                </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Descripción corta</Label>
+              <Textarea value={formData.description} onChange={e => handleChange('description', e.target.value)} rows={2} className="text-sm resize-none" placeholder="Breve descripción del despacho..." />
+            </div>
+            {/* Logo placeholder */}
+            <div className="flex items-center gap-3 pt-1">
+              <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center border">
+                {lawfirm?.logo_url ? (
+                  <img src={lawfirm.logo_url} alt="Logo" className="w-full h-full object-cover rounded-lg" />
+                ) : (
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Preferencias de Notificaciones</CardTitle>
-              <CardDescription>Configura cómo quieres recibir alertas</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Alertas de LeadsMarket</p>
-                  <p className="text-sm text-muted-foreground">
-                    Recibe notificaciones cuando haya nuevos leads disponibles
-                  </p>
-                </div>
-                <Switch 
-                  checked={formData.marketplace_alerts_enabled}
-                  onCheckedChange={c => handleInputChange('marketplace_alerts_enabled', c)}
-                />
+              <div>
+                <p className="text-xs font-medium">Logo del despacho</p>
+                <p className="text-xs text-muted-foreground">Funcionalidad de subida próximamente</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Notificaciones de nuevos casos</p>
-                  <p className="text-sm text-muted-foreground">
-                    Alerta cuando te asignen un nuevo caso
-                  </p>
-                </div>
-                <Switch defaultChecked />
+        {/* Contact person */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Persona Responsable
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nombre completo</Label>
+                <Input value={formData.contact_person} onChange={e => handleChange('contact_person', e.target.value)} className="h-9" />
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Cargo</Label>
+                <Input value={formData.contact_role} onChange={e => handleChange('contact_role', e.target.value)} className="h-9" placeholder="Ej: Socio director" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Email</Label>
+                <Input type="email" value={formData.contact_email} onChange={e => handleChange('contact_email', e.target.value)} className="h-9" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Teléfono</Label>
+                <Input value={formData.contact_phone} onChange={e => handleChange('contact_phone', e.target.value)} className="h-9" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Resumen diario por email</p>
-                  <p className="text-sm text-muted-foreground">
-                    Recibe un resumen de actividad cada día
-                  </p>
-                </div>
-                <Switch />
+        {/* Address */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Dirección Principal
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="col-span-2 space-y-1.5">
+                <Label className="text-xs">Dirección</Label>
+                <Input value={formData.address} onChange={e => handleChange('address', e.target.value)} className="h-9" />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Ciudad</Label>
+                <Input value={formData.city} onChange={e => handleChange('city', e.target.value)} className="h-9" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Provincia</Label>
+                <Input value={formData.province} onChange={e => handleChange('province', e.target.value)} className="h-9" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Código Postal</Label>
+                <Input value={formData.postal_code} onChange={e => handleChange('postal_code', e.target.value)} className="h-9 w-28" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
