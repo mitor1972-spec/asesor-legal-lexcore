@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { toast } from 'sonner';
-import { ShoppingCart, Wallet, Filter, LayoutGrid, List, ArrowUpDown, RotateCcw, Search } from 'lucide-react';
+import { ShoppingCart, Wallet, Filter, LayoutGrid, List, ArrowUpDown, RotateCcw, Search, Zap, Percent, TrendingUp, Euro } from 'lucide-react';
 import { LEGAL_AREAS, PROVINCES } from '@/lib/constants';
 import { LeadMarketCard } from '@/components/leadsmarket/LeadMarketCard';
 import { LeadMarketListItem } from '@/components/leadsmarket/LeadMarketListItem';
@@ -36,6 +36,9 @@ export default function LeadsMarket() {
   const [minScore, setMinScore] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('date_desc');
   
+  // Quick filter state
+  const [quickFilter, setQuickFilter] = useState<string | null>(null);
+  
   const [selectedLead, setSelectedLead] = useState<MarketplaceLead | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -49,6 +52,7 @@ export default function LeadsMarket() {
     setProvinceFilter(draftProvince);
     setMinScore(draftMinScore);
     setSortBy(draftSortBy);
+    setQuickFilter(null);
   };
 
   // Clear filters
@@ -61,6 +65,7 @@ export default function LeadsMarket() {
     setProvinceFilter('all');
     setMinScore('');
     setSortBy('date_desc');
+    setQuickFilter(null);
   };
 
   // Fetch lawfirm balance
@@ -94,7 +99,7 @@ export default function LeadsMarket() {
     },
   });
 
-  // Fetch marketplace leads
+  // Fetch marketplace leads - exclude score 0 and leads before March 20
   const { data: rawLeads, isLoading } = useQuery({
     queryKey: ['marketplace-leads'],
     queryFn: async () => {
@@ -125,6 +130,8 @@ export default function LeadsMarket() {
         .eq('status_internal', 'Pendiente')
         .or('structured_fields->>email.neq.,structured_fields->>telefono.neq.')
         .or('is_demo.is.null,is_demo.eq.false')
+        .gt('score_final', 0)
+        .gte('created_at', '2025-03-20T00:00:00Z')
         .order('created_at', { ascending: false });
 
       const { data, error } = await query;
@@ -168,10 +175,32 @@ export default function LeadsMarket() {
     },
   });
 
+  // Quick filter counts
+  const quickFilterCounts = useMemo(() => {
+    if (!rawLeads) return { urgent: 0, commission: 0, highScore: 0, highPrice: 0 };
+    return {
+      urgent: rawLeads.filter(l => l.structured_fields?.urgencia_aplica === true).length,
+      commission: rawLeads.filter(l => l.commission_available).length,
+      highScore: rawLeads.filter(l => l.score_final > 60).length,
+      highPrice: rawLeads.filter(l => (l.marketplace_price || 0) > 30).length,
+    };
+  }, [rawLeads]);
+
   // Apply client-side filtering
   const leads = useMemo(() => {
     if (!rawLeads) return [];
     let filtered = [...rawLeads];
+
+    // Quick filters
+    if (quickFilter === 'urgent') {
+      filtered = filtered.filter(l => l.structured_fields?.urgencia_aplica === true);
+    } else if (quickFilter === 'commission') {
+      filtered = filtered.filter(l => l.commission_available);
+    } else if (quickFilter === 'highScore') {
+      filtered = filtered.filter(l => l.score_final > 60);
+    } else if (quickFilter === 'highPrice') {
+      filtered = filtered.filter(l => (l.marketplace_price || 0) > 30);
+    }
 
     if (areaFilter !== 'all') {
       filtered = filtered.filter(l => {
@@ -205,12 +234,12 @@ export default function LeadsMarket() {
     }
 
     return filtered;
-  }, [rawLeads, areaFilter, provinceFilter, minScore, sortBy]);
+  }, [rawLeads, areaFilter, provinceFilter, minScore, sortBy, quickFilter]);
 
   const balance = lawfirm?.marketplace_balance || 0;
 
-  // Add to cart
-  const handleAddToCart = (lead: MarketplaceLead) => {
+  // Add to cart (with optional commission mode)
+  const handleAddToCart = (lead: MarketplaceLead, isCommission?: boolean) => {
     if (cartItems.some(item => item.id === lead.id)) {
       toast.info('Este lead ya está en tu carrito');
       return;
@@ -224,10 +253,11 @@ export default function LeadsMarket() {
       score: lead.score_final,
       price: lead.marketplace_price,
       commissionPercent: lead.commission_percent,
+      isCommission: isCommission || false,
     };
     
     setCartItems(prev => [...prev, newItem]);
-    toast.success('Lead añadido al carrito');
+    toast.success(isCommission ? 'Lead añadido a comisión' : 'Lead añadido al carrito');
   };
 
   // Toggle commission model for a cart item
@@ -301,8 +331,12 @@ export default function LeadsMarket() {
 
   const isInCart = (id: string) => cartItems.some(item => item.id === id);
 
+  const handleQuickFilter = (filter: string) => {
+    setQuickFilter(prev => prev === filter ? null : filter);
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -325,6 +359,19 @@ export default function LeadsMarket() {
               </div>
             </CardContent>
           </Card>
+
+          <ToggleGroup 
+            type="single" 
+            value={viewMode} 
+            onValueChange={(v) => v && setViewMode(v as 'grid' | 'list')}
+          >
+            <ToggleGroupItem value="grid" aria-label="Vista cuadrícula" className="h-9 w-9 p-0">
+              <LayoutGrid className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="list" aria-label="Vista lista" className="h-9 w-9 p-0">
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
           
           <CartButton 
             itemCount={cartItems.length} 
@@ -333,17 +380,14 @@ export default function LeadsMarket() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters - single line */}
       <Card>
-        <CardContent className="py-4">
-          <div className="flex flex-wrap gap-3 items-center">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Filtros:</span>
-            </div>
+        <CardContent className="py-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
             
             <Select value={draftArea} onValueChange={setDraftArea}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[160px] h-8 text-xs">
                 <SelectValue placeholder="Área legal" />
               </SelectTrigger>
               <SelectContent>
@@ -355,11 +399,11 @@ export default function LeadsMarket() {
             </Select>
 
             <Select value={draftProvince} onValueChange={setDraftProvince}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[160px] h-8 text-xs">
                 <SelectValue placeholder="Provincia" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas las provincias</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 {PROVINCES.map(prov => (
                   <SelectItem key={prov} value={prov}>{prov}</SelectItem>
                 ))}
@@ -373,48 +417,104 @@ export default function LeadsMarket() {
               onChange={(e) => setDraftMinScore(e.target.value)}
               min={0}
               max={100}
-              className="w-[110px]"
+              className="w-[90px] h-8 text-xs"
             />
 
             <Select value={draftSortBy} onValueChange={setDraftSortBy}>
-              <SelectTrigger className="w-[180px]">
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Ordenar por" />
+              <SelectTrigger className="w-[160px] h-8 text-xs">
+                <ArrowUpDown className="h-3 w-3 mr-1" />
+                <SelectValue placeholder="Ordenar" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="date_desc">Más recientes</SelectItem>
                 <SelectItem value="score_desc">Mayor puntuación</SelectItem>
-                <SelectItem value="price_asc">Precio: menor a mayor</SelectItem>
-                <SelectItem value="price_desc">Precio: mayor a menor</SelectItem>
+                <SelectItem value="price_asc">Precio ↑</SelectItem>
+                <SelectItem value="price_desc">Precio ↓</SelectItem>
                 <SelectItem value="area">Área legal</SelectItem>
               </SelectContent>
             </Select>
 
-            <Button size="sm" onClick={handleApplyFilters} className="gap-1">
-              <Search className="h-4 w-4" />
-              Aplicar filtros
+            <Button size="sm" onClick={handleApplyFilters} className="gap-1 h-8 text-xs">
+              <Search className="h-3 w-3" />
+              Aplicar
             </Button>
-            <Button size="sm" variant="ghost" onClick={handleClearFilters} className="gap-1">
+            <Button size="icon" variant="ghost" onClick={handleClearFilters} className="h-8 w-8" title="Limpiar filtros">
               <RotateCcw className="h-4 w-4" />
-              Limpiar
             </Button>
-
-            <ToggleGroup 
-              type="single" 
-              value={viewMode} 
-              onValueChange={(v) => v && setViewMode(v as 'grid' | 'list')}
-              className="ml-auto"
-            >
-              <ToggleGroupItem value="grid" aria-label="Vista cuadrícula">
-                <LayoutGrid className="h-4 w-4" />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="list" aria-label="Vista lista">
-                <List className="h-4 w-4" />
-              </ToggleGroupItem>
-            </ToggleGroup>
           </div>
         </CardContent>
       </Card>
+
+      {/* Quick Filter Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <button
+          onClick={() => handleQuickFilter('urgent')}
+          className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer text-left ${
+            quickFilter === 'urgent' 
+              ? 'bg-red-500/10 border-red-500/40 shadow-sm' 
+              : 'bg-card hover:bg-muted/50 border-border'
+          }`}
+        >
+          <div className="h-9 w-9 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+            <Zap className="h-4 w-4 text-red-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Urgentes</p>
+            <p className="text-lg font-bold text-red-600">{quickFilterCounts.urgent}</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => handleQuickFilter('commission')}
+          className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer text-left ${
+            quickFilter === 'commission' 
+              ? 'bg-green-500/10 border-green-500/40 shadow-sm' 
+              : 'bg-card hover:bg-muted/50 border-border'
+          }`}
+        >
+          <div className="h-9 w-9 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+            <Percent className="h-4 w-4 text-green-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Comisionables</p>
+            <p className="text-lg font-bold text-green-600">{quickFilterCounts.commission}</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => handleQuickFilter('highScore')}
+          className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer text-left ${
+            quickFilter === 'highScore' 
+              ? 'bg-blue-500/10 border-blue-500/40 shadow-sm' 
+              : 'bg-card hover:bg-muted/50 border-border'
+          }`}
+        >
+          <div className="h-9 w-9 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+            <TrendingUp className="h-4 w-4 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Score &gt; 60</p>
+            <p className="text-lg font-bold text-blue-600">{quickFilterCounts.highScore}</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => handleQuickFilter('highPrice')}
+          className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer text-left ${
+            quickFilter === 'highPrice' 
+              ? 'bg-amber-500/10 border-amber-500/40 shadow-sm' 
+              : 'bg-card hover:bg-muted/50 border-border'
+          }`}
+        >
+          <div className="h-9 w-9 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+            <Euro className="h-4 w-4 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Precio &gt; 30€</p>
+            <p className="text-lg font-bold text-amber-600">{quickFilterCounts.highPrice}</p>
+          </div>
+        </button>
+      </div>
 
       {/* Leads Grid */}
       {isLoading ? (
@@ -429,7 +529,7 @@ export default function LeadsMarket() {
             <ShoppingCart className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
             <h3 className="text-lg font-medium">No hay leads disponibles</h3>
             <p className="text-muted-foreground mt-1">
-              Cuando haya nuevos leads disponibles, aparecerán aquí automáticamente
+              {quickFilter ? 'No hay leads con este filtro. Prueba otro criterio.' : 'Cuando haya nuevos leads disponibles, aparecerán aquí automáticamente'}
             </p>
           </CardContent>
         </Card>

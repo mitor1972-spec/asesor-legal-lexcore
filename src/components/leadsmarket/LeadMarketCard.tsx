@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { 
   Scale, MapPin, Zap, Phone, Target, ShoppingCart, Eye, Euro, Calendar,
-  TrendingUp, FileText, Shield, Crosshair
+  TrendingUp, FileText, Shield, Crosshair, Percent
 } from 'lucide-react';
 import type { MarketplaceLead } from '@/types/marketplace';
 import { LeadReference } from '@/components/common/LeadReference';
@@ -14,7 +14,7 @@ import { redactContactFromText, LEXCORE_SCORING_GROUPS } from '@/lib/contactSani
 
 interface LeadMarketCardProps {
   lead: MarketplaceLead;
-  onAddToCart: (lead: MarketplaceLead) => void;
+  onAddToCart: (lead: MarketplaceLead, isCommission?: boolean) => void;
   onViewDetails: (lead: MarketplaceLead) => void;
   isInCart: boolean;
   canAfford: boolean;
@@ -134,10 +134,30 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
           {/* Left Column - Case Info */}
           <div className="p-4 border-r space-y-2">
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{location}</span>
-              </div>
+              {subarea && (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">📋</span>
+                  <span className="font-medium">{subarea}</span>
+                </div>
+              )}
+              {city && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span>{city}</span>
+                </div>
+              )}
+              {province && (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground ml-0.5">🗺️</span>
+                  <span>{province}</span>
+                </div>
+              )}
+              {!city && !province && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Sin ubicación</span>
+                </div>
+              )}
               {formattedDate && (
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -226,7 +246,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
           )}
         </div>
 
-        {/* Footer: Actions */}
+        {/* Footer: Actions - Two buttons for commission-eligible leads */}
         <div className="flex items-center justify-end p-4 border-t bg-muted/20 gap-2 mt-auto">
           <Button 
             variant="outline"
@@ -237,14 +257,25 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
             <Eye className="h-4 w-4" />
             Ver informe
           </Button>
+          {lead.commission_available && !isInCart && (
+            <Button 
+              onClick={() => onAddToCart(lead, true)}
+              size="sm"
+              variant="outline"
+              className="gap-1 cursor-pointer border-green-500/50 text-green-700 hover:bg-green-500/10 hover:text-green-800"
+            >
+              <Percent className="h-4 w-4" />
+              Comisión
+            </Button>
+          )}
           <Button 
-            onClick={() => onAddToCart(lead)}
+            onClick={() => onAddToCart(lead, false)}
             disabled={isInCart}
             size="sm"
             className="gap-1 cursor-pointer"
           >
             <ShoppingCart className="h-4 w-4" />
-            {isInCart ? '✓ En carrito' : 'Añadir'}
+            {isInCart ? '✓ En carrito' : `Comprar ${price}€`}
           </Button>
         </div>
       </CardContent>

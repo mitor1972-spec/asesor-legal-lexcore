@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LeadReference } from '@/components/common/LeadReference';
 import { 
-  Scale, MapPin, Zap, ShoppingCart, Eye, Euro, Calendar
+  Scale, MapPin, Zap, ShoppingCart, Eye, Euro, Calendar, Percent
 } from 'lucide-react';
 import type { MarketplaceLead } from '@/types/marketplace';
 import { format } from 'date-fns';
@@ -12,7 +12,7 @@ import { redactContactFromText } from '@/lib/contactSanitizer';
 
 interface LeadMarketListItemProps {
   lead: MarketplaceLead;
-  onAddToCart: (lead: MarketplaceLead) => void;
+  onAddToCart: (lead: MarketplaceLead, isCommission?: boolean) => void;
   onViewDetails: (lead: MarketplaceLead) => void;
   isInCart: boolean;
   canAfford: boolean;
@@ -31,9 +31,6 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
   const subarea = cleanValue(fields.subarea) || cleanValue(fields.tipo_caso);
   const province = cleanValue(fields.province || fields.provincia);
   const city = cleanValue(fields.city || fields.ciudad);
-  const location = province 
-    ? (city ? `${province} (${city})` : province)
-    : (city || 'Sin ubicación');
   const isUrgent = fields.urgencia_aplica === true;
   const cuantia = cleanValue(fields.cuantia_aproximada);
 
@@ -96,11 +93,19 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
               )}
             </div>
             
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {location}
-              </span>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+              {subarea && (
+                <span className="font-medium text-foreground">📋 {subarea}</span>
+              )}
+              {city && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {city}
+                </span>
+              )}
+              {province && (
+                <span>🗺️ {province}</span>
+              )}
               {formattedDate && (
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
@@ -148,14 +153,25 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
               >
                 <Eye className="h-4 w-4" />
               </Button>
+              {lead.commission_available && !isInCart && (
+                <Button 
+                  onClick={() => onAddToCart(lead, true)}
+                  size="sm"
+                  variant="outline"
+                  className="cursor-pointer border-green-500/50 text-green-700 hover:bg-green-500/10"
+                  title="Adquirir a comisión"
+                >
+                  <Percent className="h-4 w-4" />
+                </Button>
+              )}
               <Button 
-                onClick={() => onAddToCart(lead)}
+                onClick={() => onAddToCart(lead, false)}
                 disabled={isInCart}
                 size="sm"
                 className="cursor-pointer"
               >
                 <ShoppingCart className="h-4 w-4 mr-1" />
-                {isInCart ? '✓ En carrito' : 'Añadir'}
+                {isInCart ? '✓' : `${price}€`}
               </Button>
             </div>
           </div>
