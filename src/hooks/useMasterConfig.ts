@@ -50,7 +50,7 @@ export function useMasterSpecialties() {
       const { data, error } = await supabase
         .from('master_specialties')
         .select('*, master_specialty_areas(area_id)')
-        .order('name');
+        .order('sort_order', { ascending: true });
       if (error) throw error;
       return data;
     },
@@ -74,6 +74,9 @@ export function useUpsertSpecialty() {
         commission_allowed: boolean;
         default_commission_percent: number | null;
         suggested_fixed_price: number | null;
+        visible_marketplace?: boolean;
+        allows_override?: boolean;
+        sort_order?: number;
       };
       areaIds: string[];
     }) => {
