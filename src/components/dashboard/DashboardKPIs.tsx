@@ -15,9 +15,12 @@ interface KPICardProps {
 
 function KPICard({ title, value, icon: Icon, change, changeLabel, format = 'number', link }: KPICardProps) {
   const formattedValue = () => {
-    if (format === 'currency') return `${value.toLocaleString('es-ES')}€`;
-    if (format === 'percent') return `${Number(value).toFixed(1)}%`;
-    return value.toLocaleString('es-ES');
+    if (typeof value !== 'number') return value;
+    if (format === 'currency') {
+      return `${Math.round(value).toLocaleString('es-ES', { maximumFractionDigits: 0 })}€`;
+    }
+    if (format === 'percent') return `${Number(value).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+    return value.toLocaleString('es-ES', { maximumFractionDigits: 0 });
   };
 
   const changeColor = change === undefined || change === 0 

@@ -62,6 +62,10 @@ export interface DashboardMetrics {
   }[];
 }
 
+function getLeadCommercialValue(lead: { marketplace_price?: number | null; price_final?: number | null }) {
+  return lead.marketplace_price ?? lead.price_final ?? 0;
+}
+
 export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange) {
   const dateRange = getDateRange(period, customRange);
   const prevRange = getPreviousDateRange(period, customRange);
@@ -82,7 +86,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
       const { data: currentLeads, error: leadsError } = await currentQuery;
       if (leadsError) throw leadsError;
 
-      let prevQuery = supabase.from('leads').select('id, price_final, status_internal');
+      let prevQuery = supabase.from('leads').select('id, marketplace_price, price_final, status_internal');
       prevQuery = applyVisibleLeadsFilters(prevQuery, {
         demoMode: 'real',
         dateFrom: prevRange.start,
@@ -94,7 +98,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
 
       const leads = currentLeads || [];
       const totalLeads = leads.length;
-      const totalValue = leads.reduce((sum, l) => sum + (l.price_final || 0), 0);
+      const totalValue = leads.reduce((sum, l) => sum + getLeadCommercialValue(l), 0);
       const leadsWon = leads.filter(l => {
         const assignments = l.lead_assignments as any[];
         return assignments?.some(a => a.firm_status === 'won');
@@ -103,7 +107,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
 
       const prev = prevLeads || [];
       const prevTotalLeads = prev.length;
-      const prevTotalValue = prev.reduce((sum, l) => sum + (l.price_final || 0), 0);
+      const prevTotalValue = prev.reduce((sum, l) => sum + getLeadCommercialValue(l), 0);
       const prevLeadsWon = 0;
       const prevConversionRate = prevTotalLeads > 0 ? (prevLeadsWon / prevTotalLeads) * 100 : 0;
 
@@ -137,7 +141,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
             const name = a.lawfirms.name;
             if (!lawfirmStats[name]) lawfirmStats[name] = { name, leads: 0, value: 0 };
             lawfirmStats[name].leads += 1;
-            lawfirmStats[name].value += l.price_final || 0;
+            lawfirmStats[name].value += getLeadCommercialValue(l);
           }
         });
       });
@@ -163,7 +167,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
           const lawfirm = assignments?.[0]?.lawfirms?.name || null;
           const nameParts = [fields?.nombre, fields?.apellidos].filter(Boolean);
           const name = nameParts.length > 0 ? nameParts.join(' ') : '';
-          return { id: l.id, date: l.created_at, name, area: fields?.area_legal || '-', lawfirm, score: l.score_final, price: l.price_final, status: l.status_internal || 'Pendiente' };
+          return { id: l.id, date: l.created_at, name, area: fields?.area_legal || '-', lawfirm, score: l.score_final, price: getLeadCommercialValue(l), status: l.status_internal || 'Pendiente' };
         });
 
       return { totalLeads, totalValue, leadsWon, conversionRate, prevTotalLeads, prevTotalValue, prevLeadsWon, prevConversionRate, leadsByStatus, leadsByArea, leadsByChannel, scoreDistribution, topLawfirms, dailyEvolution, recentLeads };
