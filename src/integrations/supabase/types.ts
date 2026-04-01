@@ -1645,6 +1645,291 @@ export type Database = {
         }
         Relationships: []
       }
+      master_active_provinces: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
+      master_case_statuses: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_final: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_final?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_final?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      master_commission_history: {
+        Row: {
+          change_type: string
+          changed_by: string | null
+          commission_id: string
+          created_at: string
+          id: string
+          new_percent: number | null
+          old_percent: number | null
+        }
+        Insert: {
+          change_type?: string
+          changed_by?: string | null
+          commission_id: string
+          created_at?: string
+          id?: string
+          new_percent?: number | null
+          old_percent?: number | null
+        }
+        Update: {
+          change_type?: string
+          changed_by?: string | null
+          commission_id?: string
+          created_at?: string
+          id?: string
+          new_percent?: number | null
+          old_percent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_commission_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_commission_history_commission_id_fkey"
+            columns: ["commission_id"]
+            isOneToOne: false
+            referencedRelation: "master_lawfirm_commissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      master_global_rules: {
+        Row: {
+          allowed_models: string[]
+          default_commission_percent: number
+          id: string
+          min_sellable_price: number
+          min_sellable_score: number
+          updated_at: string
+        }
+        Insert: {
+          allowed_models?: string[]
+          default_commission_percent?: number
+          id?: string
+          min_sellable_price?: number
+          min_sellable_score?: number
+          updated_at?: string
+        }
+        Update: {
+          allowed_models?: string[]
+          default_commission_percent?: number
+          id?: string
+          min_sellable_price?: number
+          min_sellable_score?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      master_lawfirm_commissions: {
+        Row: {
+          commission_percent: number
+          created_at: string
+          end_date: string | null
+          id: string
+          is_active: boolean
+          lawfirm_id: string
+          specialty_id: string
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          commission_percent: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          lawfirm_id: string
+          specialty_id: string
+          start_date?: string
+          updated_at?: string
+        }
+        Update: {
+          commission_percent?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          lawfirm_id?: string
+          specialty_id?: string
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_lawfirm_commissions_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_lawfirm_commissions_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "master_specialties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      master_legal_areas: {
+        Row: {
+          area_type: string
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          priority_order: number
+          updated_at: string
+          visible_marketplace: boolean
+        }
+        Insert: {
+          area_type?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          priority_order?: number
+          updated_at?: string
+          visible_marketplace?: boolean
+        }
+        Update: {
+          area_type?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          priority_order?: number
+          updated_at?: string
+          visible_marketplace?: boolean
+        }
+        Relationships: []
+      }
+      master_specialties: {
+        Row: {
+          commission_allowed: boolean
+          created_at: string
+          default_commission_percent: number | null
+          direct_purchase_allowed: boolean
+          id: string
+          is_active: boolean
+          is_commercial_vertical: boolean
+          is_star: boolean
+          name: string
+          suggested_fixed_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          commission_allowed?: boolean
+          created_at?: string
+          default_commission_percent?: number | null
+          direct_purchase_allowed?: boolean
+          id?: string
+          is_active?: boolean
+          is_commercial_vertical?: boolean
+          is_star?: boolean
+          name: string
+          suggested_fixed_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          commission_allowed?: boolean
+          created_at?: string
+          default_commission_percent?: number | null
+          direct_purchase_allowed?: boolean
+          id?: string
+          is_active?: boolean
+          is_commercial_vertical?: boolean
+          is_star?: boolean
+          name?: string
+          suggested_fixed_price?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      master_specialty_areas: {
+        Row: {
+          area_id: string
+          id: string
+          specialty_id: string
+        }
+        Insert: {
+          area_id: string
+          id?: string
+          specialty_id: string
+        }
+        Update: {
+          area_id?: string
+          id?: string
+          specialty_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_specialty_areas_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "master_legal_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_specialty_areas_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "master_specialties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -1883,6 +2168,10 @@ export type Database = {
       is_lawfirm_admin_of: {
         Args: { _lawfirm_id: string; _user_id: string }
         Returns: boolean
+      }
+      resolve_commission_percent: {
+        Args: { _lawfirm_id: string; _specialty_id: string }
+        Returns: number
       }
     }
     Enums: {

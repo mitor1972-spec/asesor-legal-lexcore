@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog, ChevronDown, Key, Cog, Building2, BarChart3, MessageSquare, FileCheck, Bot, AlertTriangle } from 'lucide-react';
+import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog, ChevronDown, Key, Cog, Building2, BarChart3, MessageSquare, FileCheck, Bot, AlertTriangle, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -16,6 +16,7 @@ const navItems = [
 ];
 
 const configSubItems = [
+  { label: 'Config. Maestra', href: '/settings/master-config', icon: Crown },
   { label: 'API Keys', href: '/settings/api-keys', icon: Key },
   { label: 'Configuración Lexcore', href: '/settings/lexcore', icon: Cog },
   { label: 'Instrucciones IA', href: '/settings/ai-prompts', icon: Bot },
