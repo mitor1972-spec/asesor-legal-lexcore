@@ -129,6 +129,10 @@ export default function LawfirmDashboard() {
 
   // Cart handlers
   const handleAddToCart = (lead: MarketplaceLead) => {
+    if (!isImpersonating && !isProfileComplete) {
+      setShowProfileGate(true);
+      return;
+    }
     if (cartItems.some(item => item.id === lead.id)) {
       toast.info('Este lead ya está en tu carrito');
       return;
