@@ -136,7 +136,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-lawfirm-primary">
             <Scale className="h-4 w-4 text-white" />
           </div>
-          <span className="font-display font-bold text-lg">Portal</span>
+          <span className="font-display font-bold text-lg">Portada</span>
         </Link>
         {onClose && (
           <Button variant="ghost" size="icon" onClick={onClose} className="lg:hidden text-sidebar-foreground hover:bg-sidebar-accent">
