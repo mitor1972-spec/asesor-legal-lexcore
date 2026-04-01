@@ -107,7 +107,7 @@ export function TopOpportunitiesCard({ leads, balance, onViewDetails, onPurchase
               const area = fields.area_legal || fields.legal_area || 'Legal';
               const province = fields.provincia || fields.province || 'Sin provincia';
               const summary = redactContactFromText(lead.marketplace_summary, fields);
-              const isCommissionable = (lead.marketplace_price ?? lead.price_final ?? 0) === 0 || true; // all leads can be commissioned
+              const isCommissionable = true; // all marketplace leads can be commissioned if specialty allows
 
               const getScoreColor = (score: number) => {
                 if (score >= 70) return 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/40';
