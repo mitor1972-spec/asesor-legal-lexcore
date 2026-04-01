@@ -42,12 +42,12 @@ export default function LawfirmBilling() {
 
   const isFiscalComplete = fiscal.fiscal_name && fiscal.cif && fiscal.fiscal_address && fiscal.fiscal_city && fiscal.fiscal_province && fiscal.fiscal_postal_code && fiscal.fiscal_email;
 
-  const creditLineStatus = (lawfirm as any)?.credit_line_status || 'none';
+  const creditLineStatus = lawfirm?.credit_line_status || 'none';
   const creditLineEnabled = lawfirm?.credit_line_enabled ?? false;
   const creditLineAmount = lawfirm?.credit_line_amount ?? 0;
   const balance = lawfirm?.marketplace_balance ?? 0;
   const creditUsed = Math.max(0, creditLineAmount - balance);
-  const hasValidCard = (lawfirm as any)?.has_valid_card ?? false;
+  const hasValidCard = lawfirm?.has_valid_card ?? false;
 
   // Fetch transactions
   const { data: transactions } = useQuery({

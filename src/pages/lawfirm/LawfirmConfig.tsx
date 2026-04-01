@@ -44,7 +44,7 @@ export default function LawfirmConfig() {
         province: lawfirm.province || '',
         postal_code: lawfirm.postal_code || '',
         website: lawfirm.website || '',
-        description: (lawfirm as any).description || '',
+        description: lawfirm.description || '',
       });
     }
   }, [lawfirm]);
