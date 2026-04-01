@@ -312,7 +312,7 @@ Devuelve SOLO el JSON, sin explicaciones.`;
         const alwaysUpdate = ["area_legal", "ciudad", "provincia", "subarea", "tipo_caso"];
         const isAlwaysUpdate = alwaysUpdate.includes(dbKey);
 
-        if (isEmpty || isAlias || isSinNombre || isBadName || isAreaLegal) {
+        if (isEmpty || isAlias || isSinNombre || isBadName || isAlwaysUpdate) {
           if (currentValue !== newValue) {
             updatedFields[dbKey] = newValue;
             result.changes_made.push(`${dbKey}: ${currentValue} -> ${newValue}`);
