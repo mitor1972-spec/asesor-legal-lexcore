@@ -240,8 +240,20 @@ export default function LawfirmPortada() {
                   Tecnología de IA aplicada para conectar clientes con los mejores despachos de España.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {['Inteligencia Artificial', 'Scoring Legal', 'Marketplace', 'CRM Jurídico'].map(tag => (
-                    <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                  {[
+                    { label: 'Inteligencia Artificial', href: '/despacho/ia-servicios' },
+                    { label: 'Scoring Legal', href: '/despacho/radar' },
+                    { label: 'Marketplace', href: '/despacho/leadsmarket' },
+                    { label: 'CRM Jurídico', href: '/despacho/casos' },
+                  ].map(tag => (
+                    <Badge
+                      key={tag.label}
+                      variant="secondary"
+                      className="text-xs cursor-pointer hover:bg-lawfirm-primary hover:text-white transition-colors"
+                      onClick={() => navigate(tag.href)}
+                    >
+                      {tag.label}
+                    </Badge>
                   ))}
                 </div>
               </div>
