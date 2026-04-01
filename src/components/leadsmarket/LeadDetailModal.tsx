@@ -8,7 +8,7 @@ import {
   Scale, MapPin, Zap, Phone, Target, 
   TrendingUp, MessageSquareQuote, ShoppingCart, AlertTriangle, 
   CheckCircle, ClipboardList, BookOpen, Euro, Calendar,
-  FileText, Shield, Eye, Crosshair
+  FileText, Shield, Eye, Crosshair, Percent
 } from 'lucide-react';
 import type { MarketplaceLead } from '@/types/marketplace';
 import { format } from 'date-fns';
