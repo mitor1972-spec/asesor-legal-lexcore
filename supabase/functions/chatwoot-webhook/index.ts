@@ -917,10 +917,6 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       status: finalLeadValid ? "success" : "discarded",
-      action: existingLead ? "updated" : "created",
-      lead_id: upsertedLead.id,
-      conversation_id: conversationId,
-      valid: finalLeadValid,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
