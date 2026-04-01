@@ -223,7 +223,7 @@ ${legalHelp.estimated_complexity}
             {/* Report claim button - only within 7 days of purchase and not commission */}
             {(() => {
               const daysSincePurchase = differenceInDays(new Date(), new Date(caseData.assigned_at));
-              const canClaim = daysSincePurchase <= 7 && !caseData.is_commission && caseData.firm_status !== 'quality_review' && caseData.firm_status !== 'invalidated';
+              const canClaim = daysSincePurchase <= 7 && !(caseData as any).is_commission && caseData.firm_status !== 'quality_review' && caseData.firm_status !== 'invalidated';
               if (canClaim) {
                 return (
                   <Button variant="outline" size="sm" onClick={() => setClaimDialogOpen(true)} className="text-destructive border-destructive/30 hover:bg-destructive/10">
