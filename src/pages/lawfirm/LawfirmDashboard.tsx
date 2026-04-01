@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLawfirmCases } from '@/hooks/useLawfirmCases';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { useLawfirmProfile, useLawfirmTeam, useLawfirmBranches } from '@/hooks/useLawfirmProfile';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,18 +36,20 @@ const statusColors: Record<string, string> = {
 
 export default function LawfirmDashboard() {
   const { user } = useAuthContext();
+  const { impersonatedLawfirm, isImpersonating } = useImpersonation();
   const queryClient = useQueryClient();
   const { data: lawfirm } = useLawfirmProfile();
   const { data: cases = [], isLoading } = useLawfirmCases();
   const { data: team = [] } = useLawfirmTeam();
   const { data: branches = [] } = useLawfirmBranches();
+  const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
   
   const [selectedLead, setSelectedLead] = useState<MarketplaceLead | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   // Fetch available marketplace leads
   const { data: marketplaceLeads = [] } = useQuery({
-    queryKey: ['dashboard-opportunities', user?.profile?.lawfirm_id],
+    queryKey: ['dashboard-opportunities', lawfirmId],
     queryFn: async () => {
       const query = supabase
         .from('leads')
@@ -58,11 +61,11 @@ export default function LawfirmDashboard() {
         `)
         .is('archived_at', null)
         .is('discarded_at', null)
+        .or('structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false')
         .eq('status_internal', 'Pendiente')
         .or('structured_fields->>email.neq.,structured_fields->>telefono.neq.')
         .or('is_demo.is.null,is_demo.eq.false')
-        .order('score_final', { ascending: false, nullsFirst: false })
-        .limit(10);
+        .order('created_at', { ascending: false });
 
       const { data, error } = await query;
       if (error) throw error;
@@ -91,20 +94,30 @@ export default function LawfirmDashboard() {
         } as MarketplaceLead;
       });
     },
-    enabled: !!user?.profile?.lawfirm_id,
+    enabled: !!lawfirmId,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const balance = lawfirm?.marketplace_balance || 0;
 
   const handlePurchase = async (lead: MarketplaceLead) => {
+    if (!lawfirmId) {
+      toast.error('No se ha podido identificar el despacho activo');
+      return;
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('purchase-lead', {
-        body: { lead_id: lead.id, lawfirm_id: user?.profile?.lawfirm_id },
+        body: { lead_id: lead.id, lawfirm_id: lawfirmId },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success('¡Lead comprado! Ya tienes acceso completo en "Mis Casos"');
       queryClient.invalidateQueries({ queryKey: ['dashboard-opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['marketplace-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['marketplace-leads-count'] });
       queryClient.invalidateQueries({ queryKey: ['lawfirm-balance'] });
       queryClient.invalidateQueries({ queryKey: ['lawfirm-cases'] });
     } catch (error) {
