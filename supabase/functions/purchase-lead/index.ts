@@ -54,12 +54,26 @@ serve(async (req) => {
       );
     }
 
-    if (userProfile.lawfirm_id !== lawfirm_id) {
+    // Allow internal users (admin/operator) to purchase on behalf of any lawfirm (impersonation)
+    const { data: userRole } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'operator'])
+      .maybeSingle();
+
+    const isInternalUser = !!userRole;
+
+    if (!isInternalUser && userProfile.lawfirm_id !== lawfirm_id) {
       console.warn(`Security: User ${user.id} tried to purchase for lawfirm ${lawfirm_id} but belongs to ${userProfile.lawfirm_id}`);
       return new Response(
         JSON.stringify({ error: 'No autorizado: Solo puedes comprar para tu propio despacho' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    if (isInternalUser) {
+      console.log(`[IMPERSONATION] Internal user ${user.id} purchasing for lawfirm ${lawfirm_id}`);
     }
 
     // FASE 5: Check if lead is already assigned (EXCLUSIVITY)
