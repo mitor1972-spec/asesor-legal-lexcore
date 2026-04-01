@@ -590,9 +590,7 @@ serve(async (req) => {
       });
       
       return new Response(JSON.stringify({ 
-        status: "filtered", 
-        reason: "Not a lead - informational query only",
-        intent: intentResult,
+        status: "filtered"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
