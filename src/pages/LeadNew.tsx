@@ -148,31 +148,31 @@ export default function LeadNew() {
     };
 
     try {
-      const insertData: Record<string, unknown> = {
+      const { data: userData } = await supabase.auth.getUser();
+
+      const insertPayload: any = {
         lead_text: leadText,
         source_channel: sourceChannel,
         structured_fields: enrichedFields as unknown as Json,
+        created_by_user_id: userData.user?.id,
       };
       if (adminConfig.scoreManual != null && !adminConfig.autoCalcScore) {
-        insertData.score_final = adminConfig.scoreManual;
+        insertPayload.score_final = adminConfig.scoreManual;
       }
       if (adminConfig.priceManual != null) {
-        insertData.price_final = adminConfig.priceManual;
+        insertPayload.price_final = adminConfig.priceManual;
       }
       if (adminConfig.marketplacePrice != null) {
-        insertData.marketplace_price = adminConfig.marketplacePrice;
+        insertPayload.marketplace_price = adminConfig.marketplacePrice;
       }
       if (adminConfig.activateMarketplace) {
-        insertData.is_in_marketplace = true;
-        insertData.marketplace_added_at = new Date().toISOString();
+        insertPayload.is_in_marketplace = true;
+        insertPayload.marketplace_added_at = new Date().toISOString();
       }
-
-      const { data: userData } = await supabase.auth.getUser();
-      insertData.created_by_user_id = userData.user?.id;
 
       const { data: lead, error } = await supabase
         .from('leads')
-        .insert(insertData)
+        .insert(insertPayload)
         .select()
         .single();
       if (error) throw error;
