@@ -42,6 +42,7 @@ import LawfirmReports from "@/pages/lawfirm/LawfirmReports";
 import LawfirmOutsourcing from "@/pages/lawfirm/LawfirmOutsourcing";
 import LawfirmCommission from "@/pages/lawfirm/LawfirmCommission";
 import LawfirmRadar from "@/pages/lawfirm/LawfirmRadar";
+import LawfirmPortada from "@/pages/lawfirm/LawfirmPortada";
 import RegistroDespacho from "@/pages/RegistroDespacho";
 import SalesReport from "@/pages/reports/SalesReport";
 import NotFound from "@/pages/NotFound";
@@ -81,7 +82,8 @@ const App = () => (
                   <Route path="informes/ventas" element={<SalesReport />} />
                 </Route>
                 <Route path="/despacho" element={<LawfirmLayout />}>
-                  <Route index element={<Navigate to="/despacho/dashboard" replace />} />
+                  <Route index element={<Navigate to="/despacho/portada" replace />} />
+                  <Route path="portada" element={<LawfirmPortada />} />
                   <Route path="dashboard" element={<LawfirmDashboard />} />
                   <Route path="casos" element={<LawfirmCases />} />
                   <Route path="casos/:id" element={<LawfirmCaseDetail />} />

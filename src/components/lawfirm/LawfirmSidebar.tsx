@@ -42,6 +42,7 @@ interface LawfirmSidebarProps {
 }
 
 const mainNavigation = [
+  { name: 'Portada', href: '/despacho/portada', icon: Scale },
   { name: 'Dashboard', href: '/despacho/dashboard', icon: LayoutDashboard },
   { name: 'LeadMarket', href: '/despacho/leadsmarket', icon: ShoppingCart, hasBadge: true },
   { name: 'Casos a Comisión', href: '/despacho/comision', icon: Percent },
@@ -55,11 +56,12 @@ const adminNavigation = [
   { name: 'Equipo', href: '/despacho/equipo', icon: Users },
   { name: 'Sucursales', href: '/despacho/sucursales', icon: Building },
   { name: 'Datos del despacho', href: '/despacho/configuracion', icon: Settings },
+  { name: 'Facturación', href: '/despacho/facturacion', icon: CreditCard },
 ];
 
 const marketingNavigation = [
   { name: 'Directorio', href: '/despacho/publicidad', icon: Globe },
-  { name: 'Asistente Virtual', href: '/despacho/publicidad?tab=amara', icon: Bot },
+  { name: 'Asistente Virtual', href: '/despacho/anuncios', icon: Bot },
   { name: 'Newsletter', href: '/despacho/publicidad?tab=newsletter', icon: Mail },
 ];
 
@@ -130,7 +132,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       {/* Header */}
       <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
-        <Link to="/despacho/dashboard" className="flex items-center gap-2" onClick={onClose}>
+        <Link to="/despacho/portada" className="flex items-center gap-2" onClick={onClose}>
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-lawfirm-primary">
             <Scale className="h-4 w-4 text-white" />
           </div>

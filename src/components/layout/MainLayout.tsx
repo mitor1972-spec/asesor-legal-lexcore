@@ -22,7 +22,7 @@ export function MainLayout() {
 
   // Redirect lawfirm users to their portal
   if (isLawfirm) {
-    return <Navigate to="/despacho/dashboard" replace />;
+    return <Navigate to="/despacho/portada" replace />;
   }
 
   return (
