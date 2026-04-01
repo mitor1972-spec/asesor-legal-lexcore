@@ -1,20 +1,52 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Eye, MapPin, Scale, Zap, Radar, ArrowRight, Euro, ShoppingCart } from 'lucide-react';
+import { Sparkles, Eye, MapPin, Scale, Zap, Radar, ArrowRight, Euro, ShoppingCart, Percent } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { MarketplaceLead } from '@/types/marketplace';
 import { redactContactFromText } from '@/lib/contactSanitizer';
+import { CommissionTermsDialog } from './CommissionTermsDialog';
+import { useCommissionTerms } from '@/hooks/useCommissionTerms';
+import { toast } from '@/hooks/use-toast';
 
 interface TopOpportunitiesCardProps {
   leads: MarketplaceLead[];
   balance: number;
   onViewDetails: (lead: MarketplaceLead) => void;
   onPurchase: (lead: MarketplaceLead) => void;
+  onCommissionPurchase?: (lead: MarketplaceLead) => void;
   isInCart?: (id: string) => boolean;
+  weeklyLimitReached?: boolean;
+  commissionEnabled?: boolean;
 }
 
-export function TopOpportunitiesCard({ leads, balance, onViewDetails, onPurchase, isInCart }: TopOpportunitiesCardProps) {
+export function TopOpportunitiesCard({ leads, balance, onViewDetails, onPurchase, onCommissionPurchase, isInCart, weeklyLimitReached, commissionEnabled = true }: TopOpportunitiesCardProps) {
+  const [termsDialogOpen, setTermsDialogOpen] = useState(false);
+  const [pendingCommissionLead, setPendingCommissionLead] = useState<MarketplaceLead | null>(null);
+  const { hasAcceptedTerms, acceptTerms } = useCommissionTerms();
+
+  const handleCommissionClick = (e: React.MouseEvent, lead: MarketplaceLead) => {
+    e.stopPropagation();
+    if (weeklyLimitReached) {
+      toast({ title: 'Límite semanal alcanzado', description: 'Has alcanzado el límite semanal de casos a comisión.', variant: 'destructive' });
+      return;
+    }
+    setPendingCommissionLead(lead);
+    setTermsDialogOpen(true);
+  };
+
+  const handleTermsAccept = async () => {
+    if (!hasAcceptedTerms) {
+      await acceptTerms.mutateAsync();
+    }
+    if (pendingCommissionLead && onCommissionPurchase) {
+      onCommissionPurchase(pendingCommissionLead);
+    }
+    setTermsDialogOpen(false);
+    setPendingCommissionLead(null);
+  };
+
   // Filter: urgent OR score >= 60, sort urgent first then by score, max 6
   const relevantLeads = leads
     .filter(lead => {
@@ -52,103 +84,126 @@ export function TopOpportunitiesCard({ leads, balance, onViewDetails, onPurchase
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="h-5 w-5 text-lawfirm-primary" />
-            Oportunidades Destacadas
-          </CardTitle>
-          <Link to="/despacho/leadsmarket">
-            <Button variant="ghost" size="sm">
-              Ver todas →
-            </Button>
-          </Link>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {relevantLeads.map((lead) => {
-            const fields = lead.structured_fields || {};
-            const isUrgent = !!fields.urgencia_aplica || !!fields.urgencia_nivel;
-            const area = fields.area_legal || fields.legal_area || 'Legal';
-            const province = fields.provincia || fields.province || 'Sin provincia';
-            const summary = redactContactFromText(lead.marketplace_summary, fields);
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-lawfirm-primary" />
+              Oportunidades Destacadas
+            </CardTitle>
+            <Link to="/despacho/leadsmarket">
+              <Button variant="ghost" size="sm">
+                Ver todas →
+              </Button>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {relevantLeads.map((lead) => {
+              const fields = lead.structured_fields || {};
+              const isUrgent = !!fields.urgencia_aplica || !!fields.urgencia_nivel;
+              const area = fields.area_legal || fields.legal_area || 'Legal';
+              const province = fields.provincia || fields.province || 'Sin provincia';
+              const summary = redactContactFromText(lead.marketplace_summary, fields);
+              const isCommissionable = true; // all marketplace leads can be commissioned if specialty allows
 
-            const getScoreColor = (score: number) => {
-              if (score >= 70) return 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/40';
-              if (score >= 50) return 'text-amber-700 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/40';
-              return 'text-muted-foreground bg-muted';
-            };
+              const getScoreColor = (score: number) => {
+                if (score >= 70) return 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/40';
+                if (score >= 50) return 'text-amber-700 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/40';
+                return 'text-muted-foreground bg-muted';
+              };
 
-            return (
-              <Card 
-                key={lead.id}
-                className={`cursor-pointer hover:shadow-md transition-all border ${isUrgent ? 'border-red-400' : ''}`}
-                onClick={() => onViewDetails(lead)}
-              >
-                <CardContent className="p-3 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Scale className="h-4 w-4 text-lawfirm-primary flex-shrink-0" />
-                      <span className="font-semibold text-sm truncate">{area}</span>
+              return (
+                <Card 
+                  key={lead.id}
+                  className={`cursor-pointer hover:shadow-md transition-all border ${isUrgent ? 'border-red-400' : ''}`}
+                  onClick={() => onViewDetails(lead)}
+                >
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Scale className="h-4 w-4 text-lawfirm-primary flex-shrink-0" />
+                        <span className="font-semibold text-sm truncate">{area}</span>
+                      </div>
+                      {isUrgent && (
+                        <Badge variant="destructive" className="text-xs shrink-0 px-1.5 py-0">
+                          <Zap className="h-3 w-3 mr-0.5" />
+                          Urgente
+                        </Badge>
+                      )}
                     </div>
-                    {isUrgent && (
-                      <Badge variant="destructive" className="text-xs shrink-0 px-1.5 py-0">
-                        <Zap className="h-3 w-3 mr-0.5" />
-                        Urgente
+
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{province}</span>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      {summary || 'Lead disponible'}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-1 border-t">
+                      <Badge variant="outline" className={`text-xs font-bold ${getScoreColor(lead.score_final)}`}>
+                        {lead.score_final} pts
                       </Badge>
-                    )}
-                  </div>
+                      <span className="text-sm font-bold text-lawfirm-primary flex items-center gap-0.5">
+                        <Euro className="h-3 w-3" />
+                        {lead.marketplace_price}€
+                      </span>
+                    </div>
 
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <MapPin className="h-3 w-3 flex-shrink-0" />
-                    <span className="truncate">{province}</span>
-                  </div>
+                    <div className="flex gap-1">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="flex-1 gap-1 text-xs h-7 px-2"
+                        onClick={(e) => { e.stopPropagation(); onViewDetails(lead); }}
+                      >
+                        <Eye className="h-3 w-3" />
+                        Ver
+                      </Button>
+                      <Button 
+                        size="sm"
+                        className="flex-1 gap-1 text-xs h-7 px-2"
+                        disabled={isInCart?.(lead.id)}
+                        onClick={(e) => { e.stopPropagation(); onPurchase(lead); }}
+                      >
+                        <ShoppingCart className="h-3 w-3" />
+                        {isInCart?.(lead.id) ? '✓' : 'Añadir'}
+                      </Button>
+                      {commissionEnabled && onCommissionPurchase && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 text-xs h-7 px-2 border-green-500/40 text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
+                          disabled={weeklyLimitReached}
+                          onClick={(e) => handleCommissionClick(e, lead)}
+                        >
+                          <Percent className="h-3 w-3" />
+                          Comisión
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                    {summary || 'Lead disponible'}
-                  </p>
+          <RadarCTA />
+        </CardContent>
+      </Card>
 
-                  <div className="flex items-center justify-between pt-1 border-t">
-                    <Badge variant="outline" className={`text-xs font-bold ${getScoreColor(lead.score_final)}`}>
-                      {lead.score_final} pts
-                    </Badge>
-                    <span className="text-sm font-bold text-lawfirm-primary flex items-center gap-0.5">
-                      <Euro className="h-3 w-3" />
-                      {lead.marketplace_price}€
-                    </span>
-                  </div>
-
-                  <div className="flex gap-1.5">
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="flex-1 gap-1 text-xs"
-                      onClick={(e) => { e.stopPropagation(); onViewDetails(lead); }}
-                    >
-                      <Eye className="h-3 w-3" />
-                      Ver
-                    </Button>
-                    <Button 
-                      size="sm"
-                      className="flex-1 gap-1 text-xs"
-                      disabled={isInCart?.(lead.id)}
-                      onClick={(e) => { e.stopPropagation(); onPurchase(lead); }}
-                    >
-                      <ShoppingCart className="h-3 w-3" />
-                      {isInCart?.(lead.id) ? '✓' : 'Añadir'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        <RadarCTA />
-      </CardContent>
-    </Card>
+      <CommissionTermsDialog
+        open={termsDialogOpen}
+        onOpenChange={setTermsDialogOpen}
+        onAccept={handleTermsAccept}
+        isFirstTime={!hasAcceptedTerms}
+        loading={acceptTerms.isPending}
+      />
+    </>
   );
 }
 
