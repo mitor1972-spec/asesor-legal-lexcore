@@ -193,6 +193,94 @@ async function fetchAllMessagesWithPagination(conversationId: number): Promise<{
   return { messages: allMessages, stats };
 }
 
+/**
+ * INTENT FILTER: Detect if conversation shows real lead intent (seeking a lawyer)
+ * vs. just informational queries to the virtual assistant.
+ * 
+ * A real lead typically:
+ * - Mentions wanting to hire/consult a lawyer
+ * - Provides contact information voluntarily
+ * - Describes a specific legal problem with personal involvement
+ * - Asks about costs/fees for legal services
+ * 
+ * NOT a lead:
+ * - Generic legal questions without personal case
+ * - Short interactions with no follow-up
+ * - Bot-only interactions with no substantive user input
+ */
+function detectLeadIntent(fullTranscript: string, userText: string, stats: TranscriptStats): {
+  isLead: boolean;
+  confidence: 'high' | 'medium' | 'low';
+  reason: string;
+} {
+  const textLower = userText.toLowerCase();
+  const transcriptLower = fullTranscript.toLowerCase();
+  
+  // STRONG POSITIVE signals - user wants a lawyer
+  const strongPositive = [
+    'necesito un abogado', 'busco abogado', 'quiero contratar', 'necesito asesoramiento',
+    'me gustaría consultar con un abogado', 'pueden ayudarme', 'quiero hablar con un abogado',
+    'necesito ayuda legal', 'quiero un presupuesto', 'cuánto cobra', 'cuánto cuesta',
+    'me pueden llamar', 'pueden contactar', 'mi teléfono es', 'mi email es',
+    'llámame', 'contactadme', 'quiero que me llamen', 'me pongo en contacto',
+    'necesito representación', 'quiero demandar', 'quiero recurrir',
+    'me han despedido', 'me han denunciado', 'me deben dinero', 'quiero divorciarme',
+  ];
+  
+  // NEGATIVE signals - just informational queries
+  const negativeSignals = [
+    'solo una pregunta', 'pregunta rápida', 'es solo curiosidad',
+    'no necesito abogado', 'solo quería saber', 'gracias por la información',
+  ];
+  
+  const hasStrongPositive = strongPositive.some(s => textLower.includes(s));
+  const hasNegative = negativeSignals.some(s => textLower.includes(s));
+  
+  // Very short conversations with only 1-2 user messages are likely not leads
+  if (stats.incoming_count <= 1 && userText.length < 100) {
+    return { isLead: false, confidence: 'high', reason: 'Too short: single brief message' };
+  }
+  
+  // If user has provided contact info, they're likely a lead regardless
+  const hasContactInText = !!(
+    userText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ||
+    userText.match(/(?:\+34[\s.-]?)?(?:6|7|8|9)[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}/g)
+  );
+  
+  if (hasContactInText) {
+    return { isLead: true, confidence: 'high', reason: 'User provided contact information' };
+  }
+  
+  if (hasStrongPositive && !hasNegative) {
+    return { isLead: true, confidence: 'high', reason: 'Strong intent signals detected' };
+  }
+  
+  if (hasNegative && !hasStrongPositive) {
+    return { isLead: false, confidence: 'medium', reason: 'Negative intent signals detected' };
+  }
+  
+  // Medium-length conversations with personal case details are likely leads
+  const personalCaseSignals = [
+    'mi caso', 'mi situación', 'me pasó', 'me han', 'me hicieron',
+    'tengo un problema', 'mi ex', 'mi jefe', 'mi empresa', 'mi contrato',
+    'me despidieron', 'me multaron', 'me deben', 'debo', 'firmé',
+  ];
+  
+  const hasPersonalCase = personalCaseSignals.some(s => textLower.includes(s));
+  
+  if (hasPersonalCase && stats.incoming_count >= 2) {
+    return { isLead: true, confidence: 'medium', reason: 'Personal case details with engagement' };
+  }
+  
+  // If we have enough user messages with substantial text, consider it a potential lead
+  if (stats.incoming_count >= 3 && userText.length > 200) {
+    return { isLead: true, confidence: 'low', reason: 'Substantial engagement detected' };
+  }
+  
+  // Default: not enough signal to be a lead
+  return { isLead: false, confidence: 'low', reason: 'No clear intent to hire or engage lawyer' };
+}
+
 // Detectar área legal basado en palabras clave
 function detectLegalArea(text: string): string | null {
   const cleanText = stripHtml(text);
