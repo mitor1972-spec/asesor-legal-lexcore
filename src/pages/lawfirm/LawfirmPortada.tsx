@@ -169,7 +169,7 @@ export default function LawfirmPortada() {
       </div>
 
       {/* Marketplace Quick Stats */}
-      <div className="px-6 md:px-8 -mt-6 relative z-20">
+      <div className="px-6 md:px-8 relative z-20">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             {
