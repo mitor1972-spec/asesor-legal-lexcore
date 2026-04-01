@@ -58,7 +58,7 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
   );
 
   return (
-    <Card className="hover:shadow-md transition-all">
+    <Card className={`hover:shadow-md transition-all ${price >= 30 ? 'border-green-500/30 bg-green-500/[0.02]' : ''}`}>
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
           {/* Score thermometer */}
