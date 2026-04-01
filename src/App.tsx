@@ -25,6 +25,7 @@ import ProfileSettings from "@/pages/settings/ProfileSettings";
 import DiscardedLeads from "@/pages/settings/DiscardedLeads";
 import AiPromptsSettings from "@/pages/settings/AiPromptsSettings";
 import MasterConfig from "@/pages/settings/MasterConfig";
+import QualityControl from "@/pages/settings/QualityControl";
 import LawfirmDashboard from "@/pages/lawfirm/LawfirmDashboard";
 import LawfirmCases from "@/pages/lawfirm/LawfirmCases";
 import LawfirmCaseDetail from "@/pages/lawfirm/LawfirmCaseDetail";
