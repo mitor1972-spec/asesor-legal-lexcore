@@ -106,8 +106,7 @@ export default function LawfirmPortada() {
                 </Button>
                 <Button 
                   size="lg"
-                  variant="outline"
-                  className="border-white/30 text-white hover:bg-white/10 backdrop-blur-sm"
+                  className="bg-white text-lawfirm-primary hover:bg-white/90 font-semibold shadow-lg"
                   onClick={() => navigate('/despacho/leadsmarket')}
                 >
                   <ShoppingCart className="h-4 w-4 mr-2" />
@@ -221,7 +220,7 @@ export default function LawfirmPortada() {
               {/* Left: Brand (3 cols) */}
               <div className="md:col-span-3 p-8 md:p-10 bg-gradient-to-br from-muted/30 to-muted/10">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 rounded-xl bg-lawfirm-primary shadow-lg shadow-lawfirm-primary/20">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 shadow-lg shadow-blue-600/30">
                     <Scale className="h-8 w-8 text-white" />
                   </div>
                   <div>
@@ -241,8 +240,20 @@ export default function LawfirmPortada() {
                   Tecnología de IA aplicada para conectar clientes con los mejores despachos de España.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {['Inteligencia Artificial', 'Scoring Legal', 'Marketplace', 'CRM Jurídico'].map(tag => (
-                    <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                  {[
+                    { label: 'Inteligencia Artificial', href: '/despacho/ia-servicios' },
+                    { label: 'Scoring Legal', href: '/despacho/radar' },
+                    { label: 'Marketplace', href: '/despacho/leadsmarket' },
+                    { label: 'CRM Jurídico', href: '/despacho/casos' },
+                  ].map(tag => (
+                    <Badge
+                      key={tag.label}
+                      variant="secondary"
+                      className="text-xs cursor-pointer hover:bg-lawfirm-primary hover:text-white transition-colors"
+                      onClick={() => navigate(tag.href)}
+                    >
+                      {tag.label}
+                    </Badge>
                   ))}
                 </div>
               </div>
