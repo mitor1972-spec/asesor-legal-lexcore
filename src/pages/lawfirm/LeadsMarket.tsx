@@ -262,7 +262,7 @@ export default function LeadsMarket() {
         const { data, error } = await supabase.functions.invoke('purchase-lead', {
           body: {
             lead_id: leadId,
-            lawfirm_id: user?.profile?.lawfirm_id,
+            lawfirm_id: lawfirmId,
             is_commission: cartItem?.isCommission || false,
             commission_percent: cartItem?.isCommission ? (cartItem.commissionPercent || 20) : undefined,
           },
