@@ -136,11 +136,16 @@ export default function LeadsMarket() {
       );
       
       return filtered.map(l => {
-        const latestRun = l.lexcore_runs?.[0];
+        // Sort lexcore_runs by computed_at desc to get latest
+        const sortedRuns = [...(l.lexcore_runs || [])].sort((a: any, b: any) => 
+          new Date(b.computed_at || 0).getTime() - new Date(a.computed_at || 0).getTime()
+        );
+        const latestRun = sortedRuns[0];
         const vjData = latestRun?.vj_json as any;
         const rawScores = latestRun?.raw_scores_json as unknown as RawScores | null;
         const llmResponse = latestRun?.llm_response_json as any;
-        const legalArea = (l.structured_fields as any)?.area_legal || (l.structured_fields as any)?.legal_area || '';
+        const sf = l.structured_fields as any;
+        const legalArea = sf?.area_legal || sf?.legal_area || '';
         const commPct = commissionAreas?.[legalArea];
         
         return {
