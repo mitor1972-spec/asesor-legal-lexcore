@@ -208,7 +208,6 @@ export default function LawfirmDashboard() {
     .filter(([status]) => ['received', 'reviewing', 'contacted', 'in_progress', 'won', 'lost'].includes(status))
     .map(([status, count]) => ({ name: statusLabels[status] || status, value: count, color: statusColors[status] }));
   const recentCases = cases.slice(0, 5);
-  const lawyers = team.map(m => ({ id: m.id, full_name: m.full_name, email: m.email }));
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-[400px]"><div className="animate-pulse text-muted-foreground">Cargando...</div></div>;
