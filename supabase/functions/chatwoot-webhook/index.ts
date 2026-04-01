@@ -485,8 +485,7 @@ serve(async (req) => {
       }
       
       return new Response(JSON.stringify({ 
-        status: "skipped", 
-        reason 
+        status: "skipped"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
