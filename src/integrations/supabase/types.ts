@@ -511,6 +511,41 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_terms_acceptance: {
+        Row: {
+          accepted_at: string
+          accepted_by_user_id: string | null
+          id: string
+          ip_address: string | null
+          lawfirm_id: string
+          terms_version: string
+        }
+        Insert: {
+          accepted_at?: string
+          accepted_by_user_id?: string | null
+          id?: string
+          ip_address?: string | null
+          lawfirm_id: string
+          terms_version?: string
+        }
+        Update: {
+          accepted_at?: string
+          accepted_by_user_id?: string | null
+          id?: string
+          ip_address?: string | null
+          lawfirm_id?: string
+          terms_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_terms_acceptance_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           address: string | null
@@ -998,6 +1033,7 @@ export type Database = {
           client_fee: number | null
           commission_origin: string | null
           commission_percent: number | null
+          commission_terms_confirmed_at: string | null
           contacted_at: string | null
           fee_accepted_at: string | null
           firm_notes: string | null
@@ -1029,6 +1065,7 @@ export type Database = {
           client_fee?: number | null
           commission_origin?: string | null
           commission_percent?: number | null
+          commission_terms_confirmed_at?: string | null
           contacted_at?: string | null
           fee_accepted_at?: string | null
           firm_notes?: string | null
@@ -1062,6 +1099,7 @@ export type Database = {
           client_fee?: number | null
           commission_origin?: string | null
           commission_percent?: number | null
+          commission_terms_confirmed_at?: string | null
           contacted_at?: string | null
           fee_accepted_at?: string | null
           firm_notes?: string | null
