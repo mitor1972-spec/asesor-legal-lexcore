@@ -143,12 +143,12 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
               </Button>
               <Button 
                 onClick={() => onAddToCart(lead)}
-                disabled={!canAfford || isInCart}
+                disabled={isInCart}
                 size="sm"
                 className="cursor-pointer"
               >
                 <ShoppingCart className="h-4 w-4 mr-1" />
-                {isInCart ? 'En carrito' : 'Añadir'}
+                {isInCart ? '✓ En carrito' : 'Añadir'}
               </Button>
             </div>
           </div>

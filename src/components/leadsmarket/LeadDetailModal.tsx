@@ -336,11 +336,11 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               </Button>
               <Button 
                 onClick={() => { onAddToCart(lead); onClose(); }}
-                disabled={!canAfford || isInCart}
+                disabled={isInCart}
                 className="gap-2 cursor-pointer"
               >
                 <ShoppingCart className="h-4 w-4" />
-                {isInCart ? 'Ya en carrito' : 'Añadir al carrito'}
+                {isInCart ? '✓ Ya en carrito' : 'Añadir al carrito'}
               </Button>
             </div>
           </div>

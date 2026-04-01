@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,9 @@ import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
 
 export default function LeadsMarket() {
   const { user } = useAuthContext();
+  const { isImpersonating, impersonatedLawfirm } = useImpersonation();
   const queryClient = useQueryClient();
+  const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
   
   // Draft filter state (not applied until user clicks)
   const [draftArea, setDraftArea] = useState<string>('all');
@@ -62,18 +65,18 @@ export default function LeadsMarket() {
 
   // Fetch lawfirm balance
   const { data: lawfirm } = useQuery({
-    queryKey: ['lawfirm-balance', user?.profile?.lawfirm_id],
+    queryKey: ['lawfirm-balance', lawfirmId],
     queryFn: async () => {
-      if (!user?.profile?.lawfirm_id) return null;
+      if (!lawfirmId) return null;
       const { data, error } = await supabase
         .from('lawfirms')
         .select('id, name, marketplace_balance')
-        .eq('id', user.profile.lawfirm_id)
+        .eq('id', lawfirmId)
         .single();
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.profile?.lawfirm_id,
+    enabled: !!lawfirmId,
   });
 
   // Fetch commission areas
@@ -259,7 +262,7 @@ export default function LeadsMarket() {
         const { data, error } = await supabase.functions.invoke('purchase-lead', {
           body: {
             lead_id: leadId,
-            lawfirm_id: user?.profile?.lawfirm_id,
+            lawfirm_id: lawfirmId,
             is_commission: cartItem?.isCommission || false,
             commission_percent: cartItem?.isCommission ? (cartItem.commissionPercent || 20) : undefined,
           },
