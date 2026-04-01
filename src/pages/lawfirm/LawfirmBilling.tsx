@@ -79,7 +79,7 @@ export default function LawfirmBilling() {
       await updateProfile.mutateAsync({
         credit_line_status: 'pending',
         credit_line_requested_at: new Date().toISOString(),
-      } as any);
+      });
       toast.success('Solicitud de línea de crédito enviada. Te notificaremos cuando sea aprobada.');
     } catch {
       toast.error('Error al solicitar línea de crédito');
