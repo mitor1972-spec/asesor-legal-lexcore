@@ -19,15 +19,16 @@ export default function LawfirmCommission() {
   const navigate = useNavigate();
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
 
-  // Fetch commission areas
-  const { data: commissionAreas, isLoading: loadingAreas } = useQuery({
-    queryKey: ['commission-areas'],
+  // Fetch commissionable specialties from master config
+  const { data: commissionSpecialties, isLoading: loadingSpecialties } = useQuery({
+    queryKey: ['commission-specialties'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('commission_areas')
-        .select('*')
+        .from('master_specialties')
+        .select('id, name, commission_allowed, default_commission_percent, is_active, sort_order')
         .eq('is_active', true)
-        .order('legal_area');
+        .eq('commission_allowed', true)
+        .order('sort_order');
       if (error) throw error;
       return data;
     },
@@ -84,7 +85,7 @@ export default function LawfirmCommission() {
     }, 0) || 0,
   };
 
-  const isLoading = loadingAreas || loadingCases;
+  const isLoading = loadingSpecialties || loadingCases;
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
@@ -255,33 +256,33 @@ export default function LawfirmCommission() {
         </CardContent>
       </Card>
 
-      {/* Available commission areas */}
+      {/* Available commission specialties */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Scale className="h-5 w-5 text-lawfirm-primary" />
-            Áreas disponibles a comisión
+            Especialidades disponibles a comisión
           </CardTitle>
           <CardDescription>
-            Solo los leads de estas áreas permiten adquisición en modelo comisión
+            Solo los leads de estas especialidades permiten adquisición en modelo comisión
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!commissionAreas || commissionAreas.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No hay áreas comisionables configuradas actualmente.</p>
+          {!commissionSpecialties || commissionSpecialties.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No hay especialidades comisionables configuradas actualmente.</p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {commissionAreas.map((area) => (
+              {commissionSpecialties.map((spec) => (
                 <div
-                  key={area.id}
+                  key={spec.id}
                   className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <Scale className="h-5 w-5 text-lawfirm-primary" />
-                    <span className="font-medium">{area.legal_area}</span>
+                    <span className="font-medium">{spec.name}</span>
                   </div>
                   <Badge variant="secondary" className="bg-green-500/10 text-green-700 border-green-500/30">
-                    {area.commission_percent}% comisión
+                    {spec.default_commission_percent ?? 20}% comisión
                   </Badge>
                 </div>
               ))}

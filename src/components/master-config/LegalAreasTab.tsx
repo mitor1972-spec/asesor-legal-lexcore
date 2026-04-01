@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Plus, Pencil } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface AreaForm {
   id?: string;
@@ -70,25 +71,27 @@ export function LegalAreasTab() {
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-lg">Áreas Legales</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between py-3 px-4">
+          <CardTitle className="text-base">Áreas Legales</CardTitle>
           <Button size="sm" onClick={openNew}>
-            <Plus className="h-4 w-4 mr-1" /> Nueva Área
+            <Plus className="h-3.5 w-3.5 mr-1" /> Nueva Área
           </Button>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="p-0 space-y-0">
           {/* Principal */}
-          <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2">▾ Áreas Principales</h3>
+          <div className="px-4 pt-2">
+            <h3 className="text-xs font-semibold text-muted-foreground mb-1">▾ Áreas Principales</h3>
             <AreaTable areas={principals} onEdit={openEdit} onToggle={toggleActive} />
           </div>
           {/* Specialized */}
-          <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2">▾ Áreas Especializadas</h3>
+          <div className="px-4 pb-2">
+            <h3 className="text-xs font-semibold text-muted-foreground mb-1 mt-2">▾ Áreas Especializadas</h3>
             {specialized.length === 0 ? (
               <p className="text-xs text-muted-foreground">Sin áreas especializadas</p>
             ) : (
-              <AreaTable areas={specialized} onEdit={openEdit} onToggle={toggleActive} />
+              <div className="overflow-y-auto max-h-[40vh]">
+                <AreaTable areas={specialized} onEdit={openEdit} onToggle={toggleActive} />
+              </div>
             )}
           </div>
         </CardContent>
@@ -141,43 +144,43 @@ export function LegalAreasTab() {
   );
 }
 
-function AreaTable({ areas, onEdit, onToggle }: { areas: any[]; onEdit: (a: any) => void; onToggle: (a: any) => void }) {
+function AreaTable({ areas, onEdit, onToggle }: { areas: any[]; onEdit: (a: any) => void; onToggle: (a: any) => void; }) {
   return (
     <Table>
       <TableHeader>
-        <TableRow>
-          <TableHead>Nombre</TableHead>
-          <TableHead className="w-20 text-center">Orden</TableHead>
-          <TableHead className="w-28 text-center">Marketplace</TableHead>
-          <TableHead className="w-20 text-center">Activa</TableHead>
-          <TableHead className="w-16" />
+        <TableRow className="text-xs">
+          <TableHead className="py-1 px-2">Nombre</TableHead>
+          <TableHead className="w-16 text-center py-1 px-1">Orden</TableHead>
+          <TableHead className="w-20 text-center py-1 px-1">Mktplace</TableHead>
+          <TableHead className="w-16 text-center py-1 px-1">Activa</TableHead>
+          <TableHead className="w-10 py-1 px-1" />
         </TableRow>
       </TableHeader>
       <TableBody>
-        {areas.map((a) => (
-          <TableRow key={a.id} className={!a.is_active ? 'opacity-50' : ''}>
-            <TableCell className="font-medium">{a.name}</TableCell>
-            <TableCell className="text-center">{a.priority_order}</TableCell>
-            <TableCell className="text-center">
+        {areas.map((a: any) => (
+          <TableRow key={a.id} className={cn('h-7 text-xs', !a.is_active && 'opacity-50')}>
+            <TableCell className="font-medium px-2 py-0.5 text-xs">{a.name}</TableCell>
+            <TableCell className="text-center px-1 py-0.5 text-xs">{a.priority_order}</TableCell>
+            <TableCell className="text-center px-1 py-0.5">
               {a.visible_marketplace ? (
-                <Badge variant="default" className="text-xs">Sí</Badge>
+                <Badge variant="default" className="text-[10px] px-1 py-0">Sí</Badge>
               ) : (
-                <Badge variant="secondary" className="text-xs">No</Badge>
+                <Badge variant="secondary" className="text-[10px] px-1 py-0">No</Badge>
               )}
             </TableCell>
-            <TableCell className="text-center">
-              <Switch checked={a.is_active} onCheckedChange={() => onToggle(a)} />
+            <TableCell className="text-center px-1 py-0.5">
+              <Switch className="scale-75" checked={a.is_active} onCheckedChange={() => onToggle(a)} />
             </TableCell>
-            <TableCell>
-              <Button variant="ghost" size="icon" onClick={() => onEdit(a)}>
-                <Pencil className="h-4 w-4" />
+            <TableCell className="px-1 py-0.5">
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEdit(a)}>
+                <Pencil className="h-3.5 w-3.5" />
               </Button>
             </TableCell>
           </TableRow>
         ))}
         {areas.length === 0 && (
-          <TableRow>
-            <TableCell colSpan={5} className="text-center text-muted-foreground text-sm">
+          <TableRow className="h-7">
+            <TableCell colSpan={5} className="text-center text-muted-foreground text-xs py-4">
               Sin áreas registradas
             </TableCell>
           </TableRow>
