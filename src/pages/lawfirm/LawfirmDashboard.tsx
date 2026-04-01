@@ -385,6 +385,11 @@ export default function LawfirmDashboard() {
         balance={balance}
         isCheckingOut={isCheckingOut}
       />
+      <ProfileGateDialog 
+        open={showProfileGate} 
+        onClose={() => setShowProfileGate(false)} 
+        missingFields={missingFields} 
+      />
     </div>
   );
 }
