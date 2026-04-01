@@ -845,6 +845,8 @@ export type Database = {
           contact_person: string | null
           contact_phone: string | null
           created_at: string | null
+          credit_line_amount: number | null
+          credit_line_enabled: boolean | null
           discount_percent: number | null
           email_derivations: string | null
           exclusions: string[] | null
@@ -892,6 +894,8 @@ export type Database = {
           contact_person?: string | null
           contact_phone?: string | null
           created_at?: string | null
+          credit_line_amount?: number | null
+          credit_line_enabled?: boolean | null
           discount_percent?: number | null
           email_derivations?: string | null
           exclusions?: string[] | null
@@ -939,6 +943,8 @@ export type Database = {
           contact_person?: string | null
           contact_phone?: string | null
           created_at?: string | null
+          credit_line_amount?: number | null
+          credit_line_enabled?: boolean | null
           discount_percent?: number | null
           email_derivations?: string | null
           exclusions?: string[] | null
