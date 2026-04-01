@@ -7,13 +7,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { applyVisibleLeadsFilters } from '@/lib/leadsQuery';
 import { 
-  Scale, LayoutDashboard, BarChart3, Radar, ShoppingCart, Briefcase,
+  Scale, LayoutDashboard, BarChart3, Radar as RadarIcon, ShoppingCart, Briefcase,
   Phone, Mail, Globe, ArrowRight, Loader2, Building2, Sparkles,
   Shield, Zap, TrendingUp, Users, CheckCircle2, Star, AlertTriangle, Handshake, Package
 } from 'lucide-react';
 import heroBg from '@/assets/portada-hero-bg.jpg';
 
 export default function LawfirmPortada() {
+  const radarRules: Array<{id:string;areas:string[];provinces:string[];minScore:number;maxScore:number;minPrice:number;maxPrice:number;enabled:boolean}> = (() => {
+    try { const s = localStorage.getItem('radar_rules'); return s ? JSON.parse(s) : []; } catch { return []; }
+  })();
   const { data: lawfirm, isLoading } = useLawfirmProfile();
   const navigate = useNavigate();
 
@@ -23,7 +26,7 @@ export default function LawfirmPortada() {
       if (!lawfirm?.id) return null;
       let availableLeadsQuery = supabase
         .from('leads')
-        .select('id, score_final, structured_fields, lead_assignments!left(id)')
+        .select('id, score_final, structured_fields, marketplace_price, price_final, lead_assignments!left(id)')
         .eq('status_internal', 'Pendiente')
         .gt('score_final', 0)
         .gte('created_at', '2025-03-20T00:00:00Z')
@@ -55,11 +58,31 @@ export default function LawfirmPortada() {
         return legalArea !== '' && commissionAreas.has(legalArea);
       }).length;
 
+      // Count radar matches
+      const enabledRules = radarRules.filter(r => r.enabled);
+      let radarCount = 0;
+      if (enabledRules.length > 0) {
+        radarCount = availableLeads.filter(lead => {
+          const f2 = lead.structured_fields as Record<string, unknown> | null;
+          const area = String(f2?.area_legal ?? f2?.legal_area ?? '');
+          const prov = String(f2?.provincia ?? '');
+          const score = lead.score_final ?? 0;
+          const price = (lead as any).marketplace_price ?? (lead as any).price_final ?? 0;
+          return enabledRules.some(r => {
+            return (r.areas.length === 0 || r.areas.includes(area))
+              && (r.provinces.length === 0 || r.provinces.includes(prov))
+              && score >= r.minScore && score <= r.maxScore
+              && price >= r.minPrice && price <= r.maxPrice;
+          });
+        }).length;
+      }
+
       return {
         marketplaceCount: availableLeads.length,
         totalCases: casesResult.count || 0,
         urgentCount,
         commissionableCount,
+        radarCount,
       };
     },
     enabled: !!lawfirm?.id,
@@ -88,7 +111,7 @@ export default function LawfirmPortada() {
     { label: 'LeadMarket', description: 'Compra leads cualificados', icon: ShoppingCart, href: '/despacho/leadsmarket', color: 'bg-emerald-500' },
     { label: 'Mis Casos', description: 'Gestiona tu cartera', icon: Briefcase, href: '/despacho/casos', color: 'bg-violet-500' },
     { label: 'Informes', description: 'Análisis de rendimiento', icon: BarChart3, href: '/despacho/informes', color: 'bg-amber-500' },
-    { label: 'Radar', description: 'Alertas personalizadas', icon: Radar, href: '/despacho/radar', color: 'bg-orange-500' },
+    { label: 'Radar', description: 'Alertas personalizadas', icon: RadarIcon, href: '/despacho/radar', color: 'bg-orange-500' },
     { label: 'Equipo', description: 'Gestión de abogados', icon: Users, href: '/despacho/equipo', color: 'bg-rose-500' },
   ];
 
@@ -116,6 +139,14 @@ export default function LawfirmPortada() {
       cardClassName: 'border-success/30 hover:border-success/60',
       iconClassName: 'bg-success/10 text-success',
       valueClassName: 'text-success',
+    },
+    {
+      label: 'Leads del radar',
+      value: stats?.radarCount || 0,
+      icon: RadarIcon,
+      cardClassName: 'border-amber-500/30 hover:border-amber-500/60',
+      iconClassName: 'bg-amber-500/10 text-amber-500',
+      valueClassName: 'text-amber-500',
     },
   ];
 
@@ -196,12 +227,12 @@ export default function LawfirmPortada() {
                     </div>
                     <div className="grid grid-cols-3 gap-3 pt-3 border-t border-white/20">
                       <div className="text-center">
-                        <p className="text-2xl font-bold">{stats?.marketplaceCount || 0}</p>
-                        <p className="text-[11px] text-white/60">Leads activos</p>
-                      </div>
-                      <div className="text-center border-x border-white/20">
                         <p className="text-2xl font-bold">{stats?.totalCases || 0}</p>
                         <p className="text-[11px] text-white/60">Tus casos</p>
+                      </div>
+                      <div className="text-center border-x border-white/20">
+                        <p className="text-2xl font-bold">{stats?.marketplaceCount || 0}</p>
+                        <p className="text-[11px] text-white/60">Disponibles</p>
                       </div>
                       <div className="text-center">
                         <p className="text-2xl font-bold">{lawfirm.marketplace_balance?.toFixed(0) || '0'}€</p>
@@ -229,7 +260,7 @@ export default function LawfirmPortada() {
 
       {/* Marketplace Quick Stats */}
       <div className="px-6 md:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {quickStats.map((stat) => {
             const Icon = stat.icon;
 
