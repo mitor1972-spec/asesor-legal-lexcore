@@ -1,14 +1,14 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
   Briefcase, 
   CheckCircle2, 
-  XCircle, 
   DollarSign, 
   TrendingUp,
   Percent,
   Receipt,
   Wallet,
-  Target
+  Target,
+  Trophy
 } from 'lucide-react';
 import type { LawfirmCase } from '@/hooks/useLawfirmCases';
 
@@ -18,90 +18,56 @@ interface AdvancedKPIsProps {
 }
 
 export function AdvancedKPIs({ cases, availableLeadsCount }: AdvancedKPIsProps) {
-  // Calculate metrics
-  const casesAccepted = cases.filter(c => 
-    ['reviewing', 'contacted', 'in_progress', 'won', 'lost'].includes(c.firm_status)
+  const casesWon = cases.filter(c => c.firm_status === 'won').length;
+  
+  // Total lead cost (all time)
+  const totalLeadCost = cases.reduce((sum, c) => sum + (c.lead_cost || c.lead?.price_final || 0), 0);
+  
+  // Cases converted to clients (contacted + in_progress + won)
+  const casesConverted = cases.filter(c => 
+    ['contacted', 'in_progress', 'won'].includes(c.firm_status)
   ).length;
   
-  const casesWon = cases.filter(c => c.firm_status === 'won').length;
-  const casesLost = cases.filter(c => c.firm_status === 'lost').length;
-  
-  // Cost of leads (price_final from lead)
-  const totalLeadCost = cases.reduce((sum, c) => sum + (c.lead?.price_final || 0), 0);
-  
-  // Revenue from won cases
-  const minutaCobrada = cases
-    .filter(c => c.firm_status === 'won')
-    .reduce((sum, c) => sum + (c.result_amount || 0), 0);
-  
-  // Success fee (placeholder - would need a field for this)
-  const exitoCobrado = cases
-    .filter(c => c.firm_status === 'won' && (c as any).service_type === 'exito')
-    .reduce((sum, c) => sum + ((c.result_amount || 0) * 0.15), 0); // 15% example
-  
-  const totalIngresos = minutaCobrada + exitoCobrado;
-  
-  // Conversion rate
-  const conversionRate = casesAccepted > 0 
-    ? Math.round((casesWon / casesAccepted) * 100) 
+  // Conversion rate: converted / total purchased
+  const totalPurchased = cases.length;
+  const conversionRate = totalPurchased > 0 
+    ? Math.round((casesConverted / totalPurchased) * 100) 
     : 0;
+  
+  // Minutas cobradas (client_fee from won cases)
+  const minutasCobradas = cases
+    .filter(c => c.firm_status === 'won')
+    .reduce((sum, c) => sum + (c.client_fee || c.result_amount || 0), 0);
+  
+  // % a éxito ganado
+  const exitoGanado = cases
+    .filter(c => c.firm_status === 'won' && c.won_amount)
+    .reduce((sum, c) => sum + (c.won_amount || 0), 0);
+  
+  // Total ingresos
+  const totalIngresos = minutasCobradas + exitoGanado;
 
   const kpis = [
     { 
-      label: 'Casos Disponibles', 
+      label: 'Total Casos Disponibles', 
       value: availableLeadsCount, 
       icon: Briefcase,
       color: 'text-primary',
       bgColor: 'bg-primary/10'
     },
     { 
-      label: 'Casos Aceptados', 
-      value: casesAccepted, 
-      icon: CheckCircle2,
-      color: 'text-lawfirm-primary',
-      bgColor: 'bg-lawfirm-primary/10'
-    },
-    { 
-      label: 'Casos Ganados', 
-      value: casesWon, 
-      icon: Target,
-      color: 'text-success',
-      bgColor: 'bg-success/10'
-    },
-    { 
-      label: 'Casos Perdidos', 
-      value: casesLost, 
-      icon: XCircle,
-      color: 'text-destructive',
-      bgColor: 'bg-destructive/10'
-    },
-    { 
-      label: 'Coste Leads', 
+      label: 'Coste Total Leads', 
       value: `${totalLeadCost.toLocaleString('es-ES')}€`, 
       icon: DollarSign,
       color: 'text-warning',
       bgColor: 'bg-warning/10'
     },
     { 
-      label: 'Minutas Cobradas', 
-      value: `${minutaCobrada.toLocaleString('es-ES')}€`, 
-      icon: Receipt,
-      color: 'text-emerald-500',
-      bgColor: 'bg-emerald-500/10'
-    },
-    { 
-      label: '% Éxito Cobrado', 
-      value: `${exitoCobrado.toLocaleString('es-ES')}€`, 
-      icon: TrendingUp,
-      color: 'text-violet-500',
-      bgColor: 'bg-violet-500/10'
-    },
-    { 
-      label: 'Total Ingresos', 
-      value: `${totalIngresos.toLocaleString('es-ES')}€`, 
-      icon: Wallet,
-      color: 'text-green-600',
-      bgColor: 'bg-green-600/10'
+      label: 'Convertidos a Clientes', 
+      value: casesConverted, 
+      icon: CheckCircle2,
+      color: 'text-lawfirm-primary',
+      bgColor: 'bg-lawfirm-primary/10'
     },
     { 
       label: 'Ratio Conversión', 
@@ -110,10 +76,38 @@ export function AdvancedKPIs({ cases, availableLeadsCount }: AdvancedKPIsProps) 
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10'
     },
+    { 
+      label: 'Minutas Cobradas', 
+      value: `${minutasCobradas.toLocaleString('es-ES')}€`, 
+      icon: Receipt,
+      color: 'text-emerald-500',
+      bgColor: 'bg-emerald-500/10'
+    },
+    { 
+      label: '% Éxito Ganado', 
+      value: `${exitoGanado.toLocaleString('es-ES')}€`, 
+      icon: TrendingUp,
+      color: 'text-violet-500',
+      bgColor: 'bg-violet-500/10'
+    },
+    { 
+      label: 'Total Casos Ganados', 
+      value: casesWon, 
+      icon: Trophy,
+      color: 'text-success',
+      bgColor: 'bg-success/10'
+    },
+    { 
+      label: 'Total Ingresos', 
+      value: `${totalIngresos.toLocaleString('es-ES')}€`, 
+      icon: Wallet,
+      color: 'text-green-600',
+      bgColor: 'bg-green-600/10'
+    },
   ];
 
   return (
-    <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
+    <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
       {kpis.map((kpi) => (
         <Card key={kpi.label} className="shadow-soft hover:shadow-medium transition-shadow">
           <CardContent className="p-4 flex flex-col items-center text-center gap-2">
