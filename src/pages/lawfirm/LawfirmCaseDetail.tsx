@@ -58,6 +58,8 @@ const statusLabels: Record<string, string> = {
   negotiation: 'En negociación',
   pending_docs: 'Documentación pendiente',
   in_progress: 'En curso',
+  quality_review: 'En revisión calidad',
+  invalidated: 'Invalidado por calidad',
   won: 'Ganado',
   lost: 'Perdido',
   rejected: 'Rechazado',
