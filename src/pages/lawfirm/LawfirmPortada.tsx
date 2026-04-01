@@ -100,8 +100,8 @@ export default function LawfirmPortada() {
   }
 
   const features = [
-    { icon: Zap, title: 'Leads cualificados', desc: 'Casos verificados con scoring IA' },
-    { icon: Shield, title: 'Sin riesgo', desc: 'Contacto nulo → te reembolsamos el caso' },
+    { icon: Zap, title: 'Leads exclusivos', desc: 'Cada caso asignado a un único despacho' },
+    { icon: Shield, title: 'Garantía de calidad', desc: 'Sistema de control e incidencias' },
     { icon: TrendingUp, title: 'Crecimiento', desc: 'Más de 20 casos nuevos cada día' },
     { icon: Sparkles, title: 'IA avanzada', desc: 'Sistema Lexcore™ de valoración' },
   ];
