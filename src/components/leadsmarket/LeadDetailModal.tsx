@@ -45,10 +45,12 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
 
   const fields = lead.structured_fields || {};
   const legalArea = cleanValue(fields.legal_area || fields.area_legal) || 'Sin área';
-  const subarea = cleanValue(fields.subarea);
-  const province = cleanValue(fields.province || fields.provincia) || 'Sin provincia';
+  const subarea = cleanValue(fields.subarea) || cleanValue(fields.tipo_caso);
+  const province = cleanValue(fields.province || fields.provincia);
   const city = cleanValue(fields.city || fields.ciudad);
-  const location = city ? `${province} (${city})` : province;
+  const location = province 
+    ? (city ? `${province} (${city})` : province)
+    : (city || 'Sin ubicación');
   const isUrgent = fields.urgencia_aplica === true;
   const chatwootAlias = fields._contact_alias as string || null;
   const conversationId = lead.conversation_id;

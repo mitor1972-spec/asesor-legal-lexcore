@@ -39,10 +39,12 @@ function cleanValue(val: unknown): string | null {
 export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, canAfford }: LeadMarketCardProps) {
   const fields = lead.structured_fields || {};
   const legalArea = cleanValue(fields.legal_area || fields.area_legal) || 'Sin área';
-  const subarea = cleanValue(fields.subarea);
-  const province = cleanValue(fields.province || fields.provincia) || 'Sin provincia';
+  const subarea = cleanValue(fields.subarea) || cleanValue(fields.tipo_caso);
+  const province = cleanValue(fields.province || fields.provincia);
   const city = cleanValue(fields.city || fields.ciudad);
-  const location = city ? `${province} (${city})` : province;
+  const location = province 
+    ? (city ? `${province} (${city})` : province)
+    : (city || 'Sin ubicación');
   const isUrgent = fields.urgencia_aplica === true;
   const cuantia = cleanValue(fields.cuantia_aproximada);
   const complejidad = cleanValue(fields.complejidad);
@@ -162,6 +164,13 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground">📊</span>
                   <span>Complejidad: {complejidad}</span>
+                </div>
+              )}
+              {lead.commission_available && (
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs">
+                    Comisionable ({lead.commission_percent || 20}%)
+                  </Badge>
                 </div>
               )}
             </div>

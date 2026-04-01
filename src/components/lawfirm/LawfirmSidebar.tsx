@@ -157,7 +157,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <Link key={item.name} to={item.href} onClick={onClose} className={navLinkClass(item.href)}>
               <item.icon className="h-5 w-5" />
               {item.name}
-              {item.hasBadge && marketplaceCount && marketplaceCount > 0 && (
+              {item.hasBadge && (marketplaceCount ?? 0) > 0 && (
                 <Badge variant="secondary" className="ml-auto text-xs">{marketplaceCount}</Badge>
               )}
             </Link>
