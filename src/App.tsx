@@ -80,6 +80,7 @@ const App = () => (
                   <Route path="settings/chatwoot" element={<RequireAdmin><ChatwootSettings /></RequireAdmin>} />
                   <Route path="settings/discarded-leads" element={<DiscardedLeads />} />
                   <Route path="settings/profile" element={<ProfileSettings />} />
+                  <Route path="settings/master-config" element={<RequireAdmin><MasterConfig /></RequireAdmin>} />
                   <Route path="informes/ventas" element={<SalesReport />} />
                 </Route>
                 <Route path="/despacho" element={<LawfirmLayout />}>

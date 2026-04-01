@@ -16,6 +16,7 @@ const navItems = [
 ];
 
 const configSubItems = [
+  { label: 'Config. Maestra', href: '/settings/master-config', icon: Crown },
   { label: 'API Keys', href: '/settings/api-keys', icon: Key },
   { label: 'Configuración Lexcore', href: '/settings/lexcore', icon: Cog },
   { label: 'Instrucciones IA', href: '/settings/ai-prompts', icon: Bot },
