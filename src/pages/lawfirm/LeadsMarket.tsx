@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,9 @@ import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
 
 export default function LeadsMarket() {
   const { user } = useAuthContext();
+  const { isImpersonating, impersonatedLawfirm } = useImpersonation();
   const queryClient = useQueryClient();
+  const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
   
   // Draft filter state (not applied until user clicks)
   const [draftArea, setDraftArea] = useState<string>('all');
