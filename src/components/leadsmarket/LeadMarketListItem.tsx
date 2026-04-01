@@ -161,7 +161,8 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
                   className="cursor-pointer border-green-500/50 text-green-700 hover:bg-green-500/10"
                   title="Adquirir a comisión"
                 >
-                  <Percent className="h-4 w-4" />
+                  <Percent className="h-4 w-4 mr-1" />
+                  Comisión
                 </Button>
               )}
               <Button 

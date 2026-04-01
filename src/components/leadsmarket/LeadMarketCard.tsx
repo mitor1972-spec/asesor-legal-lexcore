@@ -265,7 +265,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
               className="gap-1 cursor-pointer border-green-500/50 text-green-700 hover:bg-green-500/10 hover:text-green-800"
             >
               <Percent className="h-4 w-4" />
-              Comisión
+              Adquirir a comisión
             </Button>
           )}
           <Button 

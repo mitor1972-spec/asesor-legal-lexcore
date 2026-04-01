@@ -342,8 +342,8 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                   variant="outline"
                   className="gap-2 cursor-pointer border-green-500/50 text-green-700 hover:bg-green-500/10"
                 >
-                  <span className="h-4 w-4">%</span>
-                  Comisión
+                  <Percent className="h-4 w-4" />
+                  Adquirir a comisión
                 </Button>
               )}
               <Button 
