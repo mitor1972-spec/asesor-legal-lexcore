@@ -200,7 +200,7 @@ export default function LeadsMarket() {
     } else if (quickFilter === 'highScore') {
       filtered = filtered.filter(l => l.score_final > 60);
     } else if (quickFilter === 'highPrice') {
-      filtered = filtered.filter(l => (l.marketplace_price || 0) > 30);
+      filtered = filtered.filter(l => (l.marketplace_price || 0) >= 30);
     }
 
     if (areaFilter !== 'all') {
