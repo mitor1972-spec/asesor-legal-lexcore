@@ -197,7 +197,7 @@ export function ShoppingCart({
               </div>
               <Separator />
               <div className="flex justify-between">
-                <span className="font-medium">Saldo tras compra:</span>
+                <span className="font-medium">Crédito tras compra:</span>
                 <span className={`font-bold text-lg ${canAfford ? 'text-green-600' : 'text-destructive'}`}>
                   {newBalance.toFixed(2)}€
                 </span>
