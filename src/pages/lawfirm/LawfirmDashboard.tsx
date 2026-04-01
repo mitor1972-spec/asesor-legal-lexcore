@@ -269,48 +269,12 @@ export default function LawfirmDashboard() {
               </CardContent>
             </Card>
           )}
-          <WonCasesTable cases={cases} />
         </div>
         <div className="space-y-4">
           <CasesByAreaWidget cases={cases} />
           <CasesByProvinceWidget cases={cases} />
-          <CasesByBranchWidget cases={cases} branches={branches} />
-          <CasesByLawyerWidget cases={cases} lawyers={lawyers} />
         </div>
       </div>
-
-      <Card className="shadow-soft">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">Últimos Casos Recibidos</CardTitle>
-          <Link to="/despacho/casos" className="text-sm text-lawfirm-primary hover:underline flex items-center gap-1">
-            Ver todos <ArrowRight className="h-3 w-3" />
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {recentCases.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Aún no tienes casos asignados</p>
-          ) : (
-            <div className="space-y-3">
-              {recentCases.map((caseItem) => {
-                const fields = caseItem.lead?.structured_fields as Record<string, string> | null;
-                return (
-                  <Link key={caseItem.id} to={`/despacho/casos/${caseItem.id}`} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <LeadTemperature score={caseItem.lead?.score_final || 0} variant="mini" />
-                      <div>
-                        <p className="font-medium">{fields?.area_legal || 'Caso'} — {fields?.provincia || 'España'}</p>
-                        <p className="text-sm text-muted-foreground">{statusLabels[caseItem.firm_status] || caseItem.firm_status}</p>
-                        <LeadReference leadId={caseItem.lead_id} conversationId={caseItem.lead?.conversation_id} chatwootAlias={fields?._contact_alias} variant="compact" />
-                      </div>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{format(new Date(caseItem.assigned_at), 'dd/MM/yy', { locale: es })}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Lead Detail Modal */}
       <LeadDetailModal
