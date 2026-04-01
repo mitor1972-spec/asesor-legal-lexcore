@@ -7,7 +7,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 
 interface MultiSelectProps {
-  options: string[];
+  options: readonly string[] | string[];
   selected: string[];
   onChange: (selected: string[]) => void;
   placeholder?: string;
