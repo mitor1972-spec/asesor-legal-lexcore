@@ -31,6 +31,7 @@ import {
   BarChart3,
   Handshake,
   Percent,
+  Radar,
 } from 'lucide-react';
 
 interface LawfirmSidebarProps {
