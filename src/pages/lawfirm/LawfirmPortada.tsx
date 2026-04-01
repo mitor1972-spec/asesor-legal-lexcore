@@ -1,15 +1,36 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useLawfirmProfile } from '@/hooks/useLawfirmProfile';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Scale, LayoutDashboard, BarChart3, Radar, 
-  Phone, Mail, Globe, ArrowRight, Loader2, Building2
+  Scale, LayoutDashboard, BarChart3, Radar, ShoppingCart, Briefcase,
+  Phone, Mail, Globe, ArrowRight, Loader2, Building2, Sparkles,
+  Shield, Zap, TrendingUp, Users, CheckCircle2, Star
 } from 'lucide-react';
+import heroBg from '@/assets/portada-hero-bg.jpg';
 
 export default function LawfirmPortada() {
   const { data: lawfirm, isLoading } = useLawfirmProfile();
   const navigate = useNavigate();
+
+  const { data: stats } = useQuery({
+    queryKey: ['portada-stats', lawfirm?.id],
+    queryFn: async () => {
+      if (!lawfirm?.id) return null;
+      const [marketplace, cases] = await Promise.all([
+        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('is_in_marketplace', true),
+        supabase.from('lead_assignments').select('*', { count: 'exact', head: true }).eq('lawfirm_id', lawfirm.id),
+      ]);
+      return {
+        marketplaceCount: marketplace.count || 0,
+        totalCases: cases.count || 0,
+      };
+    },
+    enabled: !!lawfirm?.id,
+  });
 
   if (isLoading) {
     return (
@@ -19,146 +40,250 @@ export default function LawfirmPortada() {
     );
   }
 
+  const features = [
+    { icon: Zap, title: 'Leads cualificados', desc: 'Casos verificados con scoring IA' },
+    { icon: Shield, title: 'Sin riesgo', desc: 'Modelo a comisión disponible' },
+    { icon: TrendingUp, title: 'Crecimiento', desc: 'Nuevos clientes cada día' },
+    { icon: Sparkles, title: 'IA avanzada', desc: 'Valoración automática de casos' },
+  ];
+
   const quickLinks = [
-    { label: 'Dashboard', description: 'Métricas y oportunidades', icon: LayoutDashboard, href: '/despacho/dashboard', gradient: 'from-blue-500 to-blue-600' },
-    { label: 'Informes', description: 'Análisis de rendimiento', icon: BarChart3, href: '/despacho/informes', gradient: 'from-violet-500 to-violet-600' },
-    { label: 'Radar', description: 'Alertas personalizadas', icon: Radar, href: '/despacho/radar', gradient: 'from-orange-500 to-orange-600' },
+    { label: 'Dashboard', description: 'Métricas, oportunidades y CRM', icon: LayoutDashboard, href: '/despacho/dashboard', color: 'bg-blue-500' },
+    { label: 'LeadMarket', description: 'Compra leads cualificados', icon: ShoppingCart, href: '/despacho/leadsmarket', color: 'bg-emerald-500' },
+    { label: 'Mis Casos', description: 'Gestiona tu cartera', icon: Briefcase, href: '/despacho/casos', color: 'bg-violet-500' },
+    { label: 'Informes', description: 'Análisis de rendimiento', icon: BarChart3, href: '/despacho/informes', color: 'bg-amber-500' },
+    { label: 'Radar', description: 'Alertas personalizadas', icon: Radar, href: '/despacho/radar', color: 'bg-orange-500' },
+    { label: 'Equipo', description: 'Gestión de abogados', icon: Users, href: '/despacho/equipo', color: 'bg-rose-500' },
   ];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col animate-fade-in">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-lawfirm-primary via-lawfirm-primary/90 to-lawfirm-primary/70 text-white p-8 md:p-12 mb-8">
-        {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-        <div className="absolute top-1/2 right-1/4 w-32 h-32 bg-white/5 rounded-full" />
-
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-          <div className="flex-1 space-y-4">
-            {/* Brand Logo */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
-                <Scale className="h-10 w-10 text-white" />
+    <div className="space-y-8 animate-fade-in -m-6">
+      {/* Hero Section with background image */}
+      <div className="relative overflow-hidden min-h-[420px] flex items-center">
+        <img 
+          src={heroBg} 
+          alt="" 
+          className="absolute inset-0 w-full h-full object-cover"
+          width={1920}
+          height={800}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
+        
+        <div className="relative z-10 w-full px-8 md:px-12 py-12">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 max-w-6xl">
+            {/* Left: Brand + Headline */}
+            <div className="space-y-6 max-w-xl">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/10">
+                  <Scale className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-display font-bold text-white tracking-tight">
+                    Asesor.Legal
+                  </h1>
+                  <p className="text-white/60 text-sm font-medium tracking-wide">
+                    IA aplicada a contactos jurídicos
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight">
-                  Asesor.Legal
-                </h1>
-                <p className="text-white/80 text-sm md:text-base font-medium">
-                  IA aplicada a contactos jurídicos
-                </p>
+
+              <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+                Bienvenido al mejor<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">
+                  marketplace de casos jurídicos
+                </span>
+                <br />de España
+              </h2>
+
+              <div className="flex items-center gap-4">
+                <Button 
+                  size="lg"
+                  className="bg-lawfirm-primary hover:bg-lawfirm-primary/90 text-white shadow-lg shadow-lawfirm-primary/30"
+                  onClick={() => navigate('/despacho/dashboard')}
+                >
+                  Ir al Dashboard
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+                <Button 
+                  size="lg"
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10 backdrop-blur-sm"
+                  onClick={() => navigate('/despacho/leadsmarket')}
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Ver Leads
+                </Button>
               </div>
             </div>
 
-            <h2 className="text-xl md:text-2xl font-semibold leading-snug max-w-lg">
-              Bienvenido al mejor marketplace de casos jurídicos de España
-            </h2>
-          </div>
-
-          {/* Lawfirm Card */}
-          {lawfirm && (
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white min-w-[260px]">
-              <CardContent className="p-5 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-lg">
-                    <Building2 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-lg leading-tight">{lawfirm.name}</p>
-                    {lawfirm.province && (
-                      <p className="text-white/70 text-sm">{lawfirm.city ? `${lawfirm.city}, ` : ''}{lawfirm.province}</p>
+            {/* Right: Lawfirm Card + Stats */}
+            <div className="space-y-4 w-full lg:w-auto lg:min-w-[320px]">
+              {lawfirm && (
+                <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white shadow-2xl">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-white/20 rounded-lg">
+                        <Building2 className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-lg leading-tight">{lawfirm.name}</p>
+                        {lawfirm.province && (
+                          <p className="text-white/60 text-sm">{lawfirm.city ? `${lawfirm.city}, ` : ''}{lawfirm.province}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 pt-3 border-t border-white/20">
+                      <div className="text-center">
+                        <p className="text-2xl font-bold">{stats?.marketplaceCount || 0}</p>
+                        <p className="text-[11px] text-white/60">Leads activos</p>
+                      </div>
+                      <div className="text-center border-x border-white/20">
+                        <p className="text-2xl font-bold">{stats?.totalCases || 0}</p>
+                        <p className="text-[11px] text-white/60">Tus casos</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold">{lawfirm.marketplace_balance?.toFixed(0) || '0'}€</p>
+                        <p className="text-[11px] text-white/60">Crédito</p>
+                      </div>
+                    </div>
+                    {lawfirm.contact_person && (
+                      <div className="flex items-center gap-2 pt-2 border-t border-white/20">
+                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">
+                          {lawfirm.contact_person.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{lawfirm.contact_person}</p>
+                          <p className="text-[11px] text-white/60">Responsable</p>
+                        </div>
+                      </div>
                     )}
-                  </div>
-                </div>
-                {lawfirm.contact_person && (
-                  <p className="text-white/80 text-sm border-t border-white/20 pt-2">
-                    Responsable: {lawfirm.contact_person}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Quick Links */}
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
-        {quickLinks.map((link) => (
-          <Card
-            key={link.label}
-            className="group cursor-pointer hover:shadow-lg transition-all duration-300 border-2 hover:border-lawfirm-primary/30 overflow-hidden"
-            onClick={() => navigate(link.href)}
-          >
-            <CardContent className="p-6 flex items-center gap-4">
-              <div className={`p-3 rounded-xl bg-gradient-to-br ${link.gradient} text-white shrink-0 group-hover:scale-110 transition-transform duration-300`}>
-                <link.icon className="h-6 w-6" />
+      {/* Features Strip */}
+      <div className="px-6 md:px-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {features.map((f) => (
+            <div key={f.title} className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 border">
+              <div className="p-2 rounded-lg bg-lawfirm-primary/10 shrink-0">
+                <f.icon className="h-5 w-5 text-lawfirm-primary" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-base">{link.label}</p>
-                <p className="text-sm text-muted-foreground">{link.description}</p>
+              <div>
+                <p className="font-semibold text-sm">{f.title}</p>
+                <p className="text-xs text-muted-foreground">{f.desc}</p>
               </div>
-              <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 shrink-0" />
-            </CardContent>
-          </Card>
-        ))}
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Contact Info */}
-      <Card className="border-2 overflow-hidden">
-        <CardContent className="p-0">
-          <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
-            {/* Left: Brand */}
-            <div className="p-8 flex flex-col justify-center">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2.5 rounded-xl bg-lawfirm-primary">
-                  <Scale className="h-7 w-7 text-white" />
+      {/* Quick Access Grid */}
+      <div className="px-6 md:px-8">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-display font-bold">Acceso rápido</h3>
+          <Badge variant="outline" className="text-xs">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            {lawfirm?.is_active ? 'Despacho activo' : 'Despacho inactivo'}
+          </Badge>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {quickLinks.map((link) => (
+            <Card
+              key={link.label}
+              className="group cursor-pointer hover:shadow-lg transition-all duration-300 border hover:border-lawfirm-primary/30 overflow-hidden"
+              onClick={() => navigate(link.href)}
+            >
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${link.color} text-white shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                  <link.icon className="h-6 w-6" />
                 </div>
-                <div>
-                  <h3 className="text-2xl font-display font-bold">Asesor.Legal</h3>
-                  <span className="text-lawfirm-primary font-medium text-sm">Powered by Lexcore™</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold">{link.label}</p>
+                  <p className="text-sm text-muted-foreground">{link.description}</p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 shrink-0" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Contact + Brand Section */}
+      <div className="px-6 md:px-8 pb-8">
+        <Card className="overflow-hidden border-2">
+          <CardContent className="p-0">
+            <div className="grid md:grid-cols-5">
+              {/* Left: Brand (3 cols) */}
+              <div className="md:col-span-3 p-8 md:p-10 bg-gradient-to-br from-muted/30 to-muted/10">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-3 rounded-xl bg-lawfirm-primary shadow-lg shadow-lawfirm-primary/20">
+                    <Scale className="h-8 w-8 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-display font-bold">Asesor.Legal</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lawfirm-primary font-medium text-sm">Powered by Lexcore™</span>
+                      <div className="flex gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-muted-foreground leading-relaxed mb-6 max-w-md">
+                  Plataforma líder en captación y distribución inteligente de casos jurídicos. 
+                  Tecnología de IA aplicada para conectar clientes con los mejores despachos de España.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['Inteligencia Artificial', 'Scoring Legal', 'Marketplace', 'CRM Jurídico'].map(tag => (
+                    <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                  ))}
                 </div>
               </div>
-              <p className="text-muted-foreground leading-relaxed">
-                Plataforma líder en captación y distribución inteligente de casos jurídicos. 
-                Tecnología de IA aplicada para conectar clientes con los mejores despachos de España.
-              </p>
-            </div>
 
-            {/* Right: Contact Details */}
-            <div className="p-8 space-y-5">
-              <h4 className="font-semibold text-lg mb-4">Datos de contacto</h4>
-              <a href="tel:+34668510087" className="flex items-center gap-4 text-sm group hover:text-lawfirm-primary transition-colors">
-                <div className="p-2 rounded-lg bg-muted group-hover:bg-lawfirm-primary/10 transition-colors">
-                  <Phone className="h-4 w-4 text-lawfirm-primary" />
+              {/* Right: Contact (2 cols) */}
+              <div className="md:col-span-2 p-8 md:p-10 border-t md:border-t-0 md:border-l space-y-6">
+                <h4 className="font-semibold text-lg">Datos de contacto</h4>
+                <div className="space-y-4">
+                  <a href="tel:+34668510087" className="flex items-center gap-4 group hover:text-lawfirm-primary transition-colors">
+                    <div className="p-2.5 rounded-lg bg-lawfirm-primary/10 group-hover:bg-lawfirm-primary/20 transition-colors">
+                      <Phone className="h-5 w-5 text-lawfirm-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Teléfono</p>
+                      <p className="font-semibold">668 51 00 87</p>
+                    </div>
+                  </a>
+                  <a href="mailto:info@asesor.legal" className="flex items-center gap-4 group hover:text-lawfirm-primary transition-colors">
+                    <div className="p-2.5 rounded-lg bg-lawfirm-primary/10 group-hover:bg-lawfirm-primary/20 transition-colors">
+                      <Mail className="h-5 w-5 text-lawfirm-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="font-semibold">info@asesor.legal</p>
+                    </div>
+                  </a>
+                  <a href="https://www.asesor.legal" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 group hover:text-lawfirm-primary transition-colors">
+                    <div className="p-2.5 rounded-lg bg-lawfirm-primary/10 group-hover:bg-lawfirm-primary/20 transition-colors">
+                      <Globe className="h-5 w-5 text-lawfirm-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Web</p>
+                      <p className="font-semibold">www.Asesor.Legal</p>
+                    </div>
+                  </a>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Teléfono</p>
-                  <p className="font-medium">668 51 00 87</p>
-                </div>
-              </a>
-              <a href="mailto:info@asesor.legal" className="flex items-center gap-4 text-sm group hover:text-lawfirm-primary transition-colors">
-                <div className="p-2 rounded-lg bg-muted group-hover:bg-lawfirm-primary/10 transition-colors">
-                  <Mail className="h-4 w-4 text-lawfirm-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="font-medium">info@asesor.legal</p>
-                </div>
-              </a>
-              <a href="https://www.asesor.legal" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 text-sm group hover:text-lawfirm-primary transition-colors">
-                <div className="p-2 rounded-lg bg-muted group-hover:bg-lawfirm-primary/10 transition-colors">
-                  <Globe className="h-4 w-4 text-lawfirm-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Web</p>
-                  <p className="font-medium">www.Asesor.Legal</p>
-                </div>
-              </a>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
