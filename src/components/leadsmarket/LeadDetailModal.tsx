@@ -52,6 +52,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     ? (city ? `${province} (${city})` : province)
     : (city || 'Sin ubicación');
   const isUrgent = fields.urgencia_aplica === true;
+  const cuantia = cleanValue(fields.cuantia_aproximada) || cleanValue(fields.cuantia) || cleanValue(fields.cuantia_texto);
   const chatwootAlias = fields._contact_alias as string || null;
   const conversationId = lead.conversation_id;
   const formattedDate = lead.created_at 
