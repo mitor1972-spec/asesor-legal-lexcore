@@ -166,6 +166,13 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
                   <span>Complejidad: {complejidad}</span>
                 </div>
               )}
+              {lead.commission_available && (
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs">
+                    Comisionable ({lead.commission_percent || 20}%)
+                  </Badge>
+                </div>
+              )}
             </div>
           </div>
 
