@@ -169,6 +169,10 @@ export default function LawfirmDashboard() {
 
   const handleCheckout = async (selectedIds: string[]) => {
     if (selectedIds.length === 0 || !lawfirmId) return;
+    if (!isImpersonating && !isProfileComplete) {
+      setShowProfileGate(true);
+      return;
+    }
     setIsCheckingOut(true);
     let successCount = 0;
     let errorCount = 0;
