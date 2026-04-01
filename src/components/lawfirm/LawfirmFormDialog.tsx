@@ -136,7 +136,7 @@ export function LawfirmFormDialog({ open, onOpenChange, lawfirmId }: LawfirmForm
     }
   }, [existingLawfirm, lawfirmId]);
 
-  const handleInputChange = (field: string, value: string | number | boolean) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
