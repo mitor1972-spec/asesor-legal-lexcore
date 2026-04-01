@@ -115,7 +115,8 @@ export default function LeadsMarket() {
           lexcore_runs(
             vj_json,
             raw_scores_json,
-            llm_response_json
+            llm_response_json,
+            computed_at
           )
         `)
         .is('archived_at', null)
