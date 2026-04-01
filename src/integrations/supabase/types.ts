@@ -841,6 +841,11 @@ export type Database = {
           cif: string | null
           city: string | null
           commercial_notes: string | null
+          commission_enabled: boolean | null
+          commission_global_percent: number | null
+          commission_progressive_enabled: boolean | null
+          commission_progressive_tiers: Json | null
+          commission_weekly_limit: number | null
           contact_email: string | null
           contact_person: string | null
           contact_phone: string | null
@@ -890,6 +895,11 @@ export type Database = {
           cif?: string | null
           city?: string | null
           commercial_notes?: string | null
+          commission_enabled?: boolean | null
+          commission_global_percent?: number | null
+          commission_progressive_enabled?: boolean | null
+          commission_progressive_tiers?: Json | null
+          commission_weekly_limit?: number | null
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
@@ -939,6 +949,11 @@ export type Database = {
           cif?: string | null
           city?: string | null
           commercial_notes?: string | null
+          commission_enabled?: boolean | null
+          commission_global_percent?: number | null
+          commission_progressive_enabled?: boolean | null
+          commission_progressive_tiers?: Json | null
+          commission_weekly_limit?: number | null
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
@@ -981,6 +996,7 @@ export type Database = {
           branch_id: string | null
           claimed_amount: number | null
           client_fee: number | null
+          commission_origin: string | null
           commission_percent: number | null
           contacted_at: string | null
           fee_accepted_at: string | null
@@ -1011,6 +1027,7 @@ export type Database = {
           branch_id?: string | null
           claimed_amount?: number | null
           client_fee?: number | null
+          commission_origin?: string | null
           commission_percent?: number | null
           contacted_at?: string | null
           fee_accepted_at?: string | null
@@ -1043,6 +1060,7 @@ export type Database = {
           branch_id?: string | null
           claimed_amount?: number | null
           client_fee?: number | null
+          commission_origin?: string | null
           commission_percent?: number | null
           contacted_at?: string | null
           fee_accepted_at?: string | null
@@ -2177,6 +2195,10 @@ export type Database = {
       is_lawfirm_admin_of: {
         Args: { _lawfirm_id: string; _user_id: string }
         Returns: boolean
+      }
+      resolve_commission_origin: {
+        Args: { _lawfirm_id: string; _specialty_id: string }
+        Returns: string
       }
       resolve_commission_percent: {
         Args: { _lawfirm_id: string; _specialty_id: string }
