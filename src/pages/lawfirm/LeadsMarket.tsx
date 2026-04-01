@@ -12,6 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { toast } from 'sonner';
 import { ShoppingCart, Wallet, Filter, LayoutGrid, List, ArrowUpDown, RotateCcw, Search, Zap, Percent, TrendingUp, Euro } from 'lucide-react';
 import { LEGAL_AREAS, PROVINCES } from '@/lib/constants';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { LeadMarketCard } from '@/components/leadsmarket/LeadMarketCard';
 import { LeadMarketListItem } from '@/components/leadsmarket/LeadMarketListItem';
 import { LeadDetailModal } from '@/components/leadsmarket/LeadDetailModal';
@@ -31,16 +32,20 @@ export default function LeadsMarket() {
   const [showProfileGate, setShowProfileGate] = useState(false);
 
   // Draft filter state (not applied until user clicks)
-  const [draftArea, setDraftArea] = useState<string>('all');
-  const [draftProvince, setDraftProvince] = useState<string>('all');
+  const [draftAreas, setDraftAreas] = useState<string[]>([]);
+  const [draftProvinces, setDraftProvinces] = useState<string[]>([]);
   const [draftMinScore, setDraftMinScore] = useState<string>('');
   const [draftSortBy, setDraftSortBy] = useState<string>('date_desc');
+  const [draftMinPrice, setDraftMinPrice] = useState<string>('');
+  const [draftMaxPrice, setDraftMaxPrice] = useState<string>('');
   
   // Applied filter state
-  const [areaFilter, setAreaFilter] = useState<string>('all');
-  const [provinceFilter, setProvinceFilter] = useState<string>('all');
+  const [areaFilter, setAreaFilter] = useState<string[]>([]);
+  const [provinceFilter, setProvinceFilter] = useState<string[]>([]);
   const [minScore, setMinScore] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('date_desc');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
   
   // Quick filter state
   const [quickFilter, setQuickFilter] = useState<string | null>(null);
@@ -54,23 +59,29 @@ export default function LeadsMarket() {
 
   // Apply filters
   const handleApplyFilters = () => {
-    setAreaFilter(draftArea);
-    setProvinceFilter(draftProvince);
+    setAreaFilter([...draftAreas]);
+    setProvinceFilter([...draftProvinces]);
     setMinScore(draftMinScore);
     setSortBy(draftSortBy);
+    setMinPrice(draftMinPrice);
+    setMaxPrice(draftMaxPrice);
     setQuickFilter(null);
   };
 
   // Clear filters
   const handleClearFilters = () => {
-    setDraftArea('all');
-    setDraftProvince('all');
+    setDraftAreas([]);
+    setDraftProvinces([]);
     setDraftMinScore('');
     setDraftSortBy('date_desc');
-    setAreaFilter('all');
-    setProvinceFilter('all');
+    setDraftMinPrice('');
+    setDraftMaxPrice('');
+    setAreaFilter([]);
+    setProvinceFilter([]);
     setMinScore('');
     setSortBy('date_desc');
+    setMinPrice('');
+    setMaxPrice('');
     setQuickFilter(null);
   };
 
@@ -209,20 +220,28 @@ export default function LeadsMarket() {
       filtered = filtered.filter(l => (l.marketplace_price || 0) >= 30);
     }
 
-    if (areaFilter !== 'all') {
+    if (areaFilter.length > 0) {
       filtered = filtered.filter(l => {
         const fields = l.structured_fields as any;
-        return fields?.area_legal === areaFilter || fields?.legal_area === areaFilter;
+        const area = fields?.area_legal || fields?.legal_area || '';
+        return areaFilter.includes(area);
       });
     }
-    if (provinceFilter !== 'all') {
+    if (provinceFilter.length > 0) {
       filtered = filtered.filter(l => {
         const fields = l.structured_fields as any;
-        return fields?.provincia === provinceFilter || fields?.province === provinceFilter;
+        const prov = fields?.provincia || fields?.province || '';
+        return provinceFilter.includes(prov);
       });
     }
     if (minScore && !isNaN(parseInt(minScore))) {
       filtered = filtered.filter(l => (l.score_final || 0) >= parseInt(minScore));
+    }
+    if (minPrice && !isNaN(parseFloat(minPrice))) {
+      filtered = filtered.filter(l => (l.marketplace_price || 0) >= parseFloat(minPrice));
+    }
+    if (maxPrice && !isNaN(parseFloat(maxPrice))) {
+      filtered = filtered.filter(l => (l.marketplace_price || 0) <= parseFloat(maxPrice));
     }
 
     // Sort
@@ -241,7 +260,7 @@ export default function LeadsMarket() {
     }
 
     return filtered;
-  }, [rawLeads, areaFilter, provinceFilter, minScore, sortBy, quickFilter]);
+  }, [rawLeads, areaFilter, provinceFilter, minScore, sortBy, quickFilter, minPrice, maxPrice]);
 
   const balance = lawfirm?.marketplace_balance || 0;
 
@@ -405,29 +424,23 @@ export default function LeadsMarket() {
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
             
-            <Select value={draftArea} onValueChange={setDraftArea}>
-              <SelectTrigger className="w-[160px] h-8 text-xs">
-                <SelectValue placeholder="Área legal" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las áreas</SelectItem>
-                {LEGAL_AREAS.map(area => (
-                  <SelectItem key={area} value={area}>{area}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <MultiSelect
+              options={LEGAL_AREAS}
+              selected={draftAreas}
+              onChange={setDraftAreas}
+              placeholder="Áreas legales"
+              searchPlaceholder="Buscar área..."
+              className="w-[170px] h-8 text-xs"
+            />
 
-            <Select value={draftProvince} onValueChange={setDraftProvince}>
-              <SelectTrigger className="w-[160px] h-8 text-xs">
-                <SelectValue placeholder="Provincia" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                {PROVINCES.map(prov => (
-                  <SelectItem key={prov} value={prov}>{prov}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <MultiSelect
+              options={PROVINCES}
+              selected={draftProvinces}
+              onChange={setDraftProvinces}
+              placeholder="Provincias"
+              searchPlaceholder="Buscar provincia..."
+              className="w-[170px] h-8 text-xs"
+            />
 
             <Input
               type="number"
@@ -437,6 +450,23 @@ export default function LeadsMarket() {
               min={0}
               max={100}
               className="w-[90px] h-8 text-xs"
+            />
+
+            <Input
+              type="number"
+              placeholder="€ mín."
+              value={draftMinPrice}
+              onChange={(e) => setDraftMinPrice(e.target.value)}
+              min={0}
+              className="w-[80px] h-8 text-xs"
+            />
+            <Input
+              type="number"
+              placeholder="€ máx."
+              value={draftMaxPrice}
+              onChange={(e) => setDraftMaxPrice(e.target.value)}
+              min={0}
+              className="w-[80px] h-8 text-xs"
             />
 
             <Select value={draftSortBy} onValueChange={setDraftSortBy}>
