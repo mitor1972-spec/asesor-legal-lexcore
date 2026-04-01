@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Eye, MapPin, Scale, Zap, Radar, ArrowRight, Euro } from 'lucide-react';
+import { Sparkles, Eye, MapPin, Scale, Zap, Radar, ArrowRight, Euro, ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { MarketplaceLead } from '@/types/marketplace';
 import { redactContactFromText } from '@/lib/contactSanitizer';
@@ -11,9 +11,10 @@ interface TopOpportunitiesCardProps {
   balance: number;
   onViewDetails: (lead: MarketplaceLead) => void;
   onPurchase: (lead: MarketplaceLead) => void;
+  isInCart?: (id: string) => boolean;
 }
 
-export function TopOpportunitiesCard({ leads, balance, onViewDetails }: TopOpportunitiesCardProps) {
+export function TopOpportunitiesCard({ leads, balance, onViewDetails, onPurchase, isInCart }: TopOpportunitiesCardProps) {
   // Filter: urgent OR score >= 60, sort urgent first then by score, max 6
   const relevantLeads = leads
     .filter(lead => {
