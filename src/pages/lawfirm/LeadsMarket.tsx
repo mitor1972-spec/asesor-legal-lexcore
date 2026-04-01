@@ -16,6 +16,8 @@ import { LeadMarketCard } from '@/components/leadsmarket/LeadMarketCard';
 import { LeadMarketListItem } from '@/components/leadsmarket/LeadMarketListItem';
 import { LeadDetailModal } from '@/components/leadsmarket/LeadDetailModal';
 import { ShoppingCart as ShoppingCartPanel, CartButton } from '@/components/leadsmarket/ShoppingCart';
+import { ProfileGateDialog } from '@/components/lawfirm/ProfileGateDialog';
+import { useLawfirmProfileGate } from '@/hooks/useLawfirmProfileGate';
 import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
 
 export default function LeadsMarket() {
