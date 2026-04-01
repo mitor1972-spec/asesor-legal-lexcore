@@ -359,14 +359,14 @@ export default function LawfirmCommission() {
         </CardContent>
       </Card>
 
-      {/* Available commission specialties */}
+      {/* Available commission specialties — compact grid */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Scale className="h-5 w-5 text-lawfirm-primary" />
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Scale className="h-4 w-4 text-lawfirm-primary" />
             Especialidades disponibles a comisión
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs">
             Solo los leads de estas especialidades permiten adquisición en modelo comisión
           </CardDescription>
         </CardHeader>
@@ -374,21 +374,23 @@ export default function LawfirmCommission() {
           {!commissionSpecialties || commissionSpecialties.length === 0 ? (
             <p className="text-muted-foreground text-sm">No hay especialidades comisionables configuradas actualmente.</p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {commissionSpecialties.map((spec) => (
-                <div
-                  key={spec.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Scale className="h-5 w-5 text-lawfirm-primary" />
-                    <span className="font-medium">{spec.name}</span>
+            <div className="max-h-[220px] overflow-y-auto">
+              <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                {commissionSpecialties.map((spec) => (
+                  <div
+                    key={spec.id}
+                    className="flex items-center justify-between px-2.5 py-1.5 rounded border bg-card hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Scale className="h-3.5 w-3.5 text-lawfirm-primary flex-shrink-0" />
+                      <span className="text-sm font-medium truncate">{spec.name}</span>
+                    </div>
+                    <Badge variant="secondary" className="bg-green-500/10 text-green-700 border-green-500/30 text-xs px-1.5 py-0 shrink-0">
+                      {spec.default_commission_percent ?? 20}% comisión
+                    </Badge>
                   </div>
-                  <Badge variant="secondary" className="bg-green-500/10 text-green-700 border-green-500/30">
-                    {spec.default_commission_percent ?? 20}% comisión
-                  </Badge>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </CardContent>
