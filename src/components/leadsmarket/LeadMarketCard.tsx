@@ -99,7 +99,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
   const redactedSummary = redactContactFromText(lead.marketplace_summary, fields);
 
   return (
-    <Card className={`overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col ${isUrgent ? 'border-red-500 shadow-red-500/20' : ''}`}>
+    <Card className={`overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col ${isUrgent ? 'border-red-500 shadow-red-500/20' : price >= 30 ? 'border-green-500/30 bg-green-500/[0.02]' : ''}`}>
       {/* Header with Score + Price */}
       <div className={`flex items-center justify-between p-4 border-b ${isUrgent ? 'bg-red-500/5' : 'bg-muted/40'}`}>
         <div className="flex flex-col gap-1 flex-1 min-w-0">
@@ -265,7 +265,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
               className="gap-1 cursor-pointer border-green-500/50 text-green-700 hover:bg-green-500/10 hover:text-green-800"
             >
               <Percent className="h-4 w-4" />
-              Comisión
+              Adquirir a comisión
             </Button>
           )}
           <Button 

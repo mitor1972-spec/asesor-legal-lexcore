@@ -58,7 +58,7 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
   );
 
   return (
-    <Card className="hover:shadow-md transition-all">
+    <Card className={`hover:shadow-md transition-all ${price >= 30 ? 'border-green-500/30 bg-green-500/[0.02]' : ''}`}>
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
           {/* Score thermometer */}
@@ -161,7 +161,8 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
                   className="cursor-pointer border-green-500/50 text-green-700 hover:bg-green-500/10"
                   title="Adquirir a comisión"
                 >
-                  <Percent className="h-4 w-4" />
+                  <Percent className="h-4 w-4 mr-1" />
+                  Comisión
                 </Button>
               )}
               <Button 

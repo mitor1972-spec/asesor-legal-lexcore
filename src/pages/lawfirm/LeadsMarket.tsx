@@ -177,12 +177,13 @@ export default function LeadsMarket() {
 
   // Quick filter counts
   const quickFilterCounts = useMemo(() => {
-    if (!rawLeads) return { urgent: 0, commission: 0, highScore: 0, highPrice: 0 };
+    if (!rawLeads) return { total: 0, urgent: 0, commission: 0, highScore: 0, highPrice: 0 };
     return {
+      total: rawLeads.length,
       urgent: rawLeads.filter(l => l.structured_fields?.urgencia_aplica === true).length,
       commission: rawLeads.filter(l => l.commission_available).length,
       highScore: rawLeads.filter(l => l.score_final > 60).length,
-      highPrice: rawLeads.filter(l => (l.marketplace_price || 0) > 30).length,
+      highPrice: rawLeads.filter(l => (l.marketplace_price || 0) >= 30).length,
     };
   }, [rawLeads]);
 
@@ -199,7 +200,7 @@ export default function LeadsMarket() {
     } else if (quickFilter === 'highScore') {
       filtered = filtered.filter(l => l.score_final > 60);
     } else if (quickFilter === 'highPrice') {
-      filtered = filtered.filter(l => (l.marketplace_price || 0) > 30);
+      filtered = filtered.filter(l => (l.marketplace_price || 0) >= 30);
     }
 
     if (areaFilter !== 'all') {
@@ -446,7 +447,24 @@ export default function LeadsMarket() {
       </Card>
 
       {/* Quick Filter Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <button
+          onClick={() => setQuickFilter(null)}
+          className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer text-left ${
+            quickFilter === null 
+              ? 'bg-primary/10 border-primary/40 shadow-sm' 
+              : 'bg-card hover:bg-muted/50 border-border'
+          }`}
+        >
+          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <ShoppingCart className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Total casos</p>
+            <p className="text-lg font-bold text-primary">{quickFilterCounts.total}</p>
+          </div>
+        </button>
+
         <button
           onClick={() => handleQuickFilter('urgent')}
           className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer text-left ${
@@ -510,7 +528,7 @@ export default function LeadsMarket() {
             <Euro className="h-4 w-4 text-amber-600" />
           </div>
           <div>
-            <p className="text-sm font-medium">Precio &gt; 30€</p>
+            <p className="text-sm font-medium">Precio ≥ 30€</p>
             <p className="text-lg font-bold text-amber-600">{quickFilterCounts.highPrice}</p>
           </div>
         </button>
