@@ -622,6 +622,11 @@ export default function LeadsMarket() {
         isInCart={selectedLead ? isInCart(selectedLead.id) : false}
         canAfford={selectedLead ? balance >= selectedLead.marketplace_price : false}
       />
+      <ProfileGateDialog 
+        open={showProfileGate} 
+        onClose={() => setShowProfileGate(false)} 
+        missingFields={missingFields} 
+      />
     </div>
   );
 }
