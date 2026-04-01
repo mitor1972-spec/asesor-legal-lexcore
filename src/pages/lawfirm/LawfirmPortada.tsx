@@ -249,7 +249,7 @@ export default function LawfirmPortada() {
                     <Badge
                       key={tag.label}
                       variant="secondary"
-                      className="text-xs cursor-pointer hover:bg-lawfirm-primary hover:text-white transition-colors"
+                      className="text-xs cursor-pointer hover:bg-blue-700 hover:text-white transition-colors font-medium"
                       onClick={() => navigate(tag.href)}
                     >
                       {tag.label}
