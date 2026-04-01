@@ -47,6 +47,10 @@ export default function LawfirmDashboard() {
   const { data: cases = [], isLoading } = useLawfirmCases();
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
   
+  // Profile gate
+  const { isProfileComplete, missingFields } = useLawfirmProfileGate();
+  const [showProfileGate, setShowProfileGate] = useState(false);
+
   const [selectedLead, setSelectedLead] = useState<MarketplaceLead | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
