@@ -22,6 +22,8 @@ import { LeadDetailModal } from '@/components/leadsmarket/LeadDetailModal';
 import { ShoppingCart as ShoppingCartPanel, CartButton } from '@/components/leadsmarket/ShoppingCart';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { ProfileGateDialog } from '@/components/lawfirm/ProfileGateDialog';
+import { useLawfirmProfileGate } from '@/hooks/useLawfirmProfileGate';
 import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
 
 const statusLabels: Record<string, string> = {
