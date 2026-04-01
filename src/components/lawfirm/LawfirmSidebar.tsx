@@ -42,7 +42,6 @@ interface LawfirmSidebarProps {
 }
 
 const mainNavigation = [
-  { name: 'Portada', href: '/despacho/portada', icon: Scale },
   { name: 'Dashboard', href: '/despacho/dashboard', icon: LayoutDashboard },
   { name: 'LeadMarket', href: '/despacho/leadsmarket', icon: ShoppingCart, hasBadge: true },
   { name: 'Casos a Comisión', href: '/despacho/comision', icon: Percent },

@@ -89,7 +89,7 @@ export default function LawfirmPortada() {
 
               <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight">
                 Bienvenido al mejor<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-cyan-200">
                   marketplace de casos jurídicos
                 </span>
                 <br />de España

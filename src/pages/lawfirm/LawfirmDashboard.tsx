@@ -226,15 +226,6 @@ export default function LawfirmDashboard() {
           <p className="text-muted-foreground">{lawfirm?.name || 'Tu despacho'} — Resumen ejecutivo</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <Card className="bg-gradient-to-r from-lawfirm-primary/10 to-lawfirm-primary/5 border-lawfirm-primary/20">
-            <CardContent className="py-3 px-4 flex items-center gap-3">
-              <Wallet className="h-5 w-5 text-lawfirm-primary" />
-              <div>
-                <p className="text-xs text-muted-foreground">Crédito disponible</p>
-                <p className="text-lg font-bold text-lawfirm-primary">{balance.toFixed(2)}€</p>
-              </div>
-            </CardContent>
-          </Card>
           <CartButton 
             itemCount={cartItems.length} 
             onClick={() => setShowCart(true)} 
