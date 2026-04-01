@@ -61,7 +61,7 @@ const adminNavigation = [
 
 const marketingNavigation = [
   { name: 'Directorio', href: '/despacho/publicidad', icon: Globe },
-  { name: 'Asistente Virtual', href: '/despacho/publicidad?tab=amara', icon: Bot },
+  { name: 'Asistente Virtual', href: '/despacho/anuncios', icon: Bot },
   { name: 'Newsletter', href: '/despacho/publicidad?tab=newsletter', icon: Mail },
 ];
 
