@@ -1857,6 +1857,7 @@ export type Database = {
       }
       master_specialties: {
         Row: {
+          allows_override: boolean
           commission_allowed: boolean
           created_at: string
           default_commission_percent: number | null
@@ -1866,10 +1867,13 @@ export type Database = {
           is_commercial_vertical: boolean
           is_star: boolean
           name: string
+          sort_order: number
           suggested_fixed_price: number | null
           updated_at: string
+          visible_marketplace: boolean
         }
         Insert: {
+          allows_override?: boolean
           commission_allowed?: boolean
           created_at?: string
           default_commission_percent?: number | null
@@ -1879,10 +1883,13 @@ export type Database = {
           is_commercial_vertical?: boolean
           is_star?: boolean
           name: string
+          sort_order?: number
           suggested_fixed_price?: number | null
           updated_at?: string
+          visible_marketplace?: boolean
         }
         Update: {
+          allows_override?: boolean
           commission_allowed?: boolean
           created_at?: string
           default_commission_percent?: number | null
@@ -1892,8 +1899,10 @@ export type Database = {
           is_commercial_vertical?: boolean
           is_star?: boolean
           name?: string
+          sort_order?: number
           suggested_fixed_price?: number | null
           updated_at?: string
+          visible_marketplace?: boolean
         }
         Relationships: []
       }
