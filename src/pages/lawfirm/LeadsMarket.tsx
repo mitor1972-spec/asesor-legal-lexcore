@@ -382,8 +382,8 @@ export default function LeadsMarket() {
             <ShoppingCart className="h-6 w-6 text-lawfirm-primary" />
             LeadsMarket
           </h1>
-          <p className="text-muted-foreground">
-            Compra leads antes de que sean asignados a otros despachos
+          <p className="text-muted-foreground text-sm">
+            Leads exclusivos · Solo un despacho por caso · Garantía de calidad
           </p>
         </div>
         
