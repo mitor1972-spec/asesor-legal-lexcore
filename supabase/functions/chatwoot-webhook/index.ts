@@ -436,8 +436,7 @@ serve(async (req) => {
       }
       
       return new Response(JSON.stringify({ 
-        status: "ignored", 
-        reason 
+        status: "ignored"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
