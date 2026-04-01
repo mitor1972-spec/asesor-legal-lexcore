@@ -1288,6 +1288,86 @@ export type Database = {
           },
         ]
       }
+      lead_claims: {
+        Row: {
+          admin_notes: string | null
+          assignment_id: string
+          claim_reason: string
+          created_at: string
+          evidence_path: string | null
+          id: string
+          lawfirm_id: string
+          lead_id: string
+          reason_detail: string | null
+          refund_amount: number | null
+          refund_type: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          assignment_id: string
+          claim_reason: string
+          created_at?: string
+          evidence_path?: string | null
+          id?: string
+          lawfirm_id: string
+          lead_id: string
+          reason_detail?: string | null
+          refund_amount?: number | null
+          refund_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          assignment_id?: string
+          claim_reason?: string
+          created_at?: string
+          evidence_path?: string | null
+          id?: string
+          lawfirm_id?: string
+          lead_id?: string
+          reason_detail?: string | null
+          refund_amount?: number | null
+          refund_type?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_claims_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "lead_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_claims_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_claims_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_claims_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_history: {
         Row: {
           action: string
