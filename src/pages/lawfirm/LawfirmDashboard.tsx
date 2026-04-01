@@ -1,20 +1,26 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useLawfirmCases } from '@/hooks/useLawfirmCases';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { useLawfirmProfile } from '@/hooks/useLawfirmProfile';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { LeadReference } from '@/components/common/LeadReference';
-import { Wallet } from 'lucide-react';
+import { 
+  Wallet, ShoppingCart as ShoppingCartIcon, Briefcase, CreditCard,
+  TrendingUp, ArrowRight
+} from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { CasesByAreaWidget, CasesByProvinceWidget } from '@/components/lawfirm/DashboardWidgets';
 import { TopOpportunitiesCard } from '@/components/lawfirm/TopOpportunitiesCard';
 import { ImmediateActionsCard } from '@/components/lawfirm/ImmediateActionsCard';
+import { RecentActivityCard } from '@/components/lawfirm/RecentActivityCard';
 import { AdvancedKPIs } from '@/components/lawfirm/AdvancedKPIs';
 import { LeadDetailModal } from '@/components/leadsmarket/LeadDetailModal';
 import { ShoppingCart as ShoppingCartPanel, CartButton } from '@/components/leadsmarket/ShoppingCart';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
 
@@ -115,7 +121,7 @@ export default function LawfirmDashboard() {
 
   const balance = lawfirm?.marketplace_balance || 0;
 
-  // Cart: Add to cart
+  // Cart handlers
   const handleAddToCart = (lead: MarketplaceLead) => {
     if (cartItems.some(item => item.id === lead.id)) {
       toast.info('Este lead ya está en tu carrito');
@@ -136,25 +142,21 @@ export default function LawfirmDashboard() {
     toast.success('Lead añadido al carrito');
   };
 
-  // Cart: Toggle commission
   const handleToggleCommission = (id: string, isCommission: boolean) => {
     setCartItems(prev => prev.map(item =>
       item.id === id ? { ...item, isCommission } : item
     ));
   };
 
-  // Cart: Remove
   const handleRemoveFromCart = (id: string) => {
     setCartItems(prev => prev.filter(item => item.id !== id));
   };
 
-  // Cart: Clear
   const handleClearCart = () => {
     setCartItems([]);
     toast.info('Carrito vaciado');
   };
 
-  // Cart: Checkout
   const handleCheckout = async (selectedIds: string[]) => {
     if (selectedIds.length === 0 || !lawfirmId) return;
     setIsCheckingOut(true);
@@ -183,7 +185,7 @@ export default function LawfirmDashboard() {
 
     setIsCheckingOut(false);
     if (successCount > 0) {
-      toast.success(`¡${successCount} lead${successCount > 1 ? 's' : ''} comprado${successCount > 1 ? 's' : ''}! Ya tienes acceso completo en "Mis Casos"`);
+      toast.success(`¡${successCount} lead${successCount > 1 ? 's' : ''} comprado${successCount > 1 ? 's' : ''}!`);
       setCartItems(prev => prev.filter(item => !selectedIds.includes(item.id)));
       queryClient.invalidateQueries({ queryKey: ['dashboard-opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['marketplace-leads'] });
@@ -203,11 +205,11 @@ export default function LawfirmDashboard() {
     setShowDetailModal(true);
   };
 
+  // Chart data
   const statusCounts = cases.reduce((acc, c) => { acc[c.firm_status] = (acc[c.firm_status] || 0) + 1; return acc; }, {} as Record<string, number>);
   const chartData = Object.entries(statusCounts)
     .filter(([status]) => ['received', 'reviewing', 'contacted', 'in_progress', 'won', 'lost'].includes(status))
     .map(([status, count]) => ({ name: statusLabels[status] || status, value: count, color: statusColors[status] }));
-  const recentCases = cases.slice(0, 5);
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-[400px]"><div className="animate-pulse text-muted-foreground">Cargando...</div></div>;
@@ -215,12 +217,15 @@ export default function LawfirmDashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header with summary stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold">¡Bienvenido, {user?.profile?.full_name?.split(' ')[0] || 'Usuario'}!</h1>
+          <h1 className="text-2xl font-display font-bold">
+            ¡Bienvenido, {user?.profile?.full_name?.split(' ')[0] || 'Usuario'}!
+          </h1>
           <p className="text-muted-foreground">{lawfirm?.name || 'Tu despacho'} — Resumen ejecutivo</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Card className="bg-gradient-to-r from-lawfirm-primary/10 to-lawfirm-primary/5 border-lawfirm-primary/20">
             <CardContent className="py-3 px-4 flex items-center gap-3">
               <Wallet className="h-5 w-5 text-lawfirm-primary" />
@@ -237,12 +242,71 @@ export default function LawfirmDashboard() {
         </div>
       </div>
 
+      {/* Quick Summary Row */}
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200/50 dark:border-blue-800/30">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <ShoppingCartIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{marketplaceLeads.length}</p>
+              <p className="text-xs text-muted-foreground">Leads disponibles</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20 border-green-200/50 dark:border-green-800/30">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-green-500/10">
+              <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{cases.length}</p>
+              <p className="text-xs text-muted-foreground">Tus casos</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-900/20 border-violet-200/50 dark:border-violet-800/30">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-violet-500/10">
+              <CreditCard className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{balance.toFixed(0)}€</p>
+              <p className="text-xs text-muted-foreground">Crédito disponible</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 border-amber-200/50 dark:border-amber-800/30">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/10">
+              <TrendingUp className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">
+                {cases.length > 0 
+                  ? Math.round((cases.filter(c => ['contacted','in_progress','won'].includes(c.firm_status)).length / cases.length) * 100)
+                  : 0}%
+              </p>
+              <p className="text-xs text-muted-foreground">Conversión</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Top Opportunities */}
       <TopOpportunitiesCard leads={marketplaceLeads} balance={balance} onViewDetails={handleViewDetails} onPurchase={handleAddToCart} isInCart={isInCart} />
+
+      {/* Advanced KPIs */}
       <AdvancedKPIs cases={cases} availableLeadsCount={marketplaceLeads.length} />
 
+      {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
+          {/* Immediate Actions (CRM) */}
           <ImmediateActionsCard cases={cases} />
+
+          {/* Status Chart */}
           {chartData.length > 0 && (
             <Card className="shadow-soft">
               <CardHeader><CardTitle className="text-lg">Casos por Estado</CardTitle></CardHeader>
@@ -263,13 +327,40 @@ export default function LawfirmDashboard() {
             </Card>
           )}
         </div>
+
+        {/* Sidebar Widgets */}
         <div className="space-y-4">
+          <RecentActivityCard cases={cases} />
           <CasesByAreaWidget cases={cases} />
           <CasesByProvinceWidget cases={cases} />
+
+          {/* Quick Navigation */}
+          <Card className="shadow-soft">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Acceso rápido</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {[
+                { label: 'Ver LeadMarket', href: '/despacho/leadsmarket' },
+                { label: 'Mis Casos', href: '/despacho/casos' },
+                { label: 'Radar', href: '/despacho/radar' },
+                { label: 'Informes', href: '/despacho/informes' },
+              ].map(link => (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors text-sm group"
+                >
+                  <span>{link.label}</span>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-lawfirm-primary transition-colors" />
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* Lead Detail Modal */}
+      {/* Modals */}
       <LeadDetailModal
         lead={selectedLead}
         open={showDetailModal}
@@ -278,8 +369,6 @@ export default function LawfirmDashboard() {
         isInCart={selectedLead ? isInCart(selectedLead.id) : false}
         canAfford={selectedLead ? balance >= selectedLead.marketplace_price : false}
       />
-
-      {/* Shopping Cart Panel */}
       <ShoppingCartPanel
         items={cartItems}
         open={showCart}
