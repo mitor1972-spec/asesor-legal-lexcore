@@ -16,6 +16,7 @@ interface PeriodSelectorProps {
 }
 
 const periodLabels: Record<DatePeriod, string> = {
+  all: 'Todo',
   today: 'Hoy',
   week: 'Esta semana',
   month: 'Este mes',

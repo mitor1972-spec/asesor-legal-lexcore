@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { startOfDay, endOfDay, subDays, startOfWeek, startOfMonth, startOfQuarter, startOfYear, subWeeks, subMonths, subQuarters, subYears } from 'date-fns';
 import { applyVisibleLeadsFilters } from '@/lib/leadsQuery';
 
-export type DatePeriod = 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
+export type DatePeriod = 'all' | 'today' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
 
 interface DateRange {
   start: Date;
@@ -18,6 +18,7 @@ export function getDateRange(period: DatePeriod, customRange?: DateRange): DateR
     case 'month': return { start: startOfMonth(now), end: endOfDay(now) };
     case 'quarter': return { start: startOfQuarter(now), end: endOfDay(now) };
     case 'year': return { start: startOfYear(now), end: endOfDay(now) };
+    case 'all': return { start: new Date('2020-01-01'), end: endOfDay(now) };
     case 'custom': return customRange || { start: startOfMonth(now), end: endOfDay(now) };
     default: return { start: startOfMonth(now), end: endOfDay(now) };
   }
@@ -31,6 +32,7 @@ export function getPreviousDateRange(period: DatePeriod, customRange?: DateRange
     case 'month': return { start: subMonths(current.start, 1), end: subMonths(current.end, 1) };
     case 'quarter': return { start: subQuarters(current.start, 1), end: subQuarters(current.end, 1) };
     case 'year': return { start: subYears(current.start, 1), end: subYears(current.end, 1) };
+    case 'all': return { start: new Date('2019-01-01'), end: new Date('2019-12-31') };
     case 'custom': {
       const diff = current.end.getTime() - current.start.getTime();
       return { start: new Date(current.start.getTime() - diff - 1), end: new Date(current.end.getTime() - diff - 1) };
