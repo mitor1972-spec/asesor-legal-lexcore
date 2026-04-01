@@ -18,7 +18,7 @@ export interface VisibleLeadsOptions {
   includeIncomplete?: boolean; // Include leads marked as _incomplete
   includeArchived?: boolean;   // Include archived leads
   includeInvalid?: boolean;    // Include leads without email/phone (for debugging only)
-  demoMode?: 'real' | 'demo';  // Always 'real' now (demo mode removed)
+  demoMode?: 'real';  // Always 'real' (demo mode removed)
   dateFrom?: Date;
   dateTo?: Date;
   status?: string;
