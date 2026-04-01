@@ -39,22 +39,14 @@ export interface Lawfirm {
 }
 
 export function useLawfirms() {
-  const { mode } = useDemoMode();
-  
   return useQuery({
-    queryKey: ['lawfirms', mode],
+    queryKey: ['lawfirms'],
     queryFn: async () => {
-      let query = supabase
+      const query = supabase
         .from('lawfirms')
         .select('*')
+        .or('is_demo.is.null,is_demo.eq.false')
         .order('name');
-
-      // Apply demo mode filter
-      if (mode === 'demo') {
-        query = query.eq('is_demo', true);
-      } else {
-        query = query.or('is_demo.is.null,is_demo.eq.false');
-      }
 
       const { data, error } = await query;
 

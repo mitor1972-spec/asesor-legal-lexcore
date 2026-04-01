@@ -95,18 +95,15 @@ export function useLead(id: string | undefined) {
  * GOLDEN RULE: Only counts leads with email OR phone (valid contact)
  */
 export function useLeadStats() {
-  const { mode } = useDemoMode();
-  
   return useQuery({
-    queryKey: ['lead-stats', mode],
+    queryKey: ['lead-stats'],
     queryFn: async () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Apply GOLDEN RULE filter: must have email OR phone
       const validContactFilter = 'structured_fields->>email.neq.,structured_fields->>telefono.neq.';
       const incompleteFilter = 'structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false';
-      const demoFilter = mode === 'demo' ? 'is_demo.eq.true' : 'is_demo.is.null,is_demo.eq.false';
+      const demoFilter = 'is_demo.is.null,is_demo.eq.false';
 
       const [totalResult, pendingResult, derivedResult, todayResult] = await Promise.all([
         supabase
