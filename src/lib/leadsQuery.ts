@@ -47,15 +47,8 @@ export function applyVisibleLeadsFilters(
   query: any,
   options: VisibleLeadsOptions = {}
 ): any {
-  // DEMO MODE FILTER: Filter by is_demo based on mode
-  // 'real' = only non-demo data (is_demo IS NULL or FALSE)
-  // 'demo' = only demo data (is_demo = TRUE)
-  if (options.demoMode === 'demo') {
-    query = query.eq('is_demo', true);
-  } else {
-    // Default to real mode - exclude demo data
-    query = query.or('is_demo.is.null,is_demo.eq.false');
-  }
+  // Always exclude demo data
+  query = query.or('is_demo.is.null,is_demo.eq.false');
 
   // CRITICAL: Always exclude discarded leads from operational views
   // Discarded leads go to Settings > Leads Descartados

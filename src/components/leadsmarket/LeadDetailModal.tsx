@@ -257,9 +257,8 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                       // Render objects properly
                       let displayValue: string;
                       if (typeof value === 'object' && value !== null) {
-                        displayValue = JSON.stringify(value);
-                        // Skip [object Object] type renders
-                        if (displayValue === '{}' || displayValue === '[]') return null;
+                        // Skip complex objects entirely in lawyer portal
+                        return null;
                       } else if (typeof value === 'boolean') {
                         displayValue = value ? 'Sí' : 'No';
                       } else {
