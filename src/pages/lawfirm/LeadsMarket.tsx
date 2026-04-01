@@ -65,18 +65,18 @@ export default function LeadsMarket() {
 
   // Fetch lawfirm balance
   const { data: lawfirm } = useQuery({
-    queryKey: ['lawfirm-balance', user?.profile?.lawfirm_id],
+    queryKey: ['lawfirm-balance', lawfirmId],
     queryFn: async () => {
-      if (!user?.profile?.lawfirm_id) return null;
+      if (!lawfirmId) return null;
       const { data, error } = await supabase
         .from('lawfirms')
         .select('id, name, marketplace_balance')
-        .eq('id', user.profile.lawfirm_id)
+        .eq('id', lawfirmId)
         .single();
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.profile?.lawfirm_id,
+    enabled: !!lawfirmId,
   });
 
   // Fetch commission areas
