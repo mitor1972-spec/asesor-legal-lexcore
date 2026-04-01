@@ -550,6 +550,51 @@ serve(async (req) => {
     })}`);
 
     // ==========================================
+    // INTENT FILTERING - Detect non-lead conversations
+    // ==========================================
+    const intentResult = detectLeadIntent(fullTranscript, userText, transcriptStats);
+    
+    console.log(`[INTENT_FILTER] ${JSON.stringify({
+      conversation_id: conversationId,
+      is_lead: intentResult.isLead,
+      confidence: intentResult.confidence,
+      reason: intentResult.reason,
+    })}`);
+    
+    // If clearly not a lead AND no existing lead, skip entirely
+    if (!intentResult.isLead && intentResult.confidence !== 'low' && !existingLead) {
+      const reason = `Intent filter: ${intentResult.reason} (confidence=${intentResult.confidence})`;
+      console.log(`[WEBHOOK_ENTRY] ACCEPTED=false REASON="${reason}"`);
+      
+      if (logData?.id) {
+        await supabase.from("webhook_logs").update({
+          result: "filtered_no_intent",
+          error_message: reason,
+          processing_time_ms: Date.now() - startTime,
+        }).eq("id", logData.id);
+      }
+      
+      await supabase.from("chatwoot_import_logs").insert({
+        chatwoot_conversation_id: conversationId,
+        event_type: eventType,
+        status: "filtered_no_intent",
+        payload_json: {
+          transcript_stats: transcriptStats,
+          intent: intentResult,
+          contact_alias: contactAlias,
+        },
+      });
+      
+      return new Response(JSON.stringify({ 
+        status: "filtered", 
+        reason: "Not a lead - informational query only",
+        intent: intentResult,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ==========================================
     // PREPARAR STRUCTURED_FIELDS (regex initial values)
     // ==========================================
     const regexEmail = extractedFromText.email || contactEmail;
@@ -563,7 +608,8 @@ serve(async (req) => {
       area_legal: legalArea,
       _contact_alias: contactAlias,
       _transcript_stats: transcriptStats,
-      _pending_ai_validation: true, // Mark for AI processing
+      _pending_ai_validation: true,
+      _intent: intentResult,
     };
 
     // ==========================================
