@@ -244,7 +244,7 @@ export default function LawfirmDashboard() {
         </div>
       </div>
 
-      <TopOpportunitiesCard leads={marketplaceLeads} balance={balance} onViewDetails={handleViewDetails} onPurchase={handleAddToCart} />
+      <TopOpportunitiesCard leads={marketplaceLeads} balance={balance} onViewDetails={handleViewDetails} onPurchase={handleAddToCart} isInCart={isInCart} />
       <AdvancedKPIs cases={cases} availableLeadsCount={marketplaceLeads.length} />
 
       <div className="grid gap-6 lg:grid-cols-3">
