@@ -627,6 +627,14 @@ ${legalHelp.estimated_complexity}
           type={resultType}
         />
       )}
+
+      {/* Claim Dialog */}
+      <ReportClaimDialog
+        open={claimDialogOpen}
+        onClose={() => setClaimDialogOpen(false)}
+        leadId={caseData.lead_id}
+        assignmentId={id!}
+      />
     </div>
   );
 }
