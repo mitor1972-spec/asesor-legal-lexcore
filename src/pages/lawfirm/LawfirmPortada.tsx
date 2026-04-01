@@ -169,48 +169,55 @@ export default function LawfirmPortada() {
       </div>
 
       {/* Marketplace Quick Stats */}
-      <div className="px-6 md:px-8 relative z-20">
+      <div className="px-6 md:px-8">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            {
-              icon: Package,
-              label: 'Total casos disponibles hoy',
-              value: stats?.marketplaceCount || 0,
-              gradient: 'from-blue-600 to-blue-800',
-              shadow: 'shadow-blue-600/20',
-            },
-            {
-              icon: AlertTriangle,
-              label: 'Casos urgentes',
-              value: stats?.urgentCount || 0,
-              gradient: 'from-amber-500 to-orange-600',
-              shadow: 'shadow-amber-500/20',
-            },
-            {
-              icon: Handshake,
-              label: 'Casos comisionables',
-              value: stats?.commissionableCount || 0,
-              gradient: 'from-emerald-500 to-emerald-700',
-              shadow: 'shadow-emerald-500/20',
-            },
-          ].map((stat) => (
-            <Card
-              key={stat.label}
-              className={`group cursor-pointer hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br ${stat.gradient} text-white ${stat.shadow} shadow-lg`}
-              onClick={() => navigate('/despacho/leadsmarket')}
-            >
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm shrink-0 group-hover:scale-110 transition-transform duration-300">
-                  <stat.icon className="h-6 w-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-3xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-white/80 font-medium">{stat.label}</p>
-                </div>
-                <ArrowRight className="h-5 w-5 text-white/50 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 shrink-0" />
-              </CardContent>
-            </Card>
-          ))}
+          <Card
+            className="group cursor-pointer border border-border/60 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+            onClick={() => navigate('/despacho/leadsmarket')}
+          >
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Package className="h-6 w-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-3xl font-bold text-foreground">{stats?.marketplaceCount || 0}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total casos disponibles hoy</p>
+              </div>
+              <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition-all duration-300 group-hover:translate-x-1 group-hover:text-foreground" />
+            </CardContent>
+          </Card>
+
+          <Card
+            className="group cursor-pointer border border-border/60 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+            onClick={() => navigate('/despacho/leadsmarket')}
+          >
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-3xl font-bold text-foreground">{stats?.urgentCount || 0}</p>
+                <p className="text-sm font-medium text-muted-foreground">Casos urgentes</p>
+              </div>
+              <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition-all duration-300 group-hover:translate-x-1 group-hover:text-foreground" />
+            </CardContent>
+          </Card>
+
+          <Card
+            className="group cursor-pointer border border-border/60 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+            onClick={() => navigate('/despacho/leadsmarket')}
+          >
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Handshake className="h-6 w-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-3xl font-bold text-foreground">{stats?.commissionableCount || 0}</p>
+                <p className="text-sm font-medium text-muted-foreground">Casos comisionables</p>
+              </div>
+              <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition-all duration-300 group-hover:translate-x-1 group-hover:text-foreground" />
+            </CardContent>
+          </Card>
         </div>
       </div>
 
