@@ -62,8 +62,24 @@ export interface DashboardMetrics {
   }[];
 }
 
-function getLeadCommercialValue(lead: { marketplace_price?: number | null; price_final?: number | null }) {
-  return lead.marketplace_price ?? lead.price_final ?? 0;
+function getLeadCommercialValue(lead: { marketplace_price?: number | null; price_final?: number | null; score_final?: number | null }) {
+  const persistedValue = [lead.marketplace_price, lead.price_final].find(
+    (value): value is number => typeof value === 'number' && value > 0
+  );
+
+  if (persistedValue !== undefined) return persistedValue;
+
+  const score = lead.score_final;
+  if (typeof score === 'number') {
+    if (score >= 80) return 75;
+    if (score >= 65) return 55;
+    if (score >= 50) return 40;
+    if (score >= 35) return 30;
+    if (score >= 20) return 20;
+    if (score > 0) return 10;
+  }
+
+  return 5;
 }
 
 export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange) {
@@ -86,7 +102,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
       const { data: currentLeads, error: leadsError } = await currentQuery;
       if (leadsError) throw leadsError;
 
-      let prevQuery = supabase.from('leads').select('id, marketplace_price, price_final, status_internal');
+      let prevQuery = supabase.from('leads').select('id, marketplace_price, price_final, score_final, status_internal');
       prevQuery = applyVisibleLeadsFilters(prevQuery, {
         demoMode: 'real',
         dateFrom: prevRange.start,
