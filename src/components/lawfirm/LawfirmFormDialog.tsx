@@ -182,6 +182,7 @@ export function LawfirmFormDialog({ open, onOpenChange, lawfirmId }: LawfirmForm
         areas_accepted: areasAccepted,
         provinces_accepted: provincesAccepted,
         status: formData.is_active ? 'active' as const : 'inactive' as const,
+        commission_progressive_tiers: formData.commission_progressive_tiers as any,
       };
 
       if (isEditing && lawfirmId) {
