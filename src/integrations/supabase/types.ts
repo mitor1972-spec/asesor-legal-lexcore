@@ -200,31 +200,49 @@ export type Database = {
       }
       branches: {
         Row: {
+          address: string | null
+          cif: string | null
+          city: string | null
           created_at: string | null
           email_derivations: string | null
           id: string
           is_demo: boolean | null
           lawfirm_id: string | null
           name: string
+          postal_code: string | null
           province: string | null
+          responsible_email: string | null
+          responsible_name: string | null
         }
         Insert: {
+          address?: string | null
+          cif?: string | null
+          city?: string | null
           created_at?: string | null
           email_derivations?: string | null
           id?: string
           is_demo?: boolean | null
           lawfirm_id?: string | null
           name: string
+          postal_code?: string | null
           province?: string | null
+          responsible_email?: string | null
+          responsible_name?: string | null
         }
         Update: {
+          address?: string | null
+          cif?: string | null
+          city?: string | null
           created_at?: string | null
           email_derivations?: string | null
           id?: string
           is_demo?: boolean | null
           lawfirm_id?: string | null
           name?: string
+          postal_code?: string | null
           province?: string | null
+          responsible_email?: string | null
+          responsible_name?: string | null
         }
         Relationships: [
           {
@@ -884,12 +902,25 @@ export type Database = {
           contact_email: string | null
           contact_person: string | null
           contact_phone: string | null
+          contact_role: string | null
           created_at: string | null
           credit_line_amount: number | null
           credit_line_enabled: boolean | null
+          credit_line_requested_at: string | null
+          credit_line_status: string | null
+          description: string | null
           discount_percent: number | null
           email_derivations: string | null
           exclusions: string[] | null
+          firm_type: string | null
+          fiscal_address: string | null
+          fiscal_city: string | null
+          fiscal_email: string | null
+          fiscal_model: string | null
+          fiscal_name: string | null
+          fiscal_postal_code: string | null
+          fiscal_province: string | null
+          has_valid_card: boolean | null
           id: string
           initial_credit: number | null
           is_active: boolean | null
@@ -938,12 +969,25 @@ export type Database = {
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
+          contact_role?: string | null
           created_at?: string | null
           credit_line_amount?: number | null
           credit_line_enabled?: boolean | null
+          credit_line_requested_at?: string | null
+          credit_line_status?: string | null
+          description?: string | null
           discount_percent?: number | null
           email_derivations?: string | null
           exclusions?: string[] | null
+          firm_type?: string | null
+          fiscal_address?: string | null
+          fiscal_city?: string | null
+          fiscal_email?: string | null
+          fiscal_model?: string | null
+          fiscal_name?: string | null
+          fiscal_postal_code?: string | null
+          fiscal_province?: string | null
+          has_valid_card?: boolean | null
           id?: string
           initial_credit?: number | null
           is_active?: boolean | null
@@ -992,12 +1036,25 @@ export type Database = {
           contact_email?: string | null
           contact_person?: string | null
           contact_phone?: string | null
+          contact_role?: string | null
           created_at?: string | null
           credit_line_amount?: number | null
           credit_line_enabled?: boolean | null
+          credit_line_requested_at?: string | null
+          credit_line_status?: string | null
+          description?: string | null
           discount_percent?: number | null
           email_derivations?: string | null
           exclusions?: string[] | null
+          firm_type?: string | null
+          fiscal_address?: string | null
+          fiscal_city?: string | null
+          fiscal_email?: string | null
+          fiscal_model?: string | null
+          fiscal_name?: string | null
+          fiscal_postal_code?: string | null
+          fiscal_province?: string | null
+          has_valid_card?: boolean | null
           id?: string
           initial_credit?: number | null
           is_active?: boolean | null
