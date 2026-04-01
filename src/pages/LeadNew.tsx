@@ -274,16 +274,16 @@ export default function LeadNew() {
 
       // Pre-assign lawfirm
       if (adminConfig.preassignedLawfirmId) {
-        const assignData: Record<string, unknown> = {
+        const assignPayload2: any = {
           lead_id: leadId,
           lawfirm_id: adminConfig.preassignedLawfirmId,
           is_commission: adminConfig.isCommissionable || adminConfig.activateCommission,
         };
         if (adminConfig.commissionPercent != null) {
-          assignData.commission_percent = adminConfig.commissionPercent;
-          assignData.commission_origin = 'admin_manual';
+          assignPayload2.commission_percent = adminConfig.commissionPercent;
+          assignPayload2.commission_origin = 'admin_manual';
         }
-        await supabase.from('lead_assignments').insert(assignData);
+        await supabase.from('lead_assignments').insert(assignPayload2);
       }
 
       setProcessStep('done');
