@@ -217,11 +217,12 @@ export function LawfirmFormDialog({ open, onOpenChange, lawfirmId }: LawfirmForm
           </div>
         ) : (
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="basic">Datos Básicos</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="basic">Datos</TabsTrigger>
               <TabsTrigger value="contact">Contacto</TabsTrigger>
-              <TabsTrigger value="areas">Áreas Legales</TabsTrigger>
+              <TabsTrigger value="areas">Áreas</TabsTrigger>
               <TabsTrigger value="provinces">Provincias</TabsTrigger>
+              <TabsTrigger value="commission">Comisiones</TabsTrigger>
             </TabsList>
 
             <ScrollArea className="h-[50vh] mt-4">
