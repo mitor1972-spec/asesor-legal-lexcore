@@ -247,6 +247,12 @@ export default function LeadsMarket() {
 
   // Add to cart (with optional commission mode)
   const handleAddToCart = (lead: MarketplaceLead, isCommission?: boolean) => {
+    // Profile gate check
+    if (!isImpersonating && !isProfileComplete) {
+      setShowProfileGate(true);
+      return;
+    }
+
     if (cartItems.some(item => item.id === lead.id)) {
       toast.info('Este lead ya está en tu carrito');
       return;
