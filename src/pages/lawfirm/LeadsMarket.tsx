@@ -26,6 +26,10 @@ export default function LeadsMarket() {
   const queryClient = useQueryClient();
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
   
+  // Profile gate
+  const { isProfileComplete, missingFields } = useLawfirmProfileGate();
+  const [showProfileGate, setShowProfileGate] = useState(false);
+
   // Draft filter state (not applied until user clicks)
   const [draftArea, setDraftArea] = useState<string>('all');
   const [draftProvince, setDraftProvince] = useState<string>('all');
