@@ -300,7 +300,32 @@ export default function LawfirmDashboard() {
       </div>
 
       {/* Top Opportunities */}
-      <TopOpportunitiesCard leads={marketplaceLeads} balance={balance} onViewDetails={handleViewDetails} onPurchase={handleAddToCart} isInCart={isInCart} />
+      <TopOpportunitiesCard
+        leads={marketplaceLeads}
+        balance={balance}
+        onViewDetails={handleViewDetails}
+        onPurchase={handleAddToCart}
+        onCommissionPurchase={(lead) => {
+          const fields = lead.structured_fields || {};
+          const legalArea = fields.legal_area || fields.area_legal || 'Sin área';
+          const commPct = commissionAreas?.[legalArea];
+          const newItem: CartItem = {
+            id: lead.id,
+            legalArea,
+            province: fields.province || fields.provincia || 'Sin provincia',
+            score: lead.score_final,
+            price: lead.marketplace_price,
+            commissionPercent: commPct,
+            isCommission: true,
+          };
+          setCartItems(prev => {
+            if (prev.some(i => i.id === lead.id)) return prev;
+            return [...prev, newItem];
+          });
+          toast.success('Lead añadido al carrito en modo comisión');
+        }}
+        isInCart={isInCart}
+      />
 
       {/* Advanced KPIs */}
       <AdvancedKPIs cases={cases} availableLeadsCount={marketplaceLeads.length} />
