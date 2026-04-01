@@ -141,24 +141,24 @@ export function SpecialtiesTab() {
           </Button>
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="max-h-[65vh]">
+          <div className="overflow-y-auto max-h-[65vh]">
             <Table>
               <TableHeader>
                 <TableRow className="text-xs">
-                  <TableHead className="w-8 px-2">#</TableHead>
-                  <TableHead className="px-2">Nombre</TableHead>
-                  <TableHead className="px-2">Áreas</TableHead>
-                  <TableHead className="text-center px-1 w-14">⭐</TableHead>
-                  <TableHead className="text-center px-1 w-14">
+                  <TableHead className="w-8 px-1 py-1">#</TableHead>
+                  <TableHead className="px-1 py-1">Nombre</TableHead>
+                  <TableHead className="px-1 py-1">Áreas</TableHead>
+                  <TableHead className="text-center px-1 py-1 w-12">⭐</TableHead>
+                  <TableHead className="text-center px-1 py-1 w-12">
                     <span title="Vertical comercial">Vert.</span>
                   </TableHead>
-                  <TableHead className="text-center px-1 w-16">Modelo</TableHead>
-                  <TableHead className="text-center px-1 w-14">% Com</TableHead>
-                  <TableHead className="text-center px-1 w-14">
+                  <TableHead className="text-center px-1 py-1 w-14">Modelo</TableHead>
+                  <TableHead className="text-center px-1 py-1 w-12">%</TableHead>
+                  <TableHead className="text-center px-1 py-1 w-12">
                     <Eye className="h-3.5 w-3.5 mx-auto" />
                   </TableHead>
-                  <TableHead className="text-center px-1 w-14">Activa</TableHead>
-                  <TableHead className="w-10 px-1" />
+                  <TableHead className="text-center px-1 py-1 w-12">Activa</TableHead>
+                  <TableHead className="w-8 px-1 py-1" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -179,17 +179,17 @@ export function SpecialtiesTab() {
                     <TableRow
                       key={s.id}
                       className={cn(
-                        'h-9 text-xs',
+                        'h-7 text-xs',
                         !s.is_active && 'opacity-40'
                       )}
                     >
-                      <TableCell className="px-2 text-muted-foreground font-mono text-[10px]">
+                      <TableCell className="px-1 py-0.5 text-muted-foreground font-mono text-[10px]">
                         {s.sort_order || '–'}
                       </TableCell>
-                      <TableCell className="px-2 font-medium text-sm max-w-[200px] truncate">
+                      <TableCell className="px-1 py-0.5 font-medium text-xs max-w-[200px] truncate">
                         {s.name}
                       </TableCell>
-                      <TableCell className="px-2">
+                      <TableCell className="px-1 py-0.5">
                         {linkedAreas.length > 0 ? (
                           <Popover>
                             <PopoverTrigger asChild>
@@ -212,7 +212,7 @@ export function SpecialtiesTab() {
                           <span className="text-muted-foreground text-[10px]">Sin áreas</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-center px-1">
+                      <TableCell className="text-center px-1 py-0.5">
                         <button
                           onClick={() => handleQuickToggle(s, 'is_star', !s.is_star)}
                           className={cn(
@@ -223,12 +223,12 @@ export function SpecialtiesTab() {
                           <Star className="h-3.5 w-3.5 mx-auto" fill={s.is_star ? 'currentColor' : 'none'} />
                         </button>
                       </TableCell>
-                      <TableCell className="text-center px-1">
+                      <TableCell className="text-center px-1 py-0.5">
                         {s.is_commercial_vertical && (
                           <Badge variant="secondary" className="text-[10px] px-1 py-0">V</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-center px-1">
+                      <TableCell className="text-center px-1 py-0.5">
                         <Badge
                           variant="outline"
                           className={cn(
@@ -241,25 +241,25 @@ export function SpecialtiesTab() {
                           {modelLabel}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-center px-1 font-mono text-[11px]">
+                      <TableCell className="text-center px-1 py-0.5 font-mono text-[11px]">
                         {s.commission_allowed ? `${s.default_commission_percent ?? 20}%` : '—'}
                       </TableCell>
-                      <TableCell className="text-center px-1">
+                      <TableCell className="text-center px-1 py-0.5">
                         <Switch
                           className="scale-75"
                           checked={s.visible_marketplace ?? true}
                           onCheckedChange={(v) => handleQuickToggle(s, 'visible_marketplace', v)}
                         />
                       </TableCell>
-                      <TableCell className="text-center px-1">
+                      <TableCell className="text-center px-1 py-0.5">
                         <Switch
                           className="scale-75"
                           checked={s.is_active}
                           onCheckedChange={(v) => handleQuickToggle(s, 'is_active', v)}
                         />
                       </TableCell>
-                      <TableCell className="px-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(s)}>
+                      <TableCell className="px-1 py-0.5">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEdit(s)}>
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>
@@ -275,7 +275,7 @@ export function SpecialtiesTab() {
                 )}
               </TableBody>
             </Table>
-          </ScrollArea>
+          </div>
         </CardContent>
       </Card>
 

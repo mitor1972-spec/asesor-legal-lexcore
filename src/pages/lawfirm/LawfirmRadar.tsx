@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Radar, Plus, Trash2, Bell, BellOff, Scale, MapPin, Zap, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { LEGAL_AREAS, PROVINCES } from '@/lib/constants';
+import { useMasterSpecialties } from '@/hooks/useMasterConfig';
 
 interface RadarRule {
   id: string;
@@ -25,6 +26,8 @@ interface RadarRule {
 }
 
 export default function LawfirmRadar() {
+  const { data: masterSpecialties } = useMasterSpecialties();
+  const activeSpecialties = (masterSpecialties || []).filter((s: any) => s.is_active).map((s: any) => s.name);
   const [rules, setRules] = useState<RadarRule[]>(() => {
     const stored = localStorage.getItem('radar_rules');
     return stored ? JSON.parse(stored) : [];
@@ -32,6 +35,7 @@ export default function LawfirmRadar() {
   const [adding, setAdding] = useState(false);
   const [areaSearch, setAreaSearch] = useState('');
   const [provSearch, setProvSearch] = useState('');
+  const [specSearch, setSpecSearch] = useState('');
   const [draft, setDraft] = useState<Omit<RadarRule, 'id' | 'enabled'>>({
     name: '',
     areas: [],
@@ -62,9 +66,16 @@ export default function LawfirmRadar() {
     }));
   };
 
+  const toggleSpecialty = (spec: string) => {
+    setDraft(d => ({
+      ...d,
+      specialties: d.specialties.includes(spec) ? d.specialties.filter(s => s !== spec) : [...d.specialties, spec],
+    }));
+  };
+
   const addRule = () => {
-    if (!draft.name || draft.areas.length === 0) {
-      toast.error('Indica al menos un nombre y un área legal');
+    if (!draft.name || (draft.areas.length === 0 && draft.specialties.length === 0)) {
+      toast.error('Indica al menos un nombre y un área o especialidad');
       return;
     }
     setRules(prev => [...prev, { ...draft, id: crypto.randomUUID(), enabled: true }]);
@@ -84,6 +95,7 @@ export default function LawfirmRadar() {
 
   const filteredAreas = LEGAL_AREAS.filter(a => a.toLowerCase().includes(areaSearch.toLowerCase()));
   const filteredProvinces = PROVINCES.filter(p => p.toLowerCase().includes(provSearch.toLowerCase()));
+  const filteredSpecialties = activeSpecialties.filter(s => s.toLowerCase().includes(specSearch.toLowerCase()));
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -164,6 +176,42 @@ export default function LawfirmRadar() {
                         onCheckedChange={() => toggleArea(area)}
                       />
                       {area}
+                    </label>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Especialidades - multi-select */}
+            <div className="space-y-2">
+              <Label>Especialidades (selección múltiple)</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Buscar especialidades..." 
+                  value={specSearch}
+                  onChange={e => setSpecSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              {draft.specialties.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {draft.specialties.map(s => (
+                    <Badge key={s} variant="default" className="cursor-pointer bg-green-600" onClick={() => toggleSpecialty(s)}>
+                      {s} ×
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <ScrollArea className="h-40 border rounded-lg p-2">
+                <div className="space-y-1">
+                  {filteredSpecialties.map(spec => (
+                    <label key={spec} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                      <Checkbox 
+                        checked={draft.specialties.includes(spec)}
+                        onCheckedChange={() => toggleSpecialty(spec)}
+                      />
+                      {spec}
                     </label>
                   ))}
                 </div>
@@ -287,6 +335,11 @@ export default function LawfirmRadar() {
                         {rule.areas.map(a => (
                           <Badge key={a} variant="outline" className="text-xs">
                             <Scale className="h-3 w-3 mr-1" />{a}
+                          </Badge>
+                        ))}
+                        {(rule.specialties || []).map(s => (
+                          <Badge key={s} variant="default" className="text-xs bg-green-600">
+                            {s}
                           </Badge>
                         ))}
                         {rule.provinces.length > 0 && rule.provinces.map(p => (
