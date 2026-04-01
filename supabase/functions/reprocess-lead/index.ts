@@ -308,9 +308,9 @@ Devuelve SOLO el JSON, sin explicaciones.`;
         // For nombre field, also replace if it looks like a bad extraction
         const isBadName = dbKey === "nombre" && looksLikeBadName(currentValue);
         
-        // CRITICAL: area_legal ALWAYS gets updated from AI classification
-        // This ensures proper classification overrides any previous (possibly wrong) value
-        const isAreaLegal = dbKey === "area_legal";
+        // CRITICAL: These fields ALWAYS get updated from AI classification
+        const alwaysUpdate = ["area_legal", "ciudad", "provincia", "subarea", "tipo_caso"];
+        const isAlwaysUpdate = alwaysUpdate.includes(dbKey);
 
         if (isEmpty || isAlias || isSinNombre || isBadName || isAreaLegal) {
           if (currentValue !== newValue) {
