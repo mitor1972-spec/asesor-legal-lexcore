@@ -140,12 +140,27 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                       <span>{formattedDate}</span>
                     </>
                   )}
+                  {cuantia && (
+                    <>
+                      <span>•</span>
+                      <Euro className="h-3 w-3" />
+                      <span>~{typeof cuantia === 'number' ? cuantia.toLocaleString('es-ES') : cuantia}€</span>
+                    </>
+                  )}
                   {isUrgent && (
                     <>
                       <span>•</span>
                       <Badge variant="outline" className="gap-1 text-amber-600 border-amber-500/30 bg-amber-500/10">
                         <Zap className="h-3 w-3" />
                         URGENTE
+                      </Badge>
+                    </>
+                  )}
+                  {lead.commission_available && (
+                    <>
+                      <span>•</span>
+                      <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs">
+                        Comisionable ({lead.commission_percent || 20}%)
                       </Badge>
                     </>
                   )}
