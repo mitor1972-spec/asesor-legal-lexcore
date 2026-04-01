@@ -46,7 +46,7 @@ export function useLeads(filters?: LeadFilters, page = 1, pageSize = 20) {
 
       // Apply unified filters from leadsQuery.ts (GOLDEN RULE enforced here)
       query = applyVisibleLeadsFilters(query, {
-        demoMode: mode,
+        demoMode: 'real',
         includeArchived: filters?.showArchived,
         includeInvalid: filters?.showInvalid,
         status: filters?.status,
