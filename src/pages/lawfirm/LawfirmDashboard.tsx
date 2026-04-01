@@ -37,8 +37,6 @@ export default function LawfirmDashboard() {
   const queryClient = useQueryClient();
   const { data: lawfirm } = useLawfirmProfile();
   const { data: cases = [], isLoading } = useLawfirmCases();
-  const { data: team = [] } = useLawfirmTeam();
-  const { data: branches = [] } = useLawfirmBranches();
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
   
   const [selectedLead, setSelectedLead] = useState<MarketplaceLead | null>(null);
