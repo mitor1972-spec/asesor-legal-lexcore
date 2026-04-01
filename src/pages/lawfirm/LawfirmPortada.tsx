@@ -5,6 +5,7 @@ import { useLawfirmProfile } from '@/hooks/useLawfirmProfile';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { applyVisibleLeadsFilters } from '@/lib/leadsQuery';
 import { 
   Scale, LayoutDashboard, BarChart3, Radar, ShoppingCart, Briefcase,
   Phone, Mail, Globe, ArrowRight, Loader2, Building2, Sparkles,
@@ -20,20 +21,51 @@ export default function LawfirmPortada() {
     queryKey: ['portada-stats', lawfirm?.id],
     queryFn: async () => {
       if (!lawfirm?.id) return null;
-      const [marketplace, cases, urgent, commissionable] = await Promise.all([
-        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('is_in_marketplace', true),
-        supabase.from('lead_assignments').select('*', { count: 'exact', head: true }).eq('lawfirm_id', lawfirm.id),
-        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('is_in_marketplace', true).gte('score_final', 60),
-        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('is_in_marketplace', true).eq('price_final', 0),
+      let availableLeadsQuery = supabase
+        .from('leads')
+        .select('id, score_final, structured_fields, lead_assignments!left(id)')
+        .eq('status_internal', 'Pendiente')
+        .gt('score_final', 0)
+        .gte('created_at', '2025-03-20T00:00:00Z')
+        .order('created_at', { ascending: false });
+
+      availableLeadsQuery = applyVisibleLeadsFilters(availableLeadsQuery, { demoMode: 'real' });
+
+      const [availableLeadsResult, casesResult, commissionAreasResult] = await Promise.all([
+        availableLeadsQuery,
+        supabase.from('lead_assignments').select('id', { count: 'exact', head: true }).eq('lawfirm_id', lawfirm.id),
+        supabase.from('commission_areas').select('legal_area').eq('is_active', true),
       ]);
+
+      if (availableLeadsResult.error) throw availableLeadsResult.error;
+      if (casesResult.error) throw casesResult.error;
+      if (commissionAreasResult.error) throw commissionAreasResult.error;
+
+      const commissionAreas = new Set((commissionAreasResult.data || []).map((item) => item.legal_area));
+      const availableLeads = (availableLeadsResult.data || []).filter((lead) => !lead.lead_assignments || lead.lead_assignments.length === 0);
+
+      const urgentCount = availableLeads.filter((lead) => {
+        const fields = lead.structured_fields as Record<string, unknown> | null;
+        return fields?.urgencia_aplica === true;
+      }).length;
+
+      const commissionableCount = availableLeads.filter((lead) => {
+        const fields = lead.structured_fields as Record<string, unknown> | null;
+        const legalArea = String(fields?.area_legal ?? fields?.legal_area ?? '');
+        return legalArea !== '' && commissionAreas.has(legalArea);
+      }).length;
+
       return {
-        marketplaceCount: marketplace.count || 0,
-        totalCases: cases.count || 0,
-        urgentCount: urgent.count || 0,
-        commissionableCount: commissionable.count || 0,
+        marketplaceCount: availableLeads.length,
+        totalCases: casesResult.count || 0,
+        urgentCount,
+        commissionableCount,
       };
     },
     enabled: !!lawfirm?.id,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   if (isLoading) {
@@ -58,6 +90,33 @@ export default function LawfirmPortada() {
     { label: 'Informes', description: 'Análisis de rendimiento', icon: BarChart3, href: '/despacho/informes', color: 'bg-amber-500' },
     { label: 'Radar', description: 'Alertas personalizadas', icon: Radar, href: '/despacho/radar', color: 'bg-orange-500' },
     { label: 'Equipo', description: 'Gestión de abogados', icon: Users, href: '/despacho/equipo', color: 'bg-rose-500' },
+  ];
+
+  const quickStats = [
+    {
+      label: 'Total casos disponibles hoy',
+      value: stats?.marketplaceCount || 0,
+      icon: Package,
+      cardClassName: 'border-primary/30 hover:border-primary/60',
+      iconClassName: 'bg-primary/10 text-primary',
+      valueClassName: 'text-primary',
+    },
+    {
+      label: 'Casos urgentes',
+      value: stats?.urgentCount || 0,
+      icon: AlertTriangle,
+      cardClassName: 'border-destructive/30 hover:border-destructive/60',
+      iconClassName: 'bg-destructive/10 text-destructive',
+      valueClassName: 'text-destructive',
+    },
+    {
+      label: 'Casos comisionables',
+      value: stats?.commissionableCount || 0,
+      icon: Handshake,
+      cardClassName: 'border-success/30 hover:border-success/60',
+      iconClassName: 'bg-success/10 text-success',
+      valueClassName: 'text-success',
+    },
   ];
 
   return (
@@ -171,53 +230,28 @@ export default function LawfirmPortada() {
       {/* Marketplace Quick Stats */}
       <div className="px-6 md:px-8">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card
-            className="group cursor-pointer border border-border/60 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-            onClick={() => navigate('/despacho/leadsmarket')}
-          >
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Package className="h-6 w-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-3xl font-bold text-foreground">{stats?.marketplaceCount || 0}</p>
-                <p className="text-sm font-medium text-muted-foreground">Total casos disponibles hoy</p>
-              </div>
-              <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition-all duration-300 group-hover:translate-x-1 group-hover:text-foreground" />
-            </CardContent>
-          </Card>
+          {quickStats.map((stat) => {
+            const Icon = stat.icon;
 
-          <Card
-            className="group cursor-pointer border border-border/60 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-            onClick={() => navigate('/despacho/leadsmarket')}
-          >
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <AlertTriangle className="h-6 w-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-3xl font-bold text-foreground">{stats?.urgentCount || 0}</p>
-                <p className="text-sm font-medium text-muted-foreground">Casos urgentes</p>
-              </div>
-              <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition-all duration-300 group-hover:translate-x-1 group-hover:text-foreground" />
-            </CardContent>
-          </Card>
-
-          <Card
-            className="group cursor-pointer border border-border/60 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-            onClick={() => navigate('/despacho/leadsmarket')}
-          >
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Handshake className="h-6 w-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-3xl font-bold text-foreground">{stats?.commissionableCount || 0}</p>
-                <p className="text-sm font-medium text-muted-foreground">Casos comisionables</p>
-              </div>
-              <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition-all duration-300 group-hover:translate-x-1 group-hover:text-foreground" />
-            </CardContent>
-          </Card>
+            return (
+              <Card
+                key={stat.label}
+                className={`group cursor-pointer border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${stat.cardClassName}`}
+                onClick={() => navigate('/despacho/leadsmarket')}
+              >
+                <CardContent className="flex items-center gap-4 p-5">
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${stat.iconClassName}`}>
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-3xl font-bold ${stat.valueClassName}`}>{stat.value}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition-all duration-300 group-hover:translate-x-1 group-hover:text-foreground" />
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
 
