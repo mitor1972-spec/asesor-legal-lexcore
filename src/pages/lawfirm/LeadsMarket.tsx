@@ -16,6 +16,8 @@ import { LeadMarketCard } from '@/components/leadsmarket/LeadMarketCard';
 import { LeadMarketListItem } from '@/components/leadsmarket/LeadMarketListItem';
 import { LeadDetailModal } from '@/components/leadsmarket/LeadDetailModal';
 import { ShoppingCart as ShoppingCartPanel, CartButton } from '@/components/leadsmarket/ShoppingCart';
+import { ProfileGateDialog } from '@/components/lawfirm/ProfileGateDialog';
+import { useLawfirmProfileGate } from '@/hooks/useLawfirmProfileGate';
 import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
 
 export default function LeadsMarket() {
@@ -24,6 +26,10 @@ export default function LeadsMarket() {
   const queryClient = useQueryClient();
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
   
+  // Profile gate
+  const { isProfileComplete, missingFields } = useLawfirmProfileGate();
+  const [showProfileGate, setShowProfileGate] = useState(false);
+
   // Draft filter state (not applied until user clicks)
   const [draftArea, setDraftArea] = useState<string>('all');
   const [draftProvince, setDraftProvince] = useState<string>('all');
@@ -241,6 +247,12 @@ export default function LeadsMarket() {
 
   // Add to cart (with optional commission mode)
   const handleAddToCart = (lead: MarketplaceLead, isCommission?: boolean) => {
+    // Profile gate check
+    if (!isImpersonating && !isProfileComplete) {
+      setShowProfileGate(true);
+      return;
+    }
+
     if (cartItems.some(item => item.id === lead.id)) {
       toast.info('Este lead ya está en tu carrito');
       return;
@@ -288,6 +300,12 @@ export default function LeadsMarket() {
   // Checkout
   const handleCheckout = async (selectedIds: string[]) => {
     if (selectedIds.length === 0) return;
+
+    // Profile gate check
+    if (!isImpersonating && !isProfileComplete) {
+      setShowProfileGate(true);
+      return;
+    }
     
     setIsCheckingOut(true);
     let successCount = 0;
@@ -603,6 +621,11 @@ export default function LeadsMarket() {
         onAddToCart={handleAddToCart}
         isInCart={selectedLead ? isInCart(selectedLead.id) : false}
         canAfford={selectedLead ? balance >= selectedLead.marketplace_price : false}
+      />
+      <ProfileGateDialog 
+        open={showProfileGate} 
+        onClose={() => setShowProfileGate(false)} 
+        missingFields={missingFields} 
       />
     </div>
   );

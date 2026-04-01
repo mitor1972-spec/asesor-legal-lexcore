@@ -22,6 +22,8 @@ import { LeadDetailModal } from '@/components/leadsmarket/LeadDetailModal';
 import { ShoppingCart as ShoppingCartPanel, CartButton } from '@/components/leadsmarket/ShoppingCart';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { ProfileGateDialog } from '@/components/lawfirm/ProfileGateDialog';
+import { useLawfirmProfileGate } from '@/hooks/useLawfirmProfileGate';
 import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
 
 const statusLabels: Record<string, string> = {
@@ -45,6 +47,10 @@ export default function LawfirmDashboard() {
   const { data: cases = [], isLoading } = useLawfirmCases();
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
   
+  // Profile gate
+  const { isProfileComplete, missingFields } = useLawfirmProfileGate();
+  const [showProfileGate, setShowProfileGate] = useState(false);
+
   const [selectedLead, setSelectedLead] = useState<MarketplaceLead | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -123,6 +129,10 @@ export default function LawfirmDashboard() {
 
   // Cart handlers
   const handleAddToCart = (lead: MarketplaceLead) => {
+    if (!isImpersonating && !isProfileComplete) {
+      setShowProfileGate(true);
+      return;
+    }
     if (cartItems.some(item => item.id === lead.id)) {
       toast.info('Este lead ya está en tu carrito');
       return;
@@ -159,6 +169,10 @@ export default function LawfirmDashboard() {
 
   const handleCheckout = async (selectedIds: string[]) => {
     if (selectedIds.length === 0 || !lawfirmId) return;
+    if (!isImpersonating && !isProfileComplete) {
+      setShowProfileGate(true);
+      return;
+    }
     setIsCheckingOut(true);
     let successCount = 0;
     let errorCount = 0;
@@ -370,6 +384,11 @@ export default function LawfirmDashboard() {
         onToggleCommission={handleToggleCommission}
         balance={balance}
         isCheckingOut={isCheckingOut}
+      />
+      <ProfileGateDialog 
+        open={showProfileGate} 
+        onClose={() => setShowProfileGate(false)} 
+        missingFields={missingFields} 
       />
     </div>
   );
