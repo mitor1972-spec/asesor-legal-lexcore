@@ -273,6 +273,7 @@ Devuelve SOLO el JSON, sin explicaciones.`;
       ["provincia", "provincia"],
       ["area_legal", "area_legal"],
       ["subarea", "subarea"],
+      ["tipo_caso", "tipo_caso"],
       ["cuantia", "cuantia"],
       ["cuantia_texto", "cuantia_texto"],
       ["urgencia_aplica", "urgencia_aplica"],
