@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Scale, LayoutDashboard, BarChart3, Radar, ShoppingCart, Briefcase,
   Phone, Mail, Globe, ArrowRight, Loader2, Building2, Sparkles,
-  Shield, Zap, TrendingUp, Users, CheckCircle2, Star
+  Shield, Zap, TrendingUp, Users, CheckCircle2, Star, AlertTriangle, Handshake, Package
 } from 'lucide-react';
 import heroBg from '@/assets/portada-hero-bg.jpg';
 
