@@ -35,10 +35,8 @@ interface UpdateLeadData extends Partial<CreateLeadData> {
  * GOLDEN RULE: Only leads with email OR phone are shown (unless showInvalid=true)
  */
 export function useLeads(filters?: LeadFilters, page = 1, pageSize = 20) {
-  const { mode } = useDemoMode();
-  
   return useQuery({
-    queryKey: ['leads', filters, page, pageSize, mode],
+    queryKey: ['leads', filters, page, pageSize],
     queryFn: async () => {
       let query = supabase
         .from('leads')
