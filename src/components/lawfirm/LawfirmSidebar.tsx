@@ -132,7 +132,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       {/* Header */}
       <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
-        <Link to="/despacho/dashboard" className="flex items-center gap-2" onClick={onClose}>
+        <Link to="/despacho/portada" className="flex items-center gap-2" onClick={onClose}>
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-lawfirm-primary">
             <Scale className="h-4 w-4 text-white" />
           </div>

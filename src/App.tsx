@@ -82,7 +82,8 @@ const App = () => (
                   <Route path="informes/ventas" element={<SalesReport />} />
                 </Route>
                 <Route path="/despacho" element={<LawfirmLayout />}>
-                  <Route index element={<Navigate to="/despacho/dashboard" replace />} />
+                  <Route index element={<Navigate to="/despacho/portada" replace />} />
+                  <Route path="portada" element={<LawfirmPortada />} />
                   <Route path="dashboard" element={<LawfirmDashboard />} />
                   <Route path="casos" element={<LawfirmCases />} />
                   <Route path="casos/:id" element={<LawfirmCaseDetail />} />
