@@ -485,6 +485,134 @@ export function LawfirmFormDialog({ open, onOpenChange, lawfirmId }: LawfirmForm
                   ))}
                 </div>
               </TabsContent>
+
+              <TabsContent value="commission" className="space-y-4 p-1">
+                <div className="flex items-center justify-between p-3 rounded-lg border">
+                  <div>
+                    <p className="font-medium text-sm">Modelo comisión habilitado</p>
+                    <p className="text-xs text-muted-foreground">Permite adquirir leads a comisión</p>
+                  </div>
+                  <Switch
+                    checked={formData.commission_enabled}
+                    onCheckedChange={c => handleInputChange('commission_enabled', c)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Comisión global personalizada (%)</Label>
+                  <Input
+                    type="number"
+                    placeholder="Dejar vacío para usar la del sistema"
+                    value={formData.commission_global_percent ?? ''}
+                    onChange={e => {
+                      const v = e.target.value;
+                      handleInputChange('commission_global_percent', v === '' ? null : Math.max(15, parseFloat(v) || 0));
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">Mínimo 15%. Vacío = usa configuración maestra</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Límite semanal de casos a comisión</Label>
+                  <Input
+                    type="number"
+                    placeholder="Ilimitado"
+                    value={formData.commission_weekly_limit ?? ''}
+                    onChange={e => {
+                      const v = e.target.value;
+                      handleInputChange('commission_weekly_limit', v === '' ? null : parseInt(v) || 0);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">Vacío = sin límite</p>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg border">
+                  <div>
+                    <p className="font-medium text-sm">Comisión progresiva por volumen</p>
+                    <p className="text-xs text-muted-foreground">Reduce el % según nº de casos acumulados</p>
+                  </div>
+                  <Switch
+                    checked={formData.commission_progressive_enabled}
+                    onCheckedChange={c => handleInputChange('commission_progressive_enabled', c)}
+                  />
+                </div>
+
+                {formData.commission_progressive_enabled && (
+                  <div className="space-y-2 border rounded-lg p-3">
+                    <p className="text-sm font-medium mb-2">Tramos progresivos</p>
+                    {formData.commission_progressive_tiers.map((tier, i) => (
+                      <div key={i} className="grid grid-cols-3 gap-2 items-center">
+                        <div className="flex items-center gap-1 text-xs">
+                          <Input
+                            type="number"
+                            className="h-8 text-xs"
+                            value={tier.from}
+                            onChange={e => {
+                              const tiers = [...formData.commission_progressive_tiers];
+                              tiers[i] = { ...tiers[i], from: parseInt(e.target.value) || 0 };
+                              setFormData(prev => ({ ...prev, commission_progressive_tiers: tiers }));
+                            }}
+                          />
+                          <span>–</span>
+                          <Input
+                            type="number"
+                            className="h-8 text-xs"
+                            value={tier.to >= 999999 ? '' : tier.to}
+                            placeholder="∞"
+                            onChange={e => {
+                              const tiers = [...formData.commission_progressive_tiers];
+                              tiers[i] = { ...tiers[i], to: parseInt(e.target.value) || 999999 };
+                              setFormData(prev => ({ ...prev, commission_progressive_tiers: tiers }));
+                            }}
+                          />
+                          <span className="whitespace-nowrap">casos</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            className="h-8 text-xs"
+                            value={tier.percent}
+                            onChange={e => {
+                              const tiers = [...formData.commission_progressive_tiers];
+                              tiers[i] = { ...tiers[i], percent: Math.max(15, parseFloat(e.target.value) || 15) };
+                              setFormData(prev => ({ ...prev, commission_progressive_tiers: tiers }));
+                            }}
+                          />
+                          <span className="text-xs">%</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-xs text-destructive"
+                          onClick={() => {
+                            const tiers = formData.commission_progressive_tiers.filter((_, j) => j !== i);
+                            setFormData(prev => ({ ...prev, commission_progressive_tiers: tiers }));
+                          }}
+                        >
+                          Quitar
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => {
+                        const lastTo = formData.commission_progressive_tiers.length > 0
+                          ? (formData.commission_progressive_tiers[formData.commission_progressive_tiers.length - 1].to || 0) + 1
+                          : 0;
+                        setFormData(prev => ({
+                          ...prev,
+                          commission_progressive_tiers: [...prev.commission_progressive_tiers, { from: lastTo, to: 999999, percent: 15 }],
+                        }));
+                      }}
+                    >
+                      + Añadir tramo
+                    </Button>
+                    <p className="text-xs text-muted-foreground">Mínimo 15% en cualquier tramo</p>
+                  </div>
+                )}
+              </TabsContent>
             </ScrollArea>
           </Tabs>
         )}
