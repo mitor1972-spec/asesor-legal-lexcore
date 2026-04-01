@@ -9,7 +9,6 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
-import { DemoModeToggle } from '@/components/layout/DemoModeToggle';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -21,7 +20,6 @@ export function Header({ onMenuClick }: HeaderProps) {
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // Keyboard shortcut for search (Ctrl+K / Cmd+K)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -29,7 +27,6 @@ export function Header({ onMenuClick }: HeaderProps) {
         setSearchOpen(true);
       }
     };
-
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
@@ -52,7 +49,6 @@ export function Header({ onMenuClick }: HeaderProps) {
             <Menu className="h-5 w-5" />
           </Button>
 
-          {/* Search button */}
           <Button
             variant="outline"
             className="hidden md:flex items-center gap-2 text-muted-foreground w-64"
@@ -66,12 +62,9 @@ export function Header({ onMenuClick }: HeaderProps) {
           </Button>
 
           <div className="flex-1" />
-
-          <DemoModeToggle />
           
           <NotificationBell />
 
-          {/* Theme toggle with label */}
           <Button
             variant="outline"
             size="sm"

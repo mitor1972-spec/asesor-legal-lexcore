@@ -1,40 +1,64 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useDemoMode } from '@/contexts/DemoModeContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { toast } from 'sonner';
-import { ShoppingCart, Wallet, Filter, LayoutGrid, List, FileDown, ArrowUpDown } from 'lucide-react';
+import { ShoppingCart, Wallet, Filter, LayoutGrid, List, ArrowUpDown, RotateCcw, Search } from 'lucide-react';
 import { LEGAL_AREAS, PROVINCES } from '@/lib/constants';
 import { LeadMarketCard } from '@/components/leadsmarket/LeadMarketCard';
 import { LeadMarketListItem } from '@/components/leadsmarket/LeadMarketListItem';
 import { LeadDetailModal } from '@/components/leadsmarket/LeadDetailModal';
 import { ShoppingCart as ShoppingCartPanel, CartButton } from '@/components/leadsmarket/ShoppingCart';
 import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
-import { exportLeadsToExcel } from '@/lib/exportToExcel';
 
 export default function LeadsMarket() {
   const { user } = useAuthContext();
-  const { mode } = useDemoMode();
   const queryClient = useQueryClient();
   
+  // Draft filter state (not applied until user clicks)
+  const [draftArea, setDraftArea] = useState<string>('all');
+  const [draftProvince, setDraftProvince] = useState<string>('all');
+  const [draftMinScore, setDraftMinScore] = useState<string>('');
+  const [draftSortBy, setDraftSortBy] = useState<string>('date_desc');
+  
+  // Applied filter state
   const [areaFilter, setAreaFilter] = useState<string>('all');
   const [provinceFilter, setProvinceFilter] = useState<string>('all');
   const [minScore, setMinScore] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('date_desc');
+  
   const [selectedLead, setSelectedLead] = useState<MarketplaceLead | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [sortBy, setSortBy] = useState<string>('date_desc');
+
+  // Apply filters
+  const handleApplyFilters = () => {
+    setAreaFilter(draftArea);
+    setProvinceFilter(draftProvince);
+    setMinScore(draftMinScore);
+    setSortBy(draftSortBy);
+  };
+
+  // Clear filters
+  const handleClearFilters = () => {
+    setDraftArea('all');
+    setDraftProvince('all');
+    setDraftMinScore('');
+    setDraftSortBy('date_desc');
+    setAreaFilter('all');
+    setProvinceFilter('all');
+    setMinScore('');
+    setSortBy('date_desc');
+  };
 
   // Fetch lawfirm balance
   const { data: lawfirm } = useQuery({
@@ -67,11 +91,11 @@ export default function LeadsMarket() {
     },
   });
 
-  // Fetch marketplace leads with lexcore data
-  const { data: leads, isLoading } = useQuery({
-    queryKey: ['marketplace-leads', areaFilter, provinceFilter, minScore, mode, sortBy],
+  // Fetch marketplace leads
+  const { data: rawLeads, isLoading } = useQuery({
+    queryKey: ['marketplace-leads'],
     queryFn: async () => {
-      let query = supabase
+      const query = supabase
         .from('leads')
         .select(`
           id, 
@@ -92,64 +116,22 @@ export default function LeadsMarket() {
           )
         `)
         .is('archived_at', null)
-        .is('discarded_at', null) // CRITICAL: Exclude discarded leads
+        .is('discarded_at', null)
         .or('structured_fields->_incomplete.is.null,structured_fields->_incomplete.eq.false')
         .eq('status_internal', 'Pendiente')
-        // GOLDEN RULE: Lead must have email OR phone to be shown in marketplace
         .or('structured_fields->>email.neq.,structured_fields->>telefono.neq.')
+        .or('is_demo.is.null,is_demo.eq.false')
         .order('created_at', { ascending: false });
-
-      // Apply demo mode filter
-      if (mode === 'demo') {
-        query = query.eq('is_demo', true);
-      } else {
-        query = query.or('is_demo.is.null,is_demo.eq.false');
-      }
-
-      if (minScore && !isNaN(parseInt(minScore))) {
-        query = query.gte('score_final', parseInt(minScore));
-      }
 
       const { data, error } = await query;
       if (error) throw error;
       
-      // Filter out leads that already have assignments
-      let filtered = (data || []).filter(l => 
+      // Filter out leads that already have assignments (purchased/assigned)
+      const filtered = (data || []).filter(l => 
         !l.lead_assignments || l.lead_assignments.length === 0
       );
-
-      // Filter by area and province in frontend (since it's in JSONB)
-      if (areaFilter !== 'all') {
-        filtered = filtered.filter(l => {
-          const fields = l.structured_fields as any;
-          return fields?.area_legal === areaFilter || fields?.legal_area === areaFilter;
-        });
-      }
-      if (provinceFilter !== 'all') {
-        filtered = filtered.filter(l => {
-          const fields = l.structured_fields as any;
-          return fields?.provincia === provinceFilter || fields?.province === provinceFilter;
-        });
-      }
       
-      // Sort based on selected option
-      if (sortBy === 'price_asc') {
-        filtered.sort((a, b) => (a.marketplace_price || a.price_final || 25) - (b.marketplace_price || b.price_final || 25));
-      } else if (sortBy === 'price_desc') {
-        filtered.sort((a, b) => (b.marketplace_price || b.price_final || 25) - (a.marketplace_price || a.price_final || 25));
-      } else if (sortBy === 'score_desc') {
-        filtered.sort((a, b) => (b.score_final || 0) - (a.score_final || 0));
-      } else if (sortBy === 'area') {
-        filtered.sort((a, b) => {
-          const aArea = (a.structured_fields as any)?.area_legal || '';
-          const bArea = (b.structured_fields as any)?.area_legal || '';
-          return aArea.localeCompare(bArea);
-        });
-      }
-      // date_desc is default from DB query
-      
-        return filtered.map(l => {
-        // Get latest lexcore run
+      return filtered.map(l => {
         const latestRun = l.lexcore_runs?.[0];
         const vjData = latestRun?.vj_json as any;
         const rawScores = latestRun?.raw_scores_json as unknown as RawScores | null;
@@ -171,13 +153,52 @@ export default function LeadsMarket() {
           case_summary: l.case_summary,
           commission_available: commPct != null,
           commission_percent: commPct ?? undefined,
+          conversation_id: l.conversation_id,
         } as MarketplaceLead;
       });
     },
   });
 
+  // Apply client-side filtering
+  const leads = useMemo(() => {
+    if (!rawLeads) return [];
+    let filtered = [...rawLeads];
+
+    if (areaFilter !== 'all') {
+      filtered = filtered.filter(l => {
+        const fields = l.structured_fields as any;
+        return fields?.area_legal === areaFilter || fields?.legal_area === areaFilter;
+      });
+    }
+    if (provinceFilter !== 'all') {
+      filtered = filtered.filter(l => {
+        const fields = l.structured_fields as any;
+        return fields?.provincia === provinceFilter || fields?.province === provinceFilter;
+      });
+    }
+    if (minScore && !isNaN(parseInt(minScore))) {
+      filtered = filtered.filter(l => (l.score_final || 0) >= parseInt(minScore));
+    }
+
+    // Sort
+    if (sortBy === 'price_asc') {
+      filtered.sort((a, b) => (a.marketplace_price || 25) - (b.marketplace_price || 25));
+    } else if (sortBy === 'price_desc') {
+      filtered.sort((a, b) => (b.marketplace_price || 25) - (a.marketplace_price || 25));
+    } else if (sortBy === 'score_desc') {
+      filtered.sort((a, b) => (b.score_final || 0) - (a.score_final || 0));
+    } else if (sortBy === 'area') {
+      filtered.sort((a, b) => {
+        const aArea = (a.structured_fields as any)?.area_legal || '';
+        const bArea = (b.structured_fields as any)?.area_legal || '';
+        return aArea.localeCompare(bArea);
+      });
+    }
+
+    return filtered;
+  }, [rawLeads, areaFilter, provinceFilter, minScore, sortBy]);
+
   const balance = lawfirm?.marketplace_balance || 0;
-  const isDemoMode = mode === 'demo';
 
   // Add to cart
   const handleAddToCart = (lead: MarketplaceLead) => {
@@ -224,7 +245,7 @@ export default function LeadsMarket() {
     toast.info('Carrito vaciado');
   };
 
-  // Checkout - purchase multiple leads
+  // Checkout
   const handleCheckout = async (selectedIds: string[]) => {
     if (selectedIds.length === 0) return;
     
@@ -256,11 +277,7 @@ export default function LeadsMarket() {
     
     if (successCount > 0) {
       toast.success(`¡${successCount} lead${successCount > 1 ? 's' : ''} comprado${successCount > 1 ? 's' : ''}! Ya tienes acceso completo en "Mis Casos"`);
-      
-      // Remove purchased leads from cart
       setCartItems(prev => prev.filter(item => !selectedIds.includes(item.id)));
-      
-      // Refresh data
       queryClient.invalidateQueries({ queryKey: ['marketplace-leads'] });
       queryClient.invalidateQueries({ queryKey: ['lawfirm-balance'] });
       queryClient.invalidateQueries({ queryKey: ['lawfirm-cases'] });
@@ -273,42 +290,6 @@ export default function LeadsMarket() {
     setShowCart(false);
   };
 
-  // Export visible leads to Excel
-  const handleExportLeads = () => {
-    if (!leads || leads.length === 0) {
-      toast.error('No hay leads para exportar');
-      return;
-    }
-
-    const exportData = leads.map(lead => {
-      const fields = lead.structured_fields || {};
-      return {
-        id: lead.id,
-        created_at: lead.created_at,
-        source_channel: lead.source_channel,
-        status_internal: 'Pendiente',
-        score_final: lead.score_final,
-        price_final: lead.marketplace_price,
-        structured_fields: {
-          ...fields,
-          nombre: fields.nombre || fields.name || '',
-          apellidos: fields.apellidos || '',
-          telefono: fields.telefono || fields.phone || '',
-          email: fields.email || fields.correo || '',
-          ciudad: fields.ciudad || fields.city || '',
-          provincia: fields.provincia || fields.province || '',
-          area_legal: fields.area_legal || fields.legal_area || '',
-          subarea: fields.subarea || '',
-          cuantia: fields.cuantia,
-        },
-      };
-    });
-
-    exportLeadsToExcel(exportData as any, `leadsmarket_${mode}_${new Date().toISOString().split('T')[0]}.xlsx`);
-    toast.success(`${leads.length} leads exportados correctamente`);
-  };
-
-  // Check if lead is in cart
   const isInCart = (id: string) => cartItems.some(item => item.id === id);
 
   return (
@@ -326,10 +307,6 @@ export default function LeadsMarket() {
         </div>
         
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={handleExportLeads} disabled={!leads || leads.length === 0}>
-            <FileDown className="mr-2 h-4 w-4" />
-            Exportar Excel
-          </Button>
           <Card className="bg-gradient-to-r from-lawfirm-primary/10 to-lawfirm-primary/5 border-lawfirm-primary/20">
             <CardContent className="py-3 px-4 flex items-center gap-3">
               <Wallet className="h-5 w-5 text-lawfirm-primary" />
@@ -350,69 +327,68 @@ export default function LeadsMarket() {
       {/* Filters */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex flex-wrap gap-3 items-center">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Filtros:</span>
             </div>
             
-            <div className="flex-1 min-w-[150px] max-w-[200px]">
-              <Select value={areaFilter} onValueChange={setAreaFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Área legal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las áreas</SelectItem>
-                  {LEGAL_AREAS.map(area => (
-                    <SelectItem key={area} value={area}>{area}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={draftArea} onValueChange={setDraftArea}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Área legal" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las áreas</SelectItem>
+                {LEGAL_AREAS.map(area => (
+                  <SelectItem key={area} value={area}>{area}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <div className="flex-1 min-w-[150px] max-w-[200px]">
-              <Select value={provinceFilter} onValueChange={setProvinceFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Provincia" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las provincias</SelectItem>
-                  {PROVINCES.map(prov => (
-                    <SelectItem key={prov} value={prov}>{prov}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={draftProvince} onValueChange={setDraftProvince}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Provincia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las provincias</SelectItem>
+                {PROVINCES.map(prov => (
+                  <SelectItem key={prov} value={prov}>{prov}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <div className="w-[120px]">
-              <Input
-                type="number"
-                placeholder="Score mín."
-                value={minScore}
-                onChange={(e) => setMinScore(e.target.value)}
-                min={0}
-                max={100}
-              />
-            </div>
+            <Input
+              type="number"
+              placeholder="Score mín."
+              value={draftMinScore}
+              onChange={(e) => setDraftMinScore(e.target.value)}
+              min={0}
+              max={100}
+              className="w-[110px]"
+            />
 
-            <div className="flex-1 min-w-[150px] max-w-[200px]">
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
-                  <ArrowUpDown className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Ordenar por" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date_desc">Más recientes</SelectItem>
-                  <SelectItem value="score_desc">Mayor puntuación</SelectItem>
-                  <SelectItem value="price_asc">Precio: menor a mayor</SelectItem>
-                  <SelectItem value="price_desc">Precio: mayor a menor</SelectItem>
-                  <SelectItem value="area">Área legal</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={draftSortBy} onValueChange={setDraftSortBy}>
+              <SelectTrigger className="w-[180px]">
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date_desc">Más recientes</SelectItem>
+                <SelectItem value="score_desc">Mayor puntuación</SelectItem>
+                <SelectItem value="price_asc">Precio: menor a mayor</SelectItem>
+                <SelectItem value="price_desc">Precio: mayor a menor</SelectItem>
+                <SelectItem value="area">Área legal</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <Badge variant="secondary" className="h-9 px-3">
-            </Badge>
+            <Button size="sm" onClick={handleApplyFilters} className="gap-1">
+              <Search className="h-4 w-4" />
+              Aplicar filtros
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleClearFilters} className="gap-1">
+              <RotateCcw className="h-4 w-4" />
+              Limpiar
+            </Button>
 
             <ToggleGroup 
               type="single" 
@@ -431,7 +407,7 @@ export default function LeadsMarket() {
         </CardContent>
       </Card>
 
-      {/* Leads Grid - Using new LeadMarketCard component */}
+      {/* Leads Grid */}
       {isLoading ? (
         <div className="grid gap-5 lg:grid-cols-2">
           {[1, 2, 3, 4].map(i => (
@@ -457,7 +433,7 @@ export default function LeadsMarket() {
               onAddToCart={handleAddToCart}
               onViewDetails={handleViewDetails}
               isInCart={isInCart(lead.id)}
-              canAfford={isDemoMode || balance >= lead.marketplace_price}
+              canAfford={balance >= lead.marketplace_price}
             />
           ))}
         </div>
@@ -470,7 +446,7 @@ export default function LeadsMarket() {
               onAddToCart={handleAddToCart}
               onViewDetails={handleViewDetails}
               isInCart={isInCart(lead.id)}
-              canAfford={isDemoMode || balance >= lead.marketplace_price}
+              canAfford={balance >= lead.marketplace_price}
             />
           ))}
         </div>
@@ -499,7 +475,7 @@ export default function LeadsMarket() {
         }}
         onAddToCart={handleAddToCart}
         isInCart={selectedLead ? isInCart(selectedLead.id) : false}
-        canAfford={isDemoMode || (selectedLead ? balance >= selectedLead.marketplace_price : false)}
+        canAfford={selectedLead ? balance >= selectedLead.marketplace_price : false}
       />
     </div>
   );
