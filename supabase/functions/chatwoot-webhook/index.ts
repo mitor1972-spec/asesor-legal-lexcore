@@ -514,9 +514,7 @@ serve(async (req) => {
         }
         
         return new Response(JSON.stringify({ 
-          status: "skipped", 
-          reason: "dedupe - no new messages",
-          lead_id: existingLead.id,
+          status: "skipped"
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
