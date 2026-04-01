@@ -168,6 +168,52 @@ export default function LawfirmPortada() {
         </div>
       </div>
 
+      {/* Marketplace Quick Stats */}
+      <div className="px-6 md:px-8 -mt-6 relative z-20">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            {
+              icon: Package,
+              label: 'Total casos disponibles hoy',
+              value: stats?.marketplaceCount || 0,
+              gradient: 'from-blue-600 to-blue-800',
+              shadow: 'shadow-blue-600/20',
+            },
+            {
+              icon: AlertTriangle,
+              label: 'Casos urgentes',
+              value: stats?.urgentCount || 0,
+              gradient: 'from-amber-500 to-orange-600',
+              shadow: 'shadow-amber-500/20',
+            },
+            {
+              icon: Handshake,
+              label: 'Casos comisionables',
+              value: stats?.commissionableCount || 0,
+              gradient: 'from-emerald-500 to-emerald-700',
+              shadow: 'shadow-emerald-500/20',
+            },
+          ].map((stat) => (
+            <Card
+              key={stat.label}
+              className={`group cursor-pointer hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br ${stat.gradient} text-white ${stat.shadow} shadow-lg`}
+              onClick={() => navigate('/despacho/leadsmarket')}
+            >
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm shrink-0 group-hover:scale-110 transition-transform duration-300">
+                  <stat.icon className="h-6 w-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-3xl font-bold">{stat.value}</p>
+                  <p className="text-sm text-white/80 font-medium">{stat.label}</p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-white/50 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 shrink-0" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
       {/* Features Strip */}
       <div className="px-6 md:px-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
