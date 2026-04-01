@@ -18,8 +18,9 @@ import { TopOpportunitiesCard } from '@/components/lawfirm/TopOpportunitiesCard'
 import { ImmediateActionsCard } from '@/components/lawfirm/ImmediateActionsCard';
 import { AdvancedKPIs } from '@/components/lawfirm/AdvancedKPIs';
 import { LeadDetailModal } from '@/components/leadsmarket/LeadDetailModal';
+import { ShoppingCart as ShoppingCartPanel, CartButton } from '@/components/leadsmarket/ShoppingCart';
 import { toast } from 'sonner';
-import type { MarketplaceLead, RawScores } from '@/types/marketplace';
+import type { MarketplaceLead, CartItem, RawScores } from '@/types/marketplace';
 
 const statusLabels: Record<string, string> = {
   received: 'Recibido', reviewing: 'Revisando', contacted: 'Contactado',
@@ -46,6 +47,9 @@ export default function LawfirmDashboard() {
   
   const [selectedLead, setSelectedLead] = useState<MarketplaceLead | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // Fetch available marketplace leads
   const { data: marketplaceLeads = [] } = useQuery({
@@ -100,31 +104,105 @@ export default function LawfirmDashboard() {
     staleTime: 0,
   });
 
+  // Fetch commission areas for cart
+  const { data: commissionAreas } = useQuery({
+    queryKey: ['commission-areas-map'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('commission_areas')
+        .select('legal_area, commission_percent')
+        .eq('is_active', true);
+      if (error) return {};
+      const map: Record<string, number> = {};
+      (data || []).forEach(a => { map[a.legal_area] = a.commission_percent; });
+      return map;
+    },
+  });
+
   const balance = lawfirm?.marketplace_balance || 0;
 
-  const handlePurchase = async (lead: MarketplaceLead) => {
-    if (!lawfirmId) {
-      toast.error('No se ha podido identificar el despacho activo');
+  // Cart: Add to cart
+  const handleAddToCart = (lead: MarketplaceLead) => {
+    if (cartItems.some(item => item.id === lead.id)) {
+      toast.info('Este lead ya está en tu carrito');
       return;
     }
+    const fields = lead.structured_fields || {};
+    const legalArea = fields.legal_area || fields.area_legal || 'Sin área';
+    const commPct = commissionAreas?.[legalArea];
+    const newItem: CartItem = {
+      id: lead.id,
+      legalArea,
+      province: fields.province || fields.provincia || 'Sin provincia',
+      score: lead.score_final,
+      price: lead.marketplace_price,
+      commissionPercent: commPct,
+    };
+    setCartItems(prev => [...prev, newItem]);
+    toast.success('Lead añadido al carrito');
+  };
 
-    try {
-      const { data, error } = await supabase.functions.invoke('purchase-lead', {
-        body: { lead_id: lead.id, lawfirm_id: lawfirmId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success('¡Lead comprado! Ya tienes acceso completo en "Mis Casos"');
+  // Cart: Toggle commission
+  const handleToggleCommission = (id: string, isCommission: boolean) => {
+    setCartItems(prev => prev.map(item =>
+      item.id === id ? { ...item, isCommission } : item
+    ));
+  };
+
+  // Cart: Remove
+  const handleRemoveFromCart = (id: string) => {
+    setCartItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  // Cart: Clear
+  const handleClearCart = () => {
+    setCartItems([]);
+    toast.info('Carrito vaciado');
+  };
+
+  // Cart: Checkout
+  const handleCheckout = async (selectedIds: string[]) => {
+    if (selectedIds.length === 0 || !lawfirmId) return;
+    setIsCheckingOut(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const leadId of selectedIds) {
+      const cartItem = cartItems.find(i => i.id === leadId);
+      try {
+        const { data, error } = await supabase.functions.invoke('purchase-lead', {
+          body: {
+            lead_id: leadId,
+            lawfirm_id: lawfirmId,
+            is_commission: cartItem?.isCommission || false,
+            commission_percent: cartItem?.isCommission ? (cartItem.commissionPercent || 20) : undefined,
+          },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        successCount++;
+      } catch (error) {
+        console.error('Error purchasing lead:', leadId, error);
+        errorCount++;
+      }
+    }
+
+    setIsCheckingOut(false);
+    if (successCount > 0) {
+      toast.success(`¡${successCount} lead${successCount > 1 ? 's' : ''} comprado${successCount > 1 ? 's' : ''}! Ya tienes acceso completo en "Mis Casos"`);
+      setCartItems(prev => prev.filter(item => !selectedIds.includes(item.id)));
       queryClient.invalidateQueries({ queryKey: ['dashboard-opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['marketplace-leads'] });
-      queryClient.invalidateQueries({ queryKey: ['marketplace-leads-count'] });
       queryClient.invalidateQueries({ queryKey: ['lawfirm-balance'] });
       queryClient.invalidateQueries({ queryKey: ['lawfirm-cases'] });
-    } catch (error) {
-      console.error('Error purchasing:', error);
-      toast.error('Error al comprar el lead');
     }
+    if (errorCount > 0) {
+      toast.error(`Error al comprar ${errorCount} lead${errorCount > 1 ? 's' : ''}`);
+    }
+    setShowCart(false);
   };
+
+  const isInCart = (id: string) => cartItems.some(item => item.id === id);
 
   const handleViewDetails = (lead: MarketplaceLead) => {
     setSelectedLead(lead);
@@ -149,18 +227,24 @@ export default function LawfirmDashboard() {
           <h1 className="text-2xl font-display font-bold">¡Bienvenido, {user?.profile?.full_name?.split(' ')[0] || 'Usuario'}!</h1>
           <p className="text-muted-foreground">{lawfirm?.name || 'Tu despacho'} — Resumen ejecutivo</p>
         </div>
-        <Card className="bg-gradient-to-r from-lawfirm-primary/10 to-lawfirm-primary/5 border-lawfirm-primary/20">
-          <CardContent className="py-3 px-4 flex items-center gap-3">
-            <Wallet className="h-5 w-5 text-lawfirm-primary" />
-            <div>
-              <p className="text-xs text-muted-foreground">Saldo disponible</p>
-              <p className="text-lg font-bold text-lawfirm-primary">{balance.toFixed(2)}€</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex items-center gap-3">
+          <Card className="bg-gradient-to-r from-lawfirm-primary/10 to-lawfirm-primary/5 border-lawfirm-primary/20">
+            <CardContent className="py-3 px-4 flex items-center gap-3">
+              <Wallet className="h-5 w-5 text-lawfirm-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">Saldo disponible</p>
+                <p className="text-lg font-bold text-lawfirm-primary">{balance.toFixed(2)}€</p>
+              </div>
+            </CardContent>
+          </Card>
+          <CartButton 
+            itemCount={cartItems.length} 
+            onClick={() => setShowCart(true)} 
+          />
+        </div>
       </div>
 
-      <TopOpportunitiesCard leads={marketplaceLeads} balance={balance} onViewDetails={handleViewDetails} onPurchase={handlePurchase} />
+      <TopOpportunitiesCard leads={marketplaceLeads} balance={balance} onViewDetails={handleViewDetails} onPurchase={handleAddToCart} />
       <AdvancedKPIs cases={cases} availableLeadsCount={marketplaceLeads.length} />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -228,13 +312,27 @@ export default function LawfirmDashboard() {
         </CardContent>
       </Card>
 
+      {/* Lead Detail Modal */}
       <LeadDetailModal
         lead={selectedLead}
         open={showDetailModal}
         onClose={() => { setShowDetailModal(false); setSelectedLead(null); }}
-        onAddToCart={handlePurchase}
-        isInCart={false}
+        onAddToCart={handleAddToCart}
+        isInCart={selectedLead ? isInCart(selectedLead.id) : false}
         canAfford={selectedLead ? balance >= selectedLead.marketplace_price : false}
+      />
+
+      {/* Shopping Cart Panel */}
+      <ShoppingCartPanel
+        items={cartItems}
+        open={showCart}
+        onClose={() => setShowCart(false)}
+        onRemoveItem={handleRemoveFromCart}
+        onClearCart={handleClearCart}
+        onCheckout={handleCheckout}
+        onToggleCommission={handleToggleCommission}
+        balance={balance}
+        isCheckingOut={isCheckingOut}
       />
     </div>
   );
