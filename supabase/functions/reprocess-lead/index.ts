@@ -146,7 +146,7 @@ async function processLead(
     // Call OpenAI to extract data with IMPROVED LEGAL AREA CLASSIFICATION
     const extractionPrompt = `Eres un asistente legal EXPERTO en clasificar consultas legales en España.
 
-TAREA PRINCIPAL: Analiza el texto y clasifica CORRECTAMENTE el área legal.
+TAREA PRINCIPAL: Analiza el texto y extrae TODOS los datos estructurados correctamente.
 
 TEXTO DEL LEAD:
 """
@@ -156,14 +156,15 @@ ${leadText}
 Extrae y devuelve SOLO un JSON válido con esta estructura (usa null si no encuentras el dato):
 
 {
-  "nombre": "string o null - SOLO el nombre propio, SIN frases ni conectores",
-  "apellidos": "string o null - SOLO los apellidos, SIN frases",
+  "nombre": "string o null - SOLO el nombre propio de la persona, NUNCA mezclar con ciudad, preferencia de contacto ni otras frases",
+  "apellidos": "string o null - SOLO los apellidos",
   "telefono": "string o null - formato español 9 dígitos",
   "email": "string o null",
-  "ciudad": "string o null",
-  "provincia": "string o null - SIEMPRE incluir aunque debas inferirla de la ciudad",
+  "ciudad": "string o null - la CIUDAD mencionada, ej: Málaga, Salou, Marbella",
+  "provincia": "string o null - SIEMPRE incluir aunque debas inferirla de la ciudad. Si dicen 'Málaga' como ciudad, provincia es 'Málaga'. Si dicen 'Salou', provincia es 'Tarragona'",
   "area_legal": "una de la lista o null - CRÍTICO: clasificar correctamente",
-  "subarea": "string o null - especificar si se puede determinar",
+  "subarea": "string o null - la especialidad concreta: 'Multa de tráfico', 'Divorcio', 'Despido improcedente', 'Desahucio', 'Herencia', 'Reclamación de cantidad', etc.",
+  "tipo_caso": "string o null - tipo concreto: 'Recurso multa', 'Custodia compartida', 'Impago factura', etc.",
   "cuantia": "número o null",
   "cuantia_texto": "string original si aparece",
   "urgencia_aplica": true/false,
@@ -176,79 +177,37 @@ Extrae y devuelve SOLO un JSON válido con esta estructura (usa null si no encue
 ÁREAS LEGALES VÁLIDAS:
 ${AREAS_LEGALES.join(", ")}
 
-=== REGLAS CRÍTICAS DE CLASIFICACIÓN DE ÁREA LEGAL ===
+=== REGLAS CRÍTICAS ===
 
-⚠️ IMPORTANTE: "Derecho Laboral" SOLO aplica cuando hay relación empleador-empleado.
+⚠️ SEPARACIÓN DE CAMPOS - MUY IMPORTANTE:
+- "nombre" debe contener SOLO el nombre propio (ej: "Alejandro", "María García")
+- NUNCA incluir en "nombre" la ciudad, preferencia de contacto ni otras frases
+- Si el usuario dice "Me llamo Alejandro, soy de Málaga, prefiero por teléfono":
+  nombre: "Alejandro", ciudad: "Málaga", provincia: "Málaga"
+- Si hay texto tipo "alejandro Malaga Por telefono", separar: nombre="Alejandro", ciudad="Málaga"
 
-GUÍA DE CLASIFICACIÓN:
+⚠️ PROVINCIA - OBLIGATORIA si hay ciudad:
+- Si mencionan una ciudad española, SIEMPRE inferir la provincia
+- Ejemplos: Salou→Tarragona, Marbella→Málaga, Benidorm→Alicante, Sevilla→Sevilla
 
-1. "Derecho de Consumidores" - Problemas con:
-   - Compras online que no llegan, envíos perdidos
-   - Productos defectuosos o que no cumplen
-   - Gimnasios, academias, suscripciones
-   - Reclamaciones a empresas de transporte (UPS, SEUR, Correos...)
-   - Garantías, devoluciones, cobros indebidos
-   - Cualquier conflicto COMPRADOR vs VENDEDOR/EMPRESA
+⚠️ SUBAREA - OBLIGATORIA si se puede determinar:
+- Multas → subarea: "Multa de tráfico"
+- Divorcio → subarea: "Divorcio"
+- Despido → subarea: "Despido"
+- Herencia → subarea: "Herencia"
+- Desahucio → subarea: "Desahucio"
+- Accidente → subarea: "Accidente de tráfico"
+- Reclamación bancaria → subarea: "Reclamación bancaria"
 
-2. "Derecho Laboral" - SOLO si:
-   - Despido, ERE, ERTE
-   - Reclamación de salarios/nóminas
-   - Acoso laboral
-   - Finiquito, liquidación
-   - Contrato de TRABAJO (no contrato de servicios)
-   - El usuario ES EMPLEADO de la empresa
-
-3. "Derecho Inmobiliario" - Temas de:
-   - Alquiler, arrendamiento
-   - Okupas, desahucios
-   - Compraventa de viviendas
-   - Problemas con inquilinos/propietarios
-   - Comunidades de vecinos
-
-4. "Derecho Penal" - Cuando hay:
-   - Delitos (robo, estafa, amenazas, coacciones)
-   - Denuncias, juicios penales
-   - Víctimas de delitos
-
-5. "Derecho Civil" - Para:
-   - Herencias, testamentos
-   - Deudas, reclamación de cantidad
-   - Contratos civiles (no laborales)
-   - Responsabilidad civil
-
-6. "Derecho de Familia" - Temas de:
-   - Divorcio, separación
-   - Custodia de hijos
-   - Pensiones alimenticias
-   - Régimen de visitas
-
-7. "Derecho de Tráfico" - Para:
-   - Accidentes de tráfico
-   - Multas de tráfico
-   - Puntos del carnet
-
-8. "Derecho Bancario" - Problemas con:
-   - Bancos, hipotecas
-   - Cláusulas abusivas
-   - Préstamos, tarjetas
-
-=== EJEMPLOS DE CLASIFICACIÓN CORRECTA ===
-
-❌ INCORRECTO → ✅ CORRECTO:
-- "UPS me perdió un paquete" → Consumidores (NO Laboral)
-- "El gimnasio me sigue cobrando" → Consumidores (NO Laboral)
-- "Pedido que no llega" → Consumidores (NO Laboral)
-- "Okupas en mi casa" → Inmobiliario (NO Laboral)
-- "Me estafaron en una compra" → Consumidores o Penal (NO Laboral)
-- "Accidente de coche" → Tráfico (NO Laboral)
-
-=== OTRAS REGLAS ===
-
-1. NOMBRE y APELLIDOS: Devuelve SOLO el nombre propio y apellidos, NUNCA frases.
-2. TELÉFONO: Busca patrones de 9 dígitos (puede tener espacios/guiones).
-3. EMAIL: Busca patrones tipo usuario@dominio.extension
-4. CIUDAD y PROVINCIA: Si mencionan una ciudad, infiere la provincia.
-5. NO inventes datos. Si no está claro, usa null.
+⚠️ CLASIFICACIÓN DE ÁREA LEGAL:
+- "Derecho Laboral" SOLO aplica cuando hay relación empleador-empleado
+- "Derecho de Consumidores": compras, gimnasios, suscripciones, envíos
+- "Derecho de Tráfico": multas, accidentes, carnet de puntos
+- "Derecho Inmobiliario": alquileres, okupas, desahucios, compraventa viviendas
+- "Derecho Penal": delitos, denuncias, estafas
+- "Derecho Civil": herencias, deudas, contratos
+- "Derecho de Familia": divorcio, custodia, pensiones
+- "Derecho Bancario": bancos, hipotecas, cláusulas abusivas
 
 Devuelve SOLO el JSON, sin explicaciones.`;
 
