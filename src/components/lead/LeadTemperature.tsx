@@ -24,13 +24,6 @@ function getTemperatureConfig(score: number) {
       bgColor: 'bg-orange-500',
       textColor: 'text-orange-500',
     };
-  } else if (score <= 70) {
-    return {
-      label: 'Cálido',
-      color: 'from-yellow-400 to-yellow-500',
-      bgColor: 'bg-yellow-500',
-      textColor: 'text-yellow-500',
-    };
   } else {
     return {
       label: 'Caliente',
