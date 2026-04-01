@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Scale, Mail, Lock, User } from 'lucide-react';
+import { Scale, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -18,6 +18,8 @@ export default function Login() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupName, setSignupName] = useState('');
+  const [showLoginPw, setShowLoginPw] = useState(false);
+  const [showSignupPw, setShowSignupPw] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +91,10 @@ export default function Login() {
                     <Label htmlFor="login-password">Contraseña</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="login-password" type="password" placeholder="••••••••" className="pl-10" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
+                      <Input id="login-password" type={showLoginPw ? 'text' : 'password'} placeholder="••••••••" className="pl-10 pr-10" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
+                      <button type="button" className="absolute right-3 top-3 text-muted-foreground hover:text-foreground" onClick={() => setShowLoginPw(!showLoginPw)}>
+                        {showLoginPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
                   </div>
                   <Button type="submit" className="w-full gradient-brand" disabled={loading}>
@@ -118,7 +123,10 @@ export default function Login() {
                     <Label htmlFor="signup-password">Contraseña</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="signup-password" type="password" placeholder="Mínimo 6 caracteres" className="pl-10" value={signupPassword} onChange={e => setSignupPassword(e.target.value)} required />
+                      <Input id="signup-password" type={showSignupPw ? 'text' : 'password'} placeholder="Mínimo 6 caracteres" className="pl-10 pr-10" value={signupPassword} onChange={e => setSignupPassword(e.target.value)} required />
+                      <button type="button" className="absolute right-3 top-3 text-muted-foreground hover:text-foreground" onClick={() => setShowSignupPw(!showSignupPw)}>
+                        {showSignupPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
                   </div>
                   <Button type="submit" className="w-full gradient-brand" disabled={loading}>
