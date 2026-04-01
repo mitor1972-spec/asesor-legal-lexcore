@@ -248,7 +248,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               <CardContent>
                 <div className="grid md:grid-cols-2 gap-3">
                   {Object.entries(fields)
-                    .filter(([key]) => !isContactField(key) && !['_contact_alias', '_incomplete', 'transcript_stats'].includes(key))
+                    .filter(([key]) => !isContactField(key) && !['_contact_alias', '_incomplete', 'transcript_stats', 'pending_ai_validation'].includes(key) && !key.startsWith('_'))
                     .filter(([, value]) => {
                       const cleaned = cleanValue(value);
                       return cleaned !== null;
@@ -257,9 +257,8 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                       // Render objects properly
                       let displayValue: string;
                       if (typeof value === 'object' && value !== null) {
-                        displayValue = JSON.stringify(value);
-                        // Skip [object Object] type renders
-                        if (displayValue === '{}' || displayValue === '[]') return null;
+                        // Skip complex objects entirely in lawyer portal
+                        return null;
                       } else if (typeof value === 'boolean') {
                         displayValue = value ? 'Sí' : 'No';
                       } else {

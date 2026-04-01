@@ -40,9 +40,14 @@ export function redactContactFromText(text: string | null | undefined, fields?: 
   // Redact email patterns
   redacted = redacted.replace(/[\w.+-]+@[\w.-]+\.\w{2,}/g, '[email oculto]');
   
-  // Redact phone patterns (Spanish format)
-  redacted = redacted.replace(/(\+?34[\s.-]?)?[6-9]\d{2}[\s.-]?\d{3}[\s.-]?\d{3}/g, '[teléfono oculto]');
-  redacted = redacted.replace(/(\+?34[\s.-]?)?[6-9]\d{8}/g, '[teléfono oculto]');
+  // Redact phone patterns (Spanish format - comprehensive)
+  // +34, 0034, 34 prefixes with various separators
+  redacted = redacted.replace(/((\+|00)?34[\s.\-/]?)?[6-9]\d{1,2}[\s.\-/]?\d{2,3}[\s.\-/]?\d{2,3}[\s.\-/]?\d{0,2}/g, (match) => {
+    // Only redact if it looks like a real phone (8+ digits)
+    const digits = match.replace(/\D/g, '');
+    if (digits.length >= 9) return '[teléfono oculto]';
+    return match;
+  });
   
   // Redact known contact values from structured fields
   if (fields) {

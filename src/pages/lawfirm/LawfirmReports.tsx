@@ -218,10 +218,6 @@ export default function LawfirmReports() {
             </SelectContent>
           </Select>
           
-          <Button variant="outline" onClick={exportToExcel} className="gap-2">
-            <Download className="h-4 w-4" />
-            Exportar Excel
-          </Button>
         </div>
       </div>
 
