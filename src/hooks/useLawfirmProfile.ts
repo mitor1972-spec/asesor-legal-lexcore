@@ -70,7 +70,7 @@ export function useLawfirmProfile() {
 
       // If impersonating, return the impersonated lawfirm directly
       if (isImpersonating && impersonatedLawfirm) {
-        return impersonatedLawfirm as Lawfirm;
+        return impersonatedLawfirm as unknown as Lawfirm;
       }
 
       const { data, error } = await supabase
