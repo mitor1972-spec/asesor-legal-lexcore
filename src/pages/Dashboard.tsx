@@ -15,7 +15,7 @@ import { RecentLeadsTable } from '@/components/dashboard/RecentLeadsTable';
 import { NewLeadButton } from '@/components/lead/NewLeadButton';
 
 export default function Dashboard() {
-  const [period, setPeriod] = useState<DatePeriod>('year');
+  const [period, setPeriod] = useState<DatePeriod>('all');
   const [customRange, setCustomRange] = useState<{ start: Date; end: Date } | undefined>();
   
   const { data: metrics, isLoading } = useDashboardMetrics(period, customRange);
