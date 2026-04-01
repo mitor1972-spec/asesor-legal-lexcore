@@ -29,13 +29,13 @@ export default function LawfirmBilling() {
   useEffect(() => {
     if (lawfirm) {
       setFiscal({
-        fiscal_name: (lawfirm as any).fiscal_name || lawfirm.name || '',
+        fiscal_name: lawfirm.fiscal_name || lawfirm.name || '',
         cif: lawfirm.cif || '',
-        fiscal_email: (lawfirm as any).fiscal_email || lawfirm.contact_email || '',
-        fiscal_address: (lawfirm as any).fiscal_address || lawfirm.address || '',
-        fiscal_city: (lawfirm as any).fiscal_city || lawfirm.city || '',
-        fiscal_province: (lawfirm as any).fiscal_province || lawfirm.province || '',
-        fiscal_postal_code: (lawfirm as any).fiscal_postal_code || lawfirm.postal_code || '',
+        fiscal_email: lawfirm.fiscal_email || lawfirm.contact_email || '',
+        fiscal_address: lawfirm.fiscal_address || lawfirm.address || '',
+        fiscal_city: lawfirm.fiscal_city || lawfirm.city || '',
+        fiscal_province: lawfirm.fiscal_province || lawfirm.province || '',
+        fiscal_postal_code: lawfirm.fiscal_postal_code || lawfirm.postal_code || '',
       });
     }
   }, [lawfirm]);
