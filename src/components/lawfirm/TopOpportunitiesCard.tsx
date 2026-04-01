@@ -120,15 +120,26 @@ export function TopOpportunitiesCard({ leads, balance, onViewDetails, onPurchase
                     </span>
                   </div>
 
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="w-full gap-1 text-xs"
-                    onClick={(e) => { e.stopPropagation(); onViewDetails(lead); }}
-                  >
-                    <Eye className="h-3 w-3" />
-                    Ver informe
-                  </Button>
+                  <div className="flex gap-1.5">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="flex-1 gap-1 text-xs"
+                      onClick={(e) => { e.stopPropagation(); onViewDetails(lead); }}
+                    >
+                      <Eye className="h-3 w-3" />
+                      Ver
+                    </Button>
+                    <Button 
+                      size="sm"
+                      className="flex-1 gap-1 text-xs"
+                      disabled={isInCart?.(lead.id)}
+                      onClick={(e) => { e.stopPropagation(); onPurchase(lead); }}
+                    >
+                      <ShoppingCart className="h-3 w-3" />
+                      {isInCart?.(lead.id) ? '✓' : 'Añadir'}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );
