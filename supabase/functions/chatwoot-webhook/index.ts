@@ -372,12 +372,23 @@ serve(async (req) => {
   })}`);
 
   try {
-    // Verificar token de seguridad
+    // Verificar token de seguridad - read from database
     const url = new URL(req.url);
     const token = url.searchParams.get("token");
-    const expectedToken = "6b8f29d7-d55f-41ed-829d-70c31f3ada4c";
     
-    if (token !== expectedToken) {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const { data: chatwootSettings } = await supabase
+      .from("chatwoot_settings")
+      .select("webhook_token, is_active")
+      .limit(1)
+      .single();
+    
+    const expectedToken = chatwootSettings?.webhook_token;
+    
+    if (!token || !expectedToken || token !== expectedToken) {
       console.log(`[WEBHOOK_ENTRY] REJECTED: Invalid token`);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -399,10 +410,7 @@ serve(async (req) => {
     const contactPhone: string | null = contact?.phone_number ?? contact?.phone ?? null;
     const isAlias = looksLikeAlias(contactAlias);
     
-    // Inicializar Supabase
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Supabase already initialized above (token check)
 
     // Registrar el webhook recibido (SIEMPRE, incluso si luego se rechaza)
     const { data: logData } = await supabase.from("webhook_logs").insert({
@@ -428,8 +436,7 @@ serve(async (req) => {
       }
       
       return new Response(JSON.stringify({ 
-        status: "ignored", 
-        reason 
+        status: "ignored"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -477,8 +484,7 @@ serve(async (req) => {
       }
       
       return new Response(JSON.stringify({ 
-        status: "skipped", 
-        reason 
+        status: "skipped"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -507,9 +513,7 @@ serve(async (req) => {
         }
         
         return new Response(JSON.stringify({ 
-          status: "skipped", 
-          reason: "dedupe - no new messages",
-          lead_id: existingLead.id,
+          status: "skipped"
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -586,9 +590,7 @@ serve(async (req) => {
       });
       
       return new Response(JSON.stringify({ 
-        status: "filtered", 
-        reason: "Not a lead - informational query only",
-        intent: intentResult,
+        status: "filtered"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -915,10 +917,6 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       status: finalLeadValid ? "success" : "discarded",
-      action: existingLead ? "updated" : "created",
-      lead_id: upsertedLead.id,
-      conversation_id: conversationId,
-      valid: finalLeadValid,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
