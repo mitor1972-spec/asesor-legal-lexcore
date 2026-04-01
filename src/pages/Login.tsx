@@ -5,16 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Scale, Mail, Lock } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Scale, Mail, Lock, User } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn } = useAuthContext();
+  const { signIn, signUp } = useAuthContext();
   const [loading, setLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupName, setSignupName] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +29,23 @@ export default function Login() {
     } else {
       toast.success('¡Bienvenido!');
       navigate('/dashboard');
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (signupPassword.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    setLoading(true);
+    const { error } = await signUp(signupEmail, signupPassword, signupName);
+    setLoading(false);
+    if (error) {
+      toast.error(error.message || 'Error al registrarse');
+    } else {
+      toast.success('¡Cuenta creada! Bienvenido.');
+      navigate('/despacho/portada');
     }
   };
 
@@ -50,34 +70,63 @@ export default function Login() {
             <CardDescription>CRM para gestión de leads legales</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="login-email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="login-email" type="email" placeholder="tu@email.com" className="pl-10" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="login-password">Contraseña</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="login-password" type="password" placeholder="••••••••" className="pl-10" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
-                </div>
-              </div>
-              <Button type="submit" className="w-full gradient-brand" disabled={loading}>
-                {loading ? 'Entrando...' : 'Iniciar sesión'}
-              </Button>
-            </form>
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="login">Iniciar sesión</TabsTrigger>
+                <TabsTrigger value="signup">Registrarse</TabsTrigger>
+              </TabsList>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                ¿Eres un despacho de abogados?{' '}
-                <Link to="/registro-despacho" className="text-primary hover:underline font-medium">
-                  Solicita tu alta aquí
-                </Link>
-              </p>
-            </div>
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input id="login-email" type="email" placeholder="tu@email.com" className="pl-10" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Contraseña</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input id="login-password" type="password" placeholder="••••••••" className="pl-10" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full gradient-brand" disabled={loading}>
+                    {loading ? 'Entrando...' : 'Iniciar sesión'}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup">
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">Nombre completo</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input id="signup-name" type="text" placeholder="Tu nombre" className="pl-10" value={signupName} onChange={e => setSignupName(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input id="signup-email" type="email" placeholder="tu@email.com" className="pl-10" value={signupEmail} onChange={e => setSignupEmail(e.target.value)} required />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Contraseña</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input id="signup-password" type="password" placeholder="Mínimo 6 caracteres" className="pl-10" value={signupPassword} onChange={e => setSignupPassword(e.target.value)} required />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full gradient-brand" disabled={loading}>
+                    {loading ? 'Creando cuenta...' : 'Registrarse'}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
