@@ -144,7 +144,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                     <>
                       <span>•</span>
                       <Euro className="h-3 w-3" />
-                      <span>~{typeof cuantia === 'number' ? cuantia.toLocaleString('es-ES') : cuantia}€</span>
+                      <span>~{String(cuantia)}€</span>
                     </>
                   )}
                   {isUrgent && (
