@@ -220,7 +220,7 @@ export default function LawfirmPortada() {
               {/* Left: Brand (3 cols) */}
               <div className="md:col-span-3 p-8 md:p-10 bg-gradient-to-br from-muted/30 to-muted/10">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 rounded-xl bg-lawfirm-primary shadow-lg shadow-lawfirm-primary/20">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-600 to-blue-800 shadow-lg shadow-blue-600/30">
                     <Scale className="h-8 w-8 text-white" />
                   </div>
                   <div>
