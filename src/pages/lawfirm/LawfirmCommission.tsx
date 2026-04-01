@@ -6,18 +6,44 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
 import { 
   Percent, Scale, Info, Briefcase, TrendingUp, 
   ArrowRight, Loader2, ShoppingCart, DollarSign, 
-  CheckCircle2, Clock, AlertCircle
+  CheckCircle2, Clock, AlertCircle, Shield, BarChart3
 } from 'lucide-react';
+
+function getWeekStart() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(now.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString();
+}
 
 export default function LawfirmCommission() {
   const { user } = useAuthContext();
   const { isImpersonating, impersonatedLawfirm } = useImpersonation();
   const navigate = useNavigate();
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
+
+  // Fetch lawfirm commission config
+  const { data: lawfirmConfig } = useQuery({
+    queryKey: ['lawfirm-commission-config', lawfirmId],
+    queryFn: async () => {
+      if (!lawfirmId) return null;
+      const { data, error } = await supabase
+        .from('lawfirms')
+        .select('commission_enabled, commission_global_percent, commission_progressive_enabled, commission_progressive_tiers, commission_weekly_limit')
+        .eq('id', lawfirmId)
+        .single();
+      if (error) throw error;
+      return data as any;
+    },
+    enabled: !!lawfirmId,
+  });
 
   // Fetch commissionable specialties from master config
   const { data: commissionSpecialties, isLoading: loadingSpecialties } = useQuery({
@@ -42,23 +68,11 @@ export default function LawfirmCommission() {
       const { data, error } = await supabase
         .from('lead_assignments')
         .select(`
-          id,
-          lead_id,
-          firm_status,
-          client_fee,
-          claimed_amount,
-          won_amount,
-          won_percentage,
-          success_percentage,
-          commission_percent,
-          assigned_at,
-          result_amount,
-          result_notes,
-          leads(
-            structured_fields,
-            score_final,
-            case_summary
-          )
+          id, lead_id, firm_status, client_fee, claimed_amount,
+          won_amount, won_percentage, success_percentage,
+          commission_percent, commission_origin, assigned_at,
+          result_amount, result_notes,
+          leads(structured_fields, score_final, case_summary)
         `)
         .eq('lawfirm_id', lawfirmId)
         .eq('is_commission', true)
@@ -68,6 +82,24 @@ export default function LawfirmCommission() {
     },
     enabled: !!lawfirmId,
   });
+
+  // Weekly cases count
+  const weekStart = getWeekStart();
+  const weeklyCount = commissionCases?.filter(c => c.assigned_at && c.assigned_at >= weekStart).length || 0;
+  const weeklyLimit = lawfirmConfig?.commission_weekly_limit;
+  const weeklyLimitReached = weeklyLimit != null && weeklyCount >= weeklyLimit;
+
+  // Progressive tier info
+  const progressiveEnabled = lawfirmConfig?.commission_progressive_enabled;
+  const tiers = (Array.isArray(lawfirmConfig?.commission_progressive_tiers) ? lawfirmConfig.commission_progressive_tiers : []) as { from: number; to: number; percent: number }[];
+  const totalCasesCount = commissionCases?.length || 0;
+  const currentTier = tiers.find(t => totalCasesCount >= t.from && totalCasesCount <= t.to);
+  const currentProgressivePercent = currentTier?.percent;
+
+  // Effective commission to show
+  const effectiveCommission = progressiveEnabled && currentProgressivePercent != null
+    ? currentProgressivePercent
+    : lawfirmConfig?.commission_global_percent ?? null;
 
   // Compute commission financial summary
   const stats = {
@@ -89,18 +121,12 @@ export default function LawfirmCommission() {
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
-      case 'won':
-        return <Badge className="bg-green-600">Ganado</Badge>;
-      case 'lost':
-        return <Badge variant="destructive">Perdido</Badge>;
-      case 'in_progress':
-        return <Badge className="bg-blue-600">En curso</Badge>;
-      case 'contacted':
-        return <Badge variant="secondary">Contactado</Badge>;
-      case 'accepted':
-        return <Badge className="bg-lawfirm-primary">Aceptado</Badge>;
-      default:
-        return <Badge variant="outline">Recibido</Badge>;
+      case 'won': return <Badge className="bg-green-600">Ganado</Badge>;
+      case 'lost': return <Badge variant="destructive">Perdido</Badge>;
+      case 'in_progress': return <Badge className="bg-blue-600">En curso</Badge>;
+      case 'contacted': return <Badge variant="secondary">Contactado</Badge>;
+      case 'accepted': return <Badge className="bg-lawfirm-primary">Aceptado</Badge>;
+      default: return <Badge variant="outline">Recibido</Badge>;
     }
   };
 
@@ -130,6 +156,21 @@ export default function LawfirmCommission() {
           Ir al LeadMarket
         </Button>
       </div>
+
+      {/* Weekly limit warning */}
+      {weeklyLimitReached && (
+        <Card className="border-amber-500/50 bg-amber-500/5">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+              <p className="text-sm font-medium text-amber-700">
+                Has alcanzado el límite semanal de casos a comisión ({weeklyLimit} casos). 
+                Se reinicia automáticamente cada lunes.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -187,6 +228,68 @@ export default function LawfirmCommission() {
         </Card>
       </div>
 
+      {/* Commission status & weekly usage */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Shield className="h-4 w-4 text-green-600" />
+              Tu comisión aplicable
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Comisión actual</span>
+              <span className="text-2xl font-bold text-green-600">
+                {effectiveCommission != null ? `${effectiveCommission}%` : '20% (defecto)'}
+              </span>
+            </div>
+            {progressiveEnabled && tiers.length > 0 && (
+              <div className="space-y-2 pt-2 border-t">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium">Tramo progresivo activo</span>
+                </div>
+                <div className="space-y-1">
+                  {tiers.map((t, i) => {
+                    const isActive = totalCasesCount >= t.from && totalCasesCount <= t.to;
+                    return (
+                      <div key={i} className={`flex justify-between text-xs px-2 py-1 rounded ${isActive ? 'bg-green-500/10 font-medium' : 'text-muted-foreground'}`}>
+                        <span>{t.from}–{t.to >= 999999 ? '∞' : t.to} casos</span>
+                        <span>{t.percent}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4 text-blue-600" />
+              Uso semanal
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Casos esta semana</span>
+              <span className="text-2xl font-bold">
+                {weeklyCount}{weeklyLimit != null ? ` / ${weeklyLimit}` : ''}
+              </span>
+            </div>
+            {weeklyLimit != null && (
+              <Progress value={(weeklyCount / weeklyLimit) * 100} className="h-2" />
+            )}
+            {weeklyLimit == null && (
+              <p className="text-xs text-muted-foreground">Sin límite semanal configurado</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Financial Summary */}
       {stats.totalCases > 0 && (
         <Card className="border-green-500/20">
@@ -207,7 +310,7 @@ export default function LawfirmCommission() {
                 <p className="text-2xl font-bold">{stats.totalExito.toFixed(2)}€</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Comisión total a pagar</p>
+                <p className="text-sm text-muted-foreground">Comisión pendiente de liquidar</p>
                 <p className="text-2xl font-bold text-amber-600">{stats.totalCommissionOwed.toFixed(2)}€</p>
               </div>
             </div>
@@ -230,7 +333,7 @@ export default function LawfirmCommission() {
               <div className="space-y-1">
                 <p className="font-semibold">Adquiere el lead gratis</p>
                 <p className="text-sm text-muted-foreground">
-                  En el LeadMarket, activa el interruptor "Modelo comisión" en el carrito. El lead se añade a tus casos sin coste.
+                  En el LeadMarket, activa "Modelo comisión" en el carrito.
                 </p>
               </div>
             </div>
@@ -239,7 +342,7 @@ export default function LawfirmCommission() {
               <div className="space-y-1">
                 <p className="font-semibold">Gestiona el caso</p>
                 <p className="text-sm text-muted-foreground">
-                  Trabaja el caso normalmente. Registra la minuta (honorarios fijos) y, si aplica, el porcentaje de éxito acordado.
+                  Trabaja el caso y registra la minuta y el porcentaje de éxito.
                 </p>
               </div>
             </div>
@@ -248,7 +351,7 @@ export default function LawfirmCommission() {
               <div className="space-y-1">
                 <p className="font-semibold">Paga solo si cobras</p>
                 <p className="text-sm text-muted-foreground">
-                  Se aplica la comisión sobre la minuta cobrada al cliente y sobre el porcentaje de éxito obtenido. Si no cobras, no pagas.
+                  Se aplica la comisión sobre honorarios y éxito. Si no cobras, no pagas.
                 </p>
               </div>
             </div>
@@ -380,10 +483,10 @@ export default function LawfirmCommission() {
             <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
             <div className="text-sm text-muted-foreground space-y-1">
               <p>
-                <strong>Comisión sobre honorarios:</strong> Se aplica el porcentaje indicado sobre la minuta (honorarios fijos) cobrada al cliente.
+                <strong>Comisión sobre honorarios:</strong> Se aplica el porcentaje indicado sobre la minuta cobrada al cliente.
               </p>
               <p>
-                <strong>Comisión sobre éxito:</strong> Si el caso tiene componente de éxito (variable), también se aplica el porcentaje sobre lo obtenido.
+                <strong>Comisión sobre éxito:</strong> También se aplica sobre lo obtenido por éxito variable.
               </p>
               <p>
                 Las comisiones se liquidan mensualmente. Contacta con soporte para cualquier consulta.
