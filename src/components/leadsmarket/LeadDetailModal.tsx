@@ -336,13 +336,23 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               <Button variant="outline" onClick={onClose}>
                 Cerrar
               </Button>
+              {lead.commission_available && !isInCart && (
+                <Button 
+                  onClick={() => { onAddToCart(lead, true); onClose(); }}
+                  variant="outline"
+                  className="gap-2 cursor-pointer border-green-500/50 text-green-700 hover:bg-green-500/10"
+                >
+                  <span className="h-4 w-4">%</span>
+                  Comisión
+                </Button>
+              )}
               <Button 
-                onClick={() => { onAddToCart(lead); onClose(); }}
+                onClick={() => { onAddToCart(lead, false); onClose(); }}
                 disabled={isInCart}
                 className="gap-2 cursor-pointer"
               >
                 <ShoppingCart className="h-4 w-4" />
-                {isInCart ? '✓ Ya en carrito' : 'Añadir al carrito'}
+                {isInCart ? '✓ Ya en carrito' : `Comprar ${lead.marketplace_price?.toFixed(0) || '0'}€`}
               </Button>
             </div>
           </div>
