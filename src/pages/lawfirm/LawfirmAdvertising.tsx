@@ -395,9 +395,9 @@ export default function LawfirmAdvertising() {
   const categoryIcons: Record<string, React.ElementType> = {
     'banners-web': Globe,
     'secciones-portada': Crown,
-    'contactos-marketplace': ShoppingCart,
-    'newsletters': Mail,
-    'marketing-legal': Handshake,
+    'marketplace-contactos': ShoppingCart,
+    'newsletter': Mail,
+    'marketing-juridico': Handshake,
   };
 
   return (
