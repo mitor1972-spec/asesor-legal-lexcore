@@ -152,6 +152,7 @@ export default function AltaDespacho() {
             monthly_capacity: preferences.monthly_capacity,
             max_lead_price: preferences.max_price,
             min_lead_score: preferences.min_score,
+            auto_purchase_enabled: preferences.auto_purchase_enabled,
             interested_in_advertising: preferences.interested_in_advertising,
             interested_in_services_sales: preferences.interested_in_services_sales,
             commission_enabled: preferences.interested_in_commission,
