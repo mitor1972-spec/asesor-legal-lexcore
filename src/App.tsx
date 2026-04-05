@@ -46,6 +46,7 @@ import LawfirmCommission from "@/pages/lawfirm/LawfirmCommission";
 import LawfirmRadar from "@/pages/lawfirm/LawfirmRadar";
 import LawfirmPortada from "@/pages/lawfirm/LawfirmPortada";
 import RegistroDespacho from "@/pages/RegistroDespacho";
+import AltaDespacho from "@/pages/AltaDespacho";
 import SalesReport from "@/pages/reports/SalesReport";
 import NotFound from "@/pages/NotFound";
 import { RequireAdmin } from "@/components/auth/RequireAdmin";
@@ -64,6 +65,7 @@ const App = () => (
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/registro-despacho" element={<RegistroDespacho />} />
+                <Route path="/alta-despacho" element={<AltaDespacho />} />
                 <Route path="/" element={<MainLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
