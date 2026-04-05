@@ -59,9 +59,10 @@ const adminNavigation = [
 ];
 
 const marketingNavigation = [
-  { name: 'Directorio', href: '/despacho/publicidad', icon: Globe },
-  { name: 'Asistente Virtual', href: '/despacho/anuncios', icon: Bot },
-  { name: 'Newsletter', href: '/despacho/publicidad?tab=newsletter', icon: Mail },
+  { name: 'Publicidad Web', href: '/despacho/publicidad?tab=web', icon: Globe },
+  { name: 'Asistente Virtual', href: '/despacho/publicidad?tab=asistente', icon: Bot },
+  { name: 'Newsletters', href: '/despacho/publicidad?tab=newsletter', icon: Mail },
+  { name: 'Outsourcing Comercial', href: '/despacho/outsourcing', icon: Handshake },
 ];
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
@@ -193,7 +194,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         {/* MARKETING */}
         <div className="my-4 border-t border-sidebar-border" />
         <div className="px-3 mb-2">
-          <span className="text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wider">Marketing</span>
+          <span className="text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wider">Marketing - Potencia tu despacho</span>
         </div>
         <nav className="space-y-1">
           {marketingNavigation.map((item) => (
@@ -216,17 +217,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           </Link>
         </nav>
 
-        {/* OUTSOURCING COMERCIAL */}
-        <div className="my-4 border-t border-sidebar-border" />
-        <div className="px-3 mb-2">
-          <span className="text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wider">Outsourcing</span>
-        </div>
-        <nav className="space-y-1">
-          <Link to="/despacho/outsourcing" onClick={onClose} className={navLinkClass('/despacho/outsourcing')}>
-            <Handshake className="h-5 w-5" />
-            Outsourcing Comercial
-          </Link>
-        </nav>
 
         {/* AYUDA + LOGOUT */}
         <div className="my-4 border-t border-sidebar-border" />

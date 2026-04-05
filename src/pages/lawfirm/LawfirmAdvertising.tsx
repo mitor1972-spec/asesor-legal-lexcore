@@ -1,8 +1,9 @@
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Globe, Bot, Mail, Check, Star, Crown, Sparkles } from 'lucide-react';
+import { Globe, Bot, Mail, Check, Star, Crown, Sparkles, Handshake } from 'lucide-react';
 
 interface PlanCardProps {
   name: string;
@@ -49,32 +50,43 @@ function PlanCard({ name, price, priceUnit, features, highlight, badge, onContra
 }
 
 export default function LawfirmAdvertising() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'web';
+
   const handleContract = (plan: string) => {
     window.open(`mailto:ventas@asesor.legal?subject=Contratar plan ${plan}`, '_blank');
+  };
+
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value });
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-display font-bold flex items-center gap-2">
-          📢 Publicidad y Visibilidad
+          📢 Opciones de Publicidad
         </h1>
-        <p className="text-muted-foreground">Destaca tu despacho y consigue más clientes</p>
+        <p className="text-muted-foreground">Potencia la visibilidad de tu despacho con nuestros canales de publicidad</p>
       </div>
 
-      <Tabs defaultValue="web" className="space-y-6">
-        <TabsList className="grid grid-cols-3 w-full max-w-lg">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+        <TabsList className="grid grid-cols-4 w-full max-w-2xl">
           <TabsTrigger value="web" className="flex items-center gap-2">
             <Globe className="h-4 w-4" />
             Web
           </TabsTrigger>
-          <TabsTrigger value="amara" className="flex items-center gap-2">
+          <TabsTrigger value="asistente" className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
-            Asistente
+            Asistente IA
           </TabsTrigger>
           <TabsTrigger value="newsletter" className="flex items-center gap-2">
             <Mail className="h-4 w-4" />
-            Newsletter
+            Newsletters
+          </TabsTrigger>
+          <TabsTrigger value="outsourcing" className="flex items-center gap-2">
+            <Handshake className="h-4 w-4" />
+            Outsourcing
           </TabsTrigger>
         </TabsList>
 
@@ -144,16 +156,16 @@ export default function LawfirmAdvertising() {
           </Card>
         </TabsContent>
 
-        {/* Amara Assistant */}
-        <TabsContent value="amara">
+        {/* Asistente Virtual IA */}
+        <TabsContent value="asistente">
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bot className="h-5 w-5" />
-                Publicidad en Asistente AMARA
+                Publicidad en Asistente Virtual IA
               </CardTitle>
               <CardDescription>
-                Tu despacho puede ser recomendado directamente por Amara cuando usuarios pregunten por abogados de tus áreas en tus provincias
+                Tu despacho puede ser recomendado directamente por nuestro asistente IA cuando usuarios pregunten por abogados de tus áreas en tus provincias
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -171,14 +183,14 @@ export default function LawfirmAdvertising() {
                     <ul className="space-y-2">
                       <li className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-600 mt-0.5" />
-                        <span>Amara menciona tu despacho como opción</span>
+                        <span>El asistente menciona tu despacho como opción</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-600 mt-0.5" />
                         <span>Apareces en respuestas relevantes</span>
                       </li>
                     </ul>
-                    <Button className="w-full" variant="outline" onClick={() => handleContract('Amara Recomendación')}>
+                    <Button className="w-full" variant="outline" onClick={() => handleContract('Asistente IA Recomendación')}>
                       Contratar
                     </Button>
                   </CardContent>
@@ -198,18 +210,18 @@ export default function LawfirmAdvertising() {
                     <ul className="space-y-2">
                       <li className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-600 mt-0.5" />
-                        <span>Amara recomienda PRIMERO tu despacho</span>
+                        <span>El asistente recomienda PRIMERO tu despacho</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-600 mt-0.5" />
-                        <span>Incluye datos de contacto</span>
+                        <span>Incluye datos de contacto directos</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-600 mt-0.5" />
-                        <span>Prioridad absoluta</span>
+                        <span>Prioridad absoluta en todas las consultas</span>
                       </li>
                     </ul>
-                    <Button className="w-full" onClick={() => handleContract('Amara Preferente')}>
+                    <Button className="w-full" onClick={() => handleContract('Asistente IA Preferente')}>
                       Contratar
                     </Button>
                   </CardContent>
@@ -280,6 +292,57 @@ export default function LawfirmAdvertising() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Outsourcing Comercial */}
+        <TabsContent value="outsourcing">
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Handshake className="h-5 w-5" />
+                Outsourcing Comercial
+              </CardTitle>
+              <CardDescription>
+                Externaliza la captación de clientes con un equipo comercial dedicado a tu despacho
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 max-w-3xl">
+                <PlanCard
+                  name="EQUIPO COMERCIAL"
+                  price="Consultar"
+                  priceUnit="mes"
+                  features={[
+                    "Equipo de ventas dedicado",
+                    "Captación de clientes B2B",
+                    "Informes mensuales de resultados",
+                    "Sin permanencia"
+                  ]}
+                  highlight
+                  badge="Personalizado"
+                  onContract={() => handleContract('Outsourcing Equipo Comercial')}
+                />
+                <PlanCard
+                  name="CAMPAÑA PUNTUAL"
+                  price="Consultar"
+                  priceUnit="campaña"
+                  features={[
+                    "Fuerza de ventas temporal",
+                    "Ideal para lanzamientos",
+                    "Campañas específicas por área",
+                    "Resultados medibles"
+                  ]}
+                  onContract={() => handleContract('Outsourcing Campaña Puntual')}
+                />
+              </div>
+
+              <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  Powered by <span className="font-semibold text-foreground">Elite Work</span> — consultora estratégica especializada en servicios profesionales. Contacta con nosotros para diseñar un plan a medida.
+                </p>
               </div>
             </CardContent>
           </Card>
