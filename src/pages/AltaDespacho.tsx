@@ -930,6 +930,14 @@ function TermsCheckboxes({ preferences, setPreferences }: {
 }
 
 function SuccessScreen({ navigate, regType }: { navigate: (path: string) => void; regType: RegistrationType }) {
+  // Auto-redirect after 3 seconds so they don't have to click
+  useState(() => {
+    const timer = setTimeout(() => {
+      navigate('/despacho/portada');
+    }, 4000);
+    return () => clearTimeout(timer);
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex items-center justify-center p-4">
       <Card className="max-w-md w-full text-center">
@@ -943,7 +951,7 @@ function SuccessScreen({ navigate, regType }: { navigate: (path: string) => void
           <p className="text-muted-foreground">
             {regType === 'quick'
               ? 'Tu cuenta está lista. Revisa tu email para confirmar el registro y acceder al marketplace.'
-              : 'Tu despacho está dado de alta en Asesor.Legal. Revisa tu email para confirmar y empezar a recibir casos.'}
+              : 'Tu despacho está dado de alta en Asesor.Legal. Entrando en la plataforma...'}
           </p>
           {regType === 'full' && (
             <div className="bg-muted/50 rounded-lg p-4 text-left">
@@ -957,15 +965,16 @@ function SuccessScreen({ navigate, regType }: { navigate: (path: string) => void
             </div>
           )}
           <div className="flex flex-col gap-2">
-            <Button className="w-full gradient-brand text-white" onClick={() => navigate('/login')}>
-              Iniciar sesión
+            <Button className="w-full gradient-brand text-white" onClick={() => navigate('/despacho/portada')}>
+              Entrar en la plataforma
             </Button>
             {regType === 'quick' && (
               <Button variant="outline" className="w-full" onClick={() => navigate('/login')}>
-                Completar perfil más tarde
+                Iniciar sesión
               </Button>
             )}
           </div>
+          <p className="text-xs text-muted-foreground animate-pulse">Redirigiendo automáticamente...</p>
         </CardContent>
       </Card>
     </div>
