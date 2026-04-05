@@ -117,7 +117,7 @@ export function useAdOrders(lawfirmId?: string) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as AdOrder[];
+      return data as unknown as AdOrder[];
     },
   });
 }
