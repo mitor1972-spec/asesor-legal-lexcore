@@ -1,8 +1,9 @@
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Globe, Bot, Mail, Check, Star, Crown, Sparkles } from 'lucide-react';
+import { Globe, Bot, Mail, Check, Star, Crown, Sparkles, Handshake } from 'lucide-react';
 
 interface PlanCardProps {
   name: string;
