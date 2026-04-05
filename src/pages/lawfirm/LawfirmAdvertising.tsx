@@ -296,6 +296,57 @@ export default function LawfirmAdvertising() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Outsourcing Comercial */}
+        <TabsContent value="outsourcing">
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Handshake className="h-5 w-5" />
+                Outsourcing Comercial
+              </CardTitle>
+              <CardDescription>
+                Externaliza la captación de clientes con un equipo comercial dedicado a tu despacho
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 max-w-3xl">
+                <PlanCard
+                  name="EQUIPO COMERCIAL"
+                  price="Consultar"
+                  priceUnit="mes"
+                  features={[
+                    "Equipo de ventas dedicado",
+                    "Captación de clientes B2B",
+                    "Informes mensuales de resultados",
+                    "Sin permanencia"
+                  ]}
+                  highlight
+                  badge="Personalizado"
+                  onContract={() => handleContract('Outsourcing Equipo Comercial')}
+                />
+                <PlanCard
+                  name="CAMPAÑA PUNTUAL"
+                  price="Consultar"
+                  priceUnit="campaña"
+                  features={[
+                    "Fuerza de ventas temporal",
+                    "Ideal para lanzamientos",
+                    "Campañas específicas por área",
+                    "Resultados medibles"
+                  ]}
+                  onContract={() => handleContract('Outsourcing Campaña Puntual')}
+                />
+              </div>
+
+              <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  Powered by <span className="font-semibold text-foreground">Elite Work</span> — consultora estratégica especializada en servicios profesionales. Contacta con nosotros para diseñar un plan a medida.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
     </div>
   );
