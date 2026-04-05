@@ -59,9 +59,10 @@ const adminNavigation = [
 ];
 
 const marketingNavigation = [
-  { name: 'Directorio', href: '/despacho/publicidad', icon: Globe },
-  { name: 'Asistente Virtual', href: '/despacho/anuncios', icon: Bot },
-  { name: 'Newsletter', href: '/despacho/publicidad?tab=newsletter', icon: Mail },
+  { name: 'Publicidad Web', href: '/despacho/publicidad?tab=web', icon: Globe },
+  { name: 'Asistente Virtual', href: '/despacho/publicidad?tab=asistente', icon: Bot },
+  { name: 'Newsletters', href: '/despacho/publicidad?tab=newsletter', icon: Mail },
+  { name: 'Outsourcing Comercial', href: '/despacho/outsourcing', icon: Handshake },
 ];
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
