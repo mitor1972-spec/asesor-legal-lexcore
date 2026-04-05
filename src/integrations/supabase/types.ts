@@ -801,6 +801,60 @@ export type Database = {
         }
         Relationships: []
       }
+      commercial_requests: {
+        Row: {
+          admin_notes: string | null
+          contacted_at: string | null
+          conversation_messages: Json | null
+          conversation_summary: string | null
+          created_at: string
+          id: string
+          lawfirm_id: string
+          legal_areas: string[] | null
+          monthly_budget: number | null
+          provinces: string[] | null
+          request_type: string
+          specialties_suggested: string[] | null
+          status: string
+          strategy_mode: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          contacted_at?: string | null
+          conversation_messages?: Json | null
+          conversation_summary?: string | null
+          created_at?: string
+          id?: string
+          lawfirm_id: string
+          legal_areas?: string[] | null
+          monthly_budget?: number | null
+          provinces?: string[] | null
+          request_type?: string
+          specialties_suggested?: string[] | null
+          status?: string
+          strategy_mode?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          contacted_at?: string | null
+          conversation_messages?: Json | null
+          conversation_summary?: string | null
+          created_at?: string
+          id?: string
+          lawfirm_id?: string
+          legal_areas?: string[] | null
+          monthly_budget?: number | null
+          provinces?: string[] | null
+          request_type?: string
+          specialties_suggested?: string[] | null
+          status?: string
+          strategy_mode?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       commission_areas: {
         Row: {
           commission_percent: number
