@@ -25,6 +25,7 @@ import ProfileSettings from "@/pages/settings/ProfileSettings";
 import DiscardedLeads from "@/pages/settings/DiscardedLeads";
 import AiPromptsSettings from "@/pages/settings/AiPromptsSettings";
 import MasterConfig from "@/pages/settings/MasterConfig";
+import AdProductsAdmin from "@/pages/settings/AdProductsAdmin";
 import QualityControl from "@/pages/settings/QualityControl";
 import LawfirmDashboard from "@/pages/lawfirm/LawfirmDashboard";
 import LawfirmCases from "@/pages/lawfirm/LawfirmCases";
@@ -85,6 +86,7 @@ const App = () => (
                   <Route path="settings/profile" element={<ProfileSettings />} />
                   <Route path="settings/master-config" element={<RequireAdmin><MasterConfig /></RequireAdmin>} />
                   <Route path="settings/quality-control" element={<RequireAdmin><QualityControl /></RequireAdmin>} />
+                  <Route path="settings/ad-products" element={<RequireAdmin><AdProductsAdmin /></RequireAdmin>} />
                   <Route path="informes/ventas" element={<SalesReport />} />
                 </Route>
                 <Route path="/despacho" element={<LawfirmLayout />}>

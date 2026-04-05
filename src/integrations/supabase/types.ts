@@ -14,6 +14,305 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_invoices: {
+        Row: {
+          amount: number
+          concept: string | null
+          created_at: string | null
+          fiscal_address: string | null
+          fiscal_cif: string | null
+          fiscal_city: string | null
+          fiscal_name: string | null
+          fiscal_postal_code: string | null
+          fiscal_province: string | null
+          id: string
+          invoice_number: string
+          lawfirm_id: string
+          order_id: string | null
+          paid_at: string | null
+          payment_method: string | null
+          pdf_url: string | null
+          status: string | null
+          stripe_invoice_id: string | null
+          tax_amount: number
+          tax_rate: number | null
+          total_amount: number
+        }
+        Insert: {
+          amount: number
+          concept?: string | null
+          created_at?: string | null
+          fiscal_address?: string | null
+          fiscal_cif?: string | null
+          fiscal_city?: string | null
+          fiscal_name?: string | null
+          fiscal_postal_code?: string | null
+          fiscal_province?: string | null
+          id?: string
+          invoice_number: string
+          lawfirm_id: string
+          order_id?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          pdf_url?: string | null
+          status?: string | null
+          stripe_invoice_id?: string | null
+          tax_amount: number
+          tax_rate?: number | null
+          total_amount: number
+        }
+        Update: {
+          amount?: number
+          concept?: string | null
+          created_at?: string | null
+          fiscal_address?: string | null
+          fiscal_cif?: string | null
+          fiscal_city?: string | null
+          fiscal_name?: string | null
+          fiscal_postal_code?: string | null
+          fiscal_province?: string | null
+          id?: string
+          invoice_number?: string
+          lawfirm_id?: string
+          order_id?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          pdf_url?: string | null
+          status?: string | null
+          stripe_invoice_id?: string | null
+          tax_amount?: number
+          tax_rate?: number | null
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_invoices_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "ad_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_orders: {
+        Row: {
+          areas_selected: string[] | null
+          auto_renew: boolean | null
+          base_amount: number
+          config_json: Json | null
+          created_at: string | null
+          discount_percent: number | null
+          duration: string
+          ends_at: string | null
+          final_amount: number
+          geo_scope: string | null
+          geo_target: string | null
+          id: string
+          keywords_count: number | null
+          lawfirm_id: string
+          multiplier_areas: number | null
+          multiplier_keywords: number | null
+          notes: string | null
+          payment_method: string | null
+          payment_status: string | null
+          product_id: string
+          starts_at: string | null
+          status: string | null
+          stripe_invoice_id: string | null
+          stripe_payment_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          areas_selected?: string[] | null
+          auto_renew?: boolean | null
+          base_amount: number
+          config_json?: Json | null
+          created_at?: string | null
+          discount_percent?: number | null
+          duration?: string
+          ends_at?: string | null
+          final_amount: number
+          geo_scope?: string | null
+          geo_target?: string | null
+          id?: string
+          keywords_count?: number | null
+          lawfirm_id: string
+          multiplier_areas?: number | null
+          multiplier_keywords?: number | null
+          notes?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          product_id: string
+          starts_at?: string | null
+          status?: string | null
+          stripe_invoice_id?: string | null
+          stripe_payment_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          areas_selected?: string[] | null
+          auto_renew?: boolean | null
+          base_amount?: number
+          config_json?: Json | null
+          created_at?: string | null
+          discount_percent?: number | null
+          duration?: string
+          ends_at?: string | null
+          final_amount?: number
+          geo_scope?: string | null
+          geo_target?: string | null
+          id?: string
+          keywords_count?: number | null
+          lawfirm_id?: string
+          multiplier_areas?: number | null
+          multiplier_keywords?: number | null
+          notes?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          product_id?: string
+          starts_at?: string | null
+          status?: string | null
+          stripe_invoice_id?: string | null
+          stripe_payment_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_orders_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "ad_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_product_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
+      ad_products: {
+        Row: {
+          area_multipliers: Json | null
+          badge: string | null
+          base_price: number
+          category_id: string | null
+          created_at: string | null
+          description: string | null
+          discount_annual: number | null
+          discount_quarterly: number | null
+          discount_semester: number | null
+          geo_pricing: Json | null
+          id: string
+          is_active: boolean | null
+          is_featured: boolean | null
+          keyword_multipliers: Json | null
+          max_slots: number | null
+          name: string
+          premium_benefits: string[] | null
+          price_unit: string | null
+          product_type: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          area_multipliers?: Json | null
+          badge?: string | null
+          base_price?: number
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          discount_annual?: number | null
+          discount_quarterly?: number | null
+          discount_semester?: number | null
+          geo_pricing?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          keyword_multipliers?: Json | null
+          max_slots?: number | null
+          name: string
+          premium_benefits?: string[] | null
+          price_unit?: string | null
+          product_type?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          area_multipliers?: Json | null
+          badge?: string | null
+          base_price?: number
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          discount_annual?: number | null
+          discount_quarterly?: number | null
+          discount_semester?: number | null
+          geo_pricing?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          keyword_multipliers?: Json | null
+          max_slots?: number | null
+          name?: string
+          premium_benefits?: string[] | null
+          price_unit?: string | null
+          product_type?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "ad_product_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       advertisements: {
         Row: {
           areas: string[] | null
