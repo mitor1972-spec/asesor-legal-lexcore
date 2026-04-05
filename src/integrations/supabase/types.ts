@@ -923,6 +923,8 @@ export type Database = {
           has_valid_card: boolean | null
           id: string
           initial_credit: number | null
+          interested_in_advertising: boolean | null
+          interested_in_services_sales: boolean | null
           is_active: boolean | null
           is_demo: boolean | null
           leadsmarket_enabled: boolean | null
@@ -933,6 +935,8 @@ export type Database = {
           min_lead_score: number | null
           monthly_capacity: number | null
           name: string
+          num_lawyers: string | null
+          onboarding_completed: boolean | null
           openai_api_key: string | null
           payment_model: string | null
           phone: string | null
@@ -940,6 +944,8 @@ export type Database = {
           price_per_area: Json | null
           province: string | null
           provinces_accepted: string[] | null
+          referral_source: string | null
+          registration_type: string | null
           settings_json: Json | null
           status: Database["public"]["Enums"]["lawfirm_status"] | null
           website: string | null
@@ -990,6 +996,8 @@ export type Database = {
           has_valid_card?: boolean | null
           id?: string
           initial_credit?: number | null
+          interested_in_advertising?: boolean | null
+          interested_in_services_sales?: boolean | null
           is_active?: boolean | null
           is_demo?: boolean | null
           leadsmarket_enabled?: boolean | null
@@ -1000,6 +1008,8 @@ export type Database = {
           min_lead_score?: number | null
           monthly_capacity?: number | null
           name: string
+          num_lawyers?: string | null
+          onboarding_completed?: boolean | null
           openai_api_key?: string | null
           payment_model?: string | null
           phone?: string | null
@@ -1007,6 +1017,8 @@ export type Database = {
           price_per_area?: Json | null
           province?: string | null
           provinces_accepted?: string[] | null
+          referral_source?: string | null
+          registration_type?: string | null
           settings_json?: Json | null
           status?: Database["public"]["Enums"]["lawfirm_status"] | null
           website?: string | null
@@ -1057,6 +1069,8 @@ export type Database = {
           has_valid_card?: boolean | null
           id?: string
           initial_credit?: number | null
+          interested_in_advertising?: boolean | null
+          interested_in_services_sales?: boolean | null
           is_active?: boolean | null
           is_demo?: boolean | null
           leadsmarket_enabled?: boolean | null
@@ -1067,6 +1081,8 @@ export type Database = {
           min_lead_score?: number | null
           monthly_capacity?: number | null
           name?: string
+          num_lawyers?: string | null
+          onboarding_completed?: boolean | null
           openai_api_key?: string | null
           payment_model?: string | null
           phone?: string | null
@@ -1074,6 +1090,8 @@ export type Database = {
           price_per_area?: Json | null
           province?: string | null
           provinces_accepted?: string[] | null
+          referral_source?: string | null
+          registration_type?: string | null
           settings_json?: Json | null
           status?: Database["public"]["Enums"]["lawfirm_status"] | null
           website?: string | null
@@ -2175,6 +2193,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          bar_association: string | null
+          bar_number: string | null
           branch_id: string | null
           created_at: string | null
           email: string
@@ -2187,6 +2207,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          bar_association?: string | null
+          bar_number?: string | null
           branch_id?: string | null
           created_at?: string | null
           email: string
@@ -2199,6 +2221,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          bar_association?: string | null
+          bar_number?: string | null
           branch_id?: string | null
           created_at?: string | null
           email?: string
