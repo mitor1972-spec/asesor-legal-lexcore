@@ -194,7 +194,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         {/* MARKETING */}
         <div className="my-4 border-t border-sidebar-border" />
         <div className="px-3 mb-2">
-          <span className="text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wider">Marketing</span>
+          <span className="text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wider">Marketing - Potencia tu despacho</span>
         </div>
         <nav className="space-y-1">
           {marketingNavigation.map((item) => (
