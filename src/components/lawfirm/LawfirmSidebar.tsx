@@ -23,6 +23,7 @@ import {
   ChevronDown,
   CreditCard,
   Brain,
+  MessageCircle,
   Globe,
   Bot,
   Mail,
