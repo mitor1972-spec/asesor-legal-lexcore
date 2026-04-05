@@ -2,73 +2,73 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { Search, Globe, Loader2, AlertTriangle, CheckCircle2, XCircle, TrendingUp, Target, ArrowRight } from 'lucide-react';
+import { Search, Globe, Loader2, AlertTriangle, CheckCircle2, XCircle, TrendingUp, Target, ArrowRight, Brain, Sparkles, Phone, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-type FindingStatus = 'good' | 'warning' | 'error';
-
-interface Finding {
-  label: string;
-  value: string;
-  status: FindingStatus;
-}
-
-interface Section {
-  title: string;
-  score: number;
-  icon: string;
-  findings: Finding[];
-  recommendations: string[];
-}
-
-interface Keyword {
-  word: string;
-  density: number;
-  relevance: 'alta' | 'media' | 'baja';
-}
-
-interface TopAction {
-  priority: number;
-  action: string;
-  impact: 'alto' | 'medio' | 'bajo';
-}
-
+/* ── Types ── */
+interface Finding { label: string; value: string; status: 'good' | 'warning' | 'error'; }
+interface Section { title: string; icon: string; score: number; findings: Finding[]; }
+interface Keyword { word: string; density: number; relevance: 'alta' | 'media' | 'baja'; }
+interface KeyProblem { problem: string; why: string; impact: string; severity: 'critico' | 'importante' | 'mejorable'; }
+interface Recommendation { action: string; reason: string; impact: 'alto' | 'medio' | 'bajo'; }
+interface Subscore { score: number; label: string; }
+interface AiReadiness { score: number; assessment: string; improvements: string[]; }
 interface SeoAnalysis {
   score: number;
+  level: string;
+  summary: string;
+  subscores: Record<string, Subscore>;
+  keyProblems: KeyProblem[];
+  recommendations: Recommendation[];
+  aiReadiness: AiReadiness;
   sections: Section[];
   keywords: Keyword[];
-  topActions: TopAction[];
-  summary: string;
+  asesorLegalHelp: string;
+  cta: string;
   raw?: string;
 }
 
-function scoreColor(score: number) {
-  if (score >= 80) return 'text-green-600 dark:text-green-400';
-  if (score >= 50) return 'text-yellow-600 dark:text-yellow-400';
+/* ── Helpers ── */
+function scoreColor(s: number) {
+  if (s >= 80) return 'text-emerald-600 dark:text-emerald-400';
+  if (s >= 60) return 'text-amber-600 dark:text-amber-400';
+  if (s >= 40) return 'text-orange-600 dark:text-orange-400';
   return 'text-red-600 dark:text-red-400';
 }
 
-function scoreBg(score: number) {
-  if (score >= 80) return 'bg-green-500';
-  if (score >= 50) return 'bg-yellow-500';
-  return 'bg-red-500';
+function levelLabel(l: string) {
+  const map: Record<string, { text: string; cls: string }> = {
+    bien_trabajada: { text: '✅ Web bien trabajada', cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' },
+    mejorable: { text: '⚠️ Web mejorable', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
+    deficiente: { text: '🔶 Web deficiente', cls: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300' },
+    critica: { text: '🔴 Web crítica', cls: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' },
+  };
+  return map[l] ?? map.mejorable;
 }
 
-function StatusIcon({ status }: { status: FindingStatus }) {
-  if (status === 'good') return <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />;
-  if (status === 'warning') return <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />;
+function severityBadge(s: string) {
+  if (s === 'critico') return <Badge variant="destructive" className="text-xs">Crítico</Badge>;
+  if (s === 'importante') return <Badge className="text-xs bg-amber-500 hover:bg-amber-600">Importante</Badge>;
+  return <Badge variant="outline" className="text-xs">Mejorable</Badge>;
+}
+
+function StatusIcon({ status }: { status: string }) {
+  if (status === 'good') return <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />;
+  if (status === 'warning') return <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />;
   return <XCircle className="h-4 w-4 text-red-500 shrink-0" />;
 }
 
 function ImpactBadge({ impact }: { impact: string }) {
-  const variant = impact === 'alto' ? 'destructive' : impact === 'medio' ? 'secondary' : 'outline';
-  return <Badge variant={variant} className="text-xs">{impact}</Badge>;
+  if (impact === 'alto') return <Badge variant="destructive" className="text-xs">Alto impacto</Badge>;
+  if (impact === 'medio') return <Badge variant="secondary" className="text-xs">Impacto medio</Badge>;
+  return <Badge variant="outline" className="text-xs">Bajo impacto</Badge>;
 }
 
+/* ── Component ── */
 export default function SeoAnalyzer() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -80,15 +80,10 @@ export default function SeoAnalyzer() {
     if (!url.trim()) return;
     setLoading(true);
     setAnalysis(null);
-
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-seo', {
-        body: { url: url.trim() },
-      });
-
+      const { data, error } = await supabase.functions.invoke('analyze-seo', { body: { url: url.trim() } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       setAnalysis(data.analysis);
       setAnalyzedUrl(data.url);
       toast({ title: 'Análisis completado', description: `Puntuación SEO: ${data.analysis.score}/100` });
@@ -99,18 +94,20 @@ export default function SeoAnalyzer() {
     }
   };
 
+  const subscoreEntries = analysis?.subscores ? Object.entries(analysis.subscores) : [];
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-display font-bold flex items-center gap-2">
           <Search className="h-6 w-6 text-primary" />
-          Verificación SEO
+          Verificación SEO para Despachos
         </h1>
-        <p className="text-muted-foreground">Analiza el posicionamiento SEO de la web de un despacho de abogados</p>
+        <p className="text-muted-foreground">Diagnóstico de visibilidad, captación y posicionamiento de la web de un despacho</p>
       </div>
 
-      {/* Input */}
+      {/* URL Input */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex gap-3">
@@ -126,128 +123,207 @@ export default function SeoAnalyzer() {
             </div>
             <Button onClick={handleAnalyze} disabled={loading || !url.trim()}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
-              {loading ? 'Analizando…' : 'Analizar SEO'}
+              {loading ? 'Analizando…' : 'Analizar'}
             </Button>
           </div>
           {loading && (
             <p className="text-sm text-muted-foreground mt-3 animate-pulse">
-              ⏳ Descargando y analizando la web con IA… esto puede tardar 20-40 segundos.
+              ⏳ Descargando y analizando la web con IA… esto puede tardar 30-60 segundos.
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Results */}
       {analysis && (
         <>
-          {/* Global Score */}
-          <Card className="border-2" style={{ borderColor: analysis.score >= 80 ? 'hsl(var(--chart-2))' : analysis.score >= 50 ? 'hsl(var(--chart-4))' : 'hsl(var(--chart-5))' }}>
+          {/* ═══ 1. VALORACIÓN GENERAL ═══ */}
+          <Card className="border-2 border-primary/30">
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row items-center gap-6">
-                <div className="text-center">
-                  <div className={`text-6xl font-bold font-display ${scoreColor(analysis.score)}`}>
-                    {analysis.score}
+                <div className="text-center shrink-0">
+                  <div className={`text-6xl font-bold font-display ${scoreColor(analysis.score)}`}>{analysis.score}</div>
+                  <p className="text-xs text-muted-foreground mt-1">de 100</p>
+                  <div className={`mt-2 px-3 py-1 rounded-full text-xs font-medium ${levelLabel(analysis.level).cls}`}>
+                    {levelLabel(analysis.level).text}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">/ 100</p>
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-lg font-semibold mb-1">Puntuación SEO Global</h2>
-                  <p className="text-sm text-muted-foreground mb-3">{analyzedUrl}</p>
+                <div className="flex-1 space-y-3">
+                  <p className="text-sm text-muted-foreground">{analyzedUrl}</p>
                   <Progress value={analysis.score} className="h-3" />
-                  {analysis.summary && (
-                    <p className="text-sm text-muted-foreground mt-3">{analysis.summary}</p>
-                  )}
+                  <p className="text-base font-medium">{analysis.summary}</p>
                 </div>
               </div>
+
+              {/* Subscores */}
+              {subscoreEntries.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6">
+                  {subscoreEntries.map(([key, sub]) => (
+                    <div key={key} className="text-center p-3 rounded-lg bg-muted/50">
+                      <div className={`text-2xl font-bold ${scoreColor(sub.score)}`}>{sub.score}</div>
+                      <p className="text-xs text-muted-foreground mt-1">{sub.label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Top Actions */}
-          {analysis.topActions?.length > 0 && (
+          {/* ═══ 2. 5 PROBLEMAS CLAVE ═══ */}
+          {analysis.keyProblems?.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Acciones Prioritarias
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  Problemas clave detectados
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {analysis.topActions.map((a, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">
-                      {a.priority}
-                    </span>
-                    <p className="text-sm flex-1">{a.action}</p>
-                    <ImpactBadge impact={a.impact} />
+              <CardContent className="space-y-4">
+                {analysis.keyProblems.map((p, i) => (
+                  <div key={i} className="p-4 rounded-lg border bg-card space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-destructive/10 text-destructive text-sm font-bold shrink-0">{i + 1}</span>
+                        <p className="font-medium text-sm">{p.problem}</p>
+                      </div>
+                      {severityBadge(p.severity)}
+                    </div>
+                    <div className="ml-10 space-y-1 text-sm text-muted-foreground">
+                      <p>📌 <strong>¿Por qué?</strong> {p.why}</p>
+                      <p>📉 <strong>Efecto:</strong> {p.impact}</p>
+                    </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
           )}
 
-          {/* Sections */}
-          <div className="grid gap-4 lg:grid-cols-2">
-            {analysis.sections?.map((section, idx) => (
-              <Card key={idx}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <span>{section.icon}</span>
-                      {section.title}
-                    </CardTitle>
-                    <Badge variant="outline" className={scoreColor(section.score)}>
-                      {section.score}/100
-                    </Badge>
-                  </div>
-                  <Progress value={section.score} className="h-1.5" />
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {section.findings?.map((f, fi) => (
-                    <div key={fi} className="flex items-start gap-2 text-sm">
-                      <StatusIcon status={f.status} />
-                      <div>
-                        <span className="font-medium">{f.label}:</span>{' '}
-                        <span className="text-muted-foreground">{f.value}</span>
-                      </div>
+          {/* ═══ 3. RECOMENDACIONES ═══ */}
+          {analysis.recommendations?.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Recomendaciones SEO
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {analysis.recommendations.map((r, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                    <ArrowRight className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium">{r.action}</p>
+                      <p className="text-xs text-muted-foreground">{r.reason}</p>
                     </div>
-                  ))}
-                  {section.recommendations?.length > 0 && (
-                    <>
-                      <Separator className="my-2" />
-                      <div className="space-y-1">
-                        {section.recommendations.map((r, ri) => (
-                          <div key={ri} className="flex items-start gap-2 text-sm text-muted-foreground">
-                            <ArrowRight className="h-3 w-3 mt-1 text-primary shrink-0" />
-                            {r}
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <ImpactBadge impact={r.impact} />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Keywords */}
+          {/* ═══ 4. PREPARACIÓN PARA IA ═══ */}
+          {analysis.aiReadiness && (
+            <Card className="border-primary/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Brain className="h-5 w-5 text-primary" />
+                    Preparación para SEO con IA
+                  </CardTitle>
+                  <Badge variant="outline" className={scoreColor(analysis.aiReadiness.score)}>
+                    {analysis.aiReadiness.score}/100
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Progress value={analysis.aiReadiness.score} className="h-2" />
+                <p className="text-sm">{analysis.aiReadiness.assessment}</p>
+                {analysis.aiReadiness.improvements?.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Qué mejorar:</p>
+                    {analysis.aiReadiness.improvements.map((imp, i) => (
+                      <div key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Sparkles className="h-3 w-3 mt-1 text-primary shrink-0" />
+                        {imp}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ═══ SECCIONES DETALLADAS ═══ */}
+          {analysis.sections?.length > 0 && (
+            <>
+              <Separator />
+              <h2 className="text-lg font-display font-semibold">Detalle por áreas</h2>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {analysis.sections.map((section, idx) => (
+                  <Card key={idx}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <span>{section.icon}</span> {section.title}
+                        </CardTitle>
+                        <Badge variant="outline" className={scoreColor(section.score)}>{section.score}/100</Badge>
+                      </div>
+                      <Progress value={section.score} className="h-1.5" />
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {section.findings?.map((f, fi) => (
+                        <div key={fi} className="flex items-start gap-2 text-sm">
+                          <StatusIcon status={f.status} />
+                          <div>
+                            <span className="font-medium">{f.label}:</span>{' '}
+                            <span className="text-muted-foreground">{f.value}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* ═══ KEYWORDS ═══ */}
           {analysis.keywords?.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Target className="h-5 w-5 text-primary" />
-                  Palabras Clave Detectadas
+                  Palabras clave detectadas
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {analysis.keywords.map((kw, i) => (
-                    <Badge
-                      key={i}
-                      variant={kw.relevance === 'alta' ? 'default' : kw.relevance === 'media' ? 'secondary' : 'outline'}
-                    >
+                    <Badge key={i} variant={kw.relevance === 'alta' ? 'default' : kw.relevance === 'media' ? 'secondary' : 'outline'}>
                       {kw.word} ({kw.density}%)
                     </Badge>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ═══ 5. ASESOR.LEGAL ═══ */}
+          {(analysis.asesorLegalHelp || analysis.cta) && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="pt-6 space-y-4">
+                <div className="flex items-start gap-3">
+                  <Shield className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+                  <div className="space-y-3">
+                    <h3 className="font-display font-semibold text-lg">¿Cómo puede ayudarte Asesor.Legal?</h3>
+                    {analysis.asesorLegalHelp && <p className="text-sm text-muted-foreground leading-relaxed">{analysis.asesorLegalHelp}</p>}
+                    {analysis.cta && (
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10">
+                        <Phone className="h-4 w-4 text-primary shrink-0" />
+                        <p className="text-sm font-medium">{analysis.cta}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
