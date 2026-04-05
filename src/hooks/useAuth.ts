@@ -12,62 +12,60 @@ export function useAuth() {
 
   const fetchUserData = useCallback(async (userId: string) => {
     try {
-      // Fetch profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+      const [{ data: profileData }, { data: roleData }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle(),
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .maybeSingle(),
+      ]);
 
-      if (profileData) {
-        setProfile(profileData as Profile);
-      }
-
-      // Fetch role
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (roleData) {
-        setRole(roleData.role as AppRole);
-      }
+      setProfile((profileData as Profile) ?? null);
+      setRole((roleData?.role as AppRole) ?? null);
     } catch (error) {
       console.error('Error fetching user data:', error);
+      setProfile(null);
+      setRole(null);
     }
   }, []);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        setLoading(true);
 
-        // Defer Supabase calls with setTimeout
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserData(session.user.id);
+          setTimeout(async () => {
+            await fetchUserData(session.user.id);
+            setLoading(false);
           }, 0);
         } else {
           setProfile(null);
           setRole(null);
+          setLoading(false);
         }
-
-        setLoading(false);
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+      setLoading(true);
+
       if (session?.user) {
-        fetchUserData(session.user.id);
+        await fetchUserData(session.user.id);
+      } else {
+        setProfile(null);
+        setRole(null);
       }
-      
+
       setLoading(false);
     });
 

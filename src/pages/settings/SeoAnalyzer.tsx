@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,10 @@ interface SeoAnalysis {
   cta: string;
   raw?: string;
 }
+
+const SEO_ANALYZER_URL_KEY = 'seo-analyzer:url';
+const SEO_ANALYZER_REPORT_KEY = 'seo-analyzer:report';
+const SEO_ANALYZER_REPORT_URL_KEY = 'seo-analyzer:report-url';
 
 /* ── Helpers ── */
 function scoreColor(s: number) {
@@ -68,24 +72,46 @@ function ImpactBadge({ impact }: { impact: string }) {
   return <Badge variant="outline" className="text-xs">Bajo impacto</Badge>;
 }
 
+function readStoredReport(): SeoAnalysis | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const stored = window.localStorage.getItem(SEO_ANALYZER_REPORT_KEY);
+    return stored ? (JSON.parse(stored) as SeoAnalysis) : null;
+  } catch {
+    return null;
+  }
+}
+
 /* ── Component ── */
 export default function SeoAnalyzer() {
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(() => (typeof window === 'undefined' ? '' : window.localStorage.getItem(SEO_ANALYZER_URL_KEY) ?? ''));
   const [loading, setLoading] = useState(false);
-  const [analysis, setAnalysis] = useState<SeoAnalysis | null>(null);
-  const [analyzedUrl, setAnalyzedUrl] = useState('');
+  const [analysis, setAnalysis] = useState<SeoAnalysis | null>(() => readStoredReport());
+  const [analyzedUrl, setAnalyzedUrl] = useState(() => (typeof window === 'undefined' ? '' : window.localStorage.getItem(SEO_ANALYZER_REPORT_URL_KEY) ?? ''));
   const { toast } = useToast();
+
+  useEffect(() => {
+    window.localStorage.setItem(SEO_ANALYZER_URL_KEY, url);
+  }, [url]);
+
+  useEffect(() => {
+    if (!analysis) return;
+    window.localStorage.setItem(SEO_ANALYZER_REPORT_KEY, JSON.stringify(analysis));
+    window.localStorage.setItem(SEO_ANALYZER_REPORT_URL_KEY, analyzedUrl);
+  }, [analysis, analyzedUrl]);
 
   const handleAnalyze = async () => {
     if (!url.trim()) return;
     setLoading(true);
-    setAnalysis(null);
+
     try {
       const { data, error } = await supabase.functions.invoke('analyze-seo', { body: { url: url.trim() } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setAnalysis(data.analysis);
       setAnalyzedUrl(data.url);
+      setUrl(data.url);
       toast({ title: 'Análisis completado', description: `Puntuación SEO: ${data.analysis.score}/100` });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'No se pudo analizar la URL', variant: 'destructive' });
@@ -129,6 +155,11 @@ export default function SeoAnalyzer() {
           {loading && (
             <p className="text-sm text-muted-foreground mt-3 animate-pulse">
               ⏳ Descargando y analizando la web con IA… esto puede tardar 30-60 segundos.
+            </p>
+          )}
+          {!loading && (analysis || url) && (
+            <p className="text-xs text-muted-foreground mt-3">
+              Se guarda automáticamente la URL y el último informe para que no pierdas el trabajo.
             </p>
           )}
         </CardContent>
