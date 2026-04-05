@@ -193,7 +193,7 @@ export default function MarketplaceLanding() {
         <p className="text-muted-foreground mb-6">Tanto si necesitas servicios como si quieres ofrecerlos, el Marketplace de Asesor.Legal está diseñado para generar oportunidades reales.</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button size="lg" className="gap-2"><Search className="h-4 w-4" />Buscar proveedores<ArrowRight className="h-4 w-4" /></Button>
-          <Button size="lg" variant="outline" className="gap-2"><Users className="h-4 w-4" />Publicar mi servicio<ArrowRight className="h-4 w-4" /></Button>
+          <Button size="lg" variant="outline" className="gap-2" asChild><Link to="/registro-proveedor"><Users className="h-4 w-4" />Publicar mi servicio<ArrowRight className="h-4 w-4" /></Link></Button>
         </div>
       </section>
     </div>
