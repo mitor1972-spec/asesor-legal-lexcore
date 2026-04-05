@@ -50,32 +50,43 @@ function PlanCard({ name, price, priceUnit, features, highlight, badge, onContra
 }
 
 export default function LawfirmAdvertising() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'web';
+
   const handleContract = (plan: string) => {
     window.open(`mailto:ventas@asesor.legal?subject=Contratar plan ${plan}`, '_blank');
+  };
+
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value });
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl font-display font-bold flex items-center gap-2">
-          📢 Publicidad y Visibilidad
+          📢 Opciones de Publicidad
         </h1>
-        <p className="text-muted-foreground">Destaca tu despacho y consigue más clientes</p>
+        <p className="text-muted-foreground">Potencia la visibilidad de tu despacho con nuestros canales de publicidad</p>
       </div>
 
-      <Tabs defaultValue="web" className="space-y-6">
-        <TabsList className="grid grid-cols-3 w-full max-w-lg">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+        <TabsList className="grid grid-cols-4 w-full max-w-2xl">
           <TabsTrigger value="web" className="flex items-center gap-2">
             <Globe className="h-4 w-4" />
             Web
           </TabsTrigger>
-          <TabsTrigger value="amara" className="flex items-center gap-2">
+          <TabsTrigger value="asistente" className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
-            Asistente
+            Asistente IA
           </TabsTrigger>
           <TabsTrigger value="newsletter" className="flex items-center gap-2">
             <Mail className="h-4 w-4" />
-            Newsletter
+            Newsletters
+          </TabsTrigger>
+          <TabsTrigger value="outsourcing" className="flex items-center gap-2">
+            <Handshake className="h-4 w-4" />
+            Outsourcing
           </TabsTrigger>
         </TabsList>
 
