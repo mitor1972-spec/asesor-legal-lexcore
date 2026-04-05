@@ -2628,6 +2628,126 @@ export type Database = {
           },
         ]
       }
+      provider_applications: {
+        Row: {
+          accepts_commission_terms: boolean | null
+          accepts_terms: boolean | null
+          address: string | null
+          category_id: string
+          certifications: string[] | null
+          cif: string | null
+          city: string | null
+          company_name: string
+          contact_email: string
+          contact_name: string
+          contact_phone: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          languages: string[] | null
+          legal_area_ids: string[] | null
+          modality: string | null
+          postal_code: string | null
+          promo_description: string | null
+          promo_discount_percent: number | null
+          proposed_commission_percent: number | null
+          provider_id: string | null
+          province: string | null
+          provinces_covered: string[] | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          short_description: string | null
+          status: string
+          subcategory_ids: string[] | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          accepts_commission_terms?: boolean | null
+          accepts_terms?: boolean | null
+          address?: string | null
+          category_id: string
+          certifications?: string[] | null
+          cif?: string | null
+          city?: string | null
+          company_name: string
+          contact_email: string
+          contact_name: string
+          contact_phone?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          languages?: string[] | null
+          legal_area_ids?: string[] | null
+          modality?: string | null
+          postal_code?: string | null
+          promo_description?: string | null
+          promo_discount_percent?: number | null
+          proposed_commission_percent?: number | null
+          provider_id?: string | null
+          province?: string | null
+          provinces_covered?: string[] | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          short_description?: string | null
+          status?: string
+          subcategory_ids?: string[] | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          accepts_commission_terms?: boolean | null
+          accepts_terms?: boolean | null
+          address?: string | null
+          category_id?: string
+          certifications?: string[] | null
+          cif?: string | null
+          city?: string | null
+          company_name?: string
+          contact_email?: string
+          contact_name?: string
+          contact_phone?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          languages?: string[] | null
+          legal_area_ids?: string[] | null
+          modality?: string | null
+          postal_code?: string | null
+          promo_description?: string | null
+          promo_discount_percent?: number | null
+          proposed_commission_percent?: number | null
+          provider_id?: string | null
+          province?: string | null
+          provinces_covered?: string[] | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          short_description?: string | null
+          status?: string
+          subcategory_ids?: string[] | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_applications_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "provider_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_applications_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_categories: {
         Row: {
           created_at: string | null
@@ -2908,10 +3028,16 @@ export type Database = {
       }
       providers: {
         Row: {
+          address: string | null
+          approved_at: string | null
+          approved_by: string | null
           category_id: string
           certifications: string[] | null
           cif: string | null
+          city: string | null
           commission_percent: number
+          company_email: string | null
+          company_phone: string | null
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
@@ -2921,20 +3047,38 @@ export type Database = {
           is_active: boolean | null
           is_featured: boolean | null
           is_sponsored: boolean | null
+          languages: string[] | null
+          legal_area_ids: string[] | null
           logo_url: string | null
           modality: string | null
           name: string
           notes: string | null
+          postal_code: string | null
+          promo_description: string | null
+          promo_discount_percent: number | null
+          province: string | null
           provinces_covered: string[] | null
+          rating: number | null
           response_time: string | null
+          short_description: string | null
+          status: string
+          subcategory_ids: string[] | null
+          total_orders: number | null
           updated_at: string | null
+          user_id: string | null
           website: string | null
         }
         Insert: {
+          address?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           category_id: string
           certifications?: string[] | null
           cif?: string | null
+          city?: string | null
           commission_percent?: number
+          company_email?: string | null
+          company_phone?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -2944,20 +3088,38 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           is_sponsored?: boolean | null
+          languages?: string[] | null
+          legal_area_ids?: string[] | null
           logo_url?: string | null
           modality?: string | null
           name: string
           notes?: string | null
+          postal_code?: string | null
+          promo_description?: string | null
+          promo_discount_percent?: number | null
+          province?: string | null
           provinces_covered?: string[] | null
+          rating?: number | null
           response_time?: string | null
+          short_description?: string | null
+          status?: string
+          subcategory_ids?: string[] | null
+          total_orders?: number | null
           updated_at?: string | null
+          user_id?: string | null
           website?: string | null
         }
         Update: {
+          address?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           category_id?: string
           certifications?: string[] | null
           cif?: string | null
+          city?: string | null
           commission_percent?: number
+          company_email?: string | null
+          company_phone?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -2967,13 +3129,25 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           is_sponsored?: boolean | null
+          languages?: string[] | null
+          legal_area_ids?: string[] | null
           logo_url?: string | null
           modality?: string | null
           name?: string
           notes?: string | null
+          postal_code?: string | null
+          promo_description?: string | null
+          promo_discount_percent?: number | null
+          province?: string | null
           provinces_covered?: string[] | null
+          rating?: number | null
           response_time?: string | null
+          short_description?: string | null
+          status?: string
+          subcategory_ids?: string[] | null
+          total_orders?: number | null
           updated_at?: string | null
+          user_id?: string | null
           website?: string | null
         }
         Relationships: [
@@ -3146,6 +3320,7 @@ export type Database = {
         | "lawfirm_admin"
         | "lawfirm_manager"
         | "lawfirm_lawyer"
+        | "provider"
       attachment_category:
         | "datos_personales"
         | "notificaciones_juzgado"
@@ -3300,6 +3475,7 @@ export const Constants = {
         "lawfirm_admin",
         "lawfirm_manager",
         "lawfirm_lawyer",
+        "provider",
       ],
       attachment_category: [
         "datos_personales",

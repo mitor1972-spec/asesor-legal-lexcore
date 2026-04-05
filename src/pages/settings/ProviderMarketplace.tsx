@@ -14,7 +14,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
-import { Plus, Building2, Edit2, Package, ShoppingCart, Store, ChevronDown, ChevronRight, Layers, Scale, Tag } from 'lucide-react';
+import {
+  Building2, Edit2, Package, ShoppingCart, Store, ChevronDown, ChevronRight,
+  Layers, Scale, Tag, Users, CheckCircle, XCircle, Clock, Eye, TrendingUp,
+  ExternalLink, Plus, Inbox,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -34,6 +38,9 @@ interface Provider {
   is_active: boolean; provinces_covered: string[]; notes: string | null;
   modality: string | null; response_time: string | null;
   is_featured: boolean | null; is_sponsored: boolean | null; created_at: string;
+  status: string; total_orders: number; rating: number;
+  short_description: string | null; promo_description: string | null;
+  promo_discount_percent: number | null;
 }
 interface Service {
   id: string; provider_id: string; name: string; description: string | null;
@@ -44,9 +51,13 @@ interface Order {
   id: string; provider_id: string; total_price: number;
   commission_amount: number; status: string; created_at: string;
 }
-interface LegalArea {
-  id: string; name: string; slug: string;
+interface Application {
+  id: string; company_name: string; contact_name: string; contact_email: string;
+  category_id: string; status: string; created_at: string;
+  proposed_commission_percent: number; modality: string | null;
+  promo_discount_percent: number | null;
 }
+interface LegalArea { id: string; name: string; slug: string; }
 
 /* ────────── hooks ────────── */
 const useCategories = () => useQuery({
@@ -89,6 +100,14 @@ const useOrders = () => useQuery({
     return data as Order[];
   },
 });
+const useApplications = () => useQuery({
+  queryKey: ['provider-applications'],
+  queryFn: async () => {
+    const { data, error } = await supabase.from('provider_applications').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as Application[];
+  },
+});
 const useLegalAreas = () => useQuery({
   queryKey: ['marketplace-legal-areas'],
   queryFn: async () => {
@@ -99,10 +118,16 @@ const useLegalAreas = () => useQuery({
 });
 
 /* ────────── helpers ────────── */
-const priorityBadge = (p: string | null) => {
-  if (p === 'alta') return <Badge className="bg-primary/10 text-primary border-primary/20">Alta</Badge>;
-  if (p === 'complementaria') return <Badge variant="outline" className="text-muted-foreground">Complementaria</Badge>;
-  return <Badge variant="secondary">Media</Badge>;
+const statusBadge = (s: string) => {
+  const map: Record<string, { color: string; label: string }> = {
+    pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pendiente' },
+    approved: { color: 'bg-green-100 text-green-800', label: 'Aprobado' },
+    active: { color: 'bg-primary/10 text-primary', label: 'Activo' },
+    rejected: { color: 'bg-red-100 text-red-800', label: 'Rechazado' },
+    suspended: { color: 'bg-muted text-muted-foreground', label: 'Suspendido' },
+  };
+  const m = map[s] ?? map.pending;
+  return <Badge className={m.color}>{m.label}</Badge>;
 };
 
 /* ────────── main ────────── */
@@ -113,9 +138,10 @@ export default function ProviderMarketplace() {
   const { data: providers = [] } = useProviders();
   const { data: services = [] } = useServices();
   const { data: orders = [] } = useOrders();
+  const { data: applications = [] } = useApplications();
   const { data: legalAreas = [] } = useLegalAreas();
 
-  const [tab, setTab] = useState('catalog');
+  const [tab, setTab] = useState('overview');
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
 
   /* ── provider dialog ── */
@@ -129,40 +155,24 @@ export default function ProviderMarketplace() {
 
   const openNewProvider = (catId?: string) => {
     setEditProvider(null);
-    setPf({
-      name: '', category_id: catId ?? categories[0]?.id ?? '', cif: '',
-      contact_name: '', contact_email: '', contact_phone: '', website: '',
-      description: '', commission_percent: '15', notes: '', modality: 'ambas', response_time: '',
-    });
+    setPf({ name: '', category_id: catId ?? categories[0]?.id ?? '', cif: '', contact_name: '', contact_email: '', contact_phone: '', website: '', description: '', commission_percent: '15', notes: '', modality: 'ambas', response_time: '' });
     setProviderDialog(true);
   };
 
   const openEditProvider = (p: Provider) => {
     setEditProvider(p);
-    setPf({
-      name: p.name, category_id: p.category_id, cif: p.cif ?? '',
-      contact_name: p.contact_name ?? '', contact_email: p.contact_email ?? '',
-      contact_phone: p.contact_phone ?? '', website: p.website ?? '',
-      description: p.description ?? '', commission_percent: String(p.commission_percent),
-      notes: p.notes ?? '', modality: p.modality ?? 'ambas', response_time: p.response_time ?? '',
-    });
+    setPf({ name: p.name, category_id: p.category_id, cif: p.cif ?? '', contact_name: p.contact_name ?? '', contact_email: p.contact_email ?? '', contact_phone: p.contact_phone ?? '', website: p.website ?? '', description: p.description ?? '', commission_percent: String(p.commission_percent), notes: p.notes ?? '', modality: p.modality ?? 'ambas', response_time: p.response_time ?? '' });
     setProviderDialog(true);
   };
 
   const saveProvider = useMutation({
     mutationFn: async () => {
-      const payload = {
-        name: pf.name, category_id: pf.category_id, cif: pf.cif || null,
-        contact_name: pf.contact_name || null, contact_email: pf.contact_email || null,
-        contact_phone: pf.contact_phone || null, website: pf.website || null,
-        description: pf.description || null, commission_percent: Number(pf.commission_percent),
-        notes: pf.notes || null, modality: pf.modality, response_time: pf.response_time || null,
-      };
+      const payload = { name: pf.name, category_id: pf.category_id, cif: pf.cif || null, contact_name: pf.contact_name || null, contact_email: pf.contact_email || null, contact_phone: pf.contact_phone || null, website: pf.website || null, description: pf.description || null, commission_percent: Number(pf.commission_percent), notes: pf.notes || null, modality: pf.modality, response_time: pf.response_time || null };
       if (editProvider) {
         const { error } = await supabase.from('providers').update(payload).eq('id', editProvider.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('providers').insert(payload);
+        const { error } = await supabase.from('providers').insert({ ...payload, status: 'active' } as any);
         if (error) throw error;
       }
     },
@@ -178,39 +188,23 @@ export default function ProviderMarketplace() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['providers'] }),
   });
 
-  /* ── service dialog ── */
-  const [serviceDialog, setServiceDialog] = useState(false);
-  const [editService, setEditService] = useState<Service | null>(null);
-  const [sf, setSf] = useState({ name: '', provider_id: '', description: '', price: '0', price_type: 'fixed', promo_price: '', promo_label: '' });
-
-  const openNewService = (providerId?: string) => {
-    setEditService(null);
-    setSf({ name: '', provider_id: providerId ?? '', description: '', price: '0', price_type: 'fixed', promo_price: '', promo_label: '' });
-    setServiceDialog(true);
-  };
-
-  const openEditService = (s: Service) => {
-    setEditService(s);
-    setSf({ name: s.name, provider_id: s.provider_id, description: s.description ?? '', price: String(s.price), price_type: s.price_type, promo_price: s.promo_price != null ? String(s.promo_price) : '', promo_label: s.promo_label ?? '' });
-    setServiceDialog(true);
-  };
-
-  const saveService = useMutation({
-    mutationFn: async () => {
-      const payload = { name: sf.name, provider_id: sf.provider_id, description: sf.description || null, price: Number(sf.price), price_type: sf.price_type, promo_price: sf.promo_price ? Number(sf.promo_price) : null, promo_label: sf.promo_label || null };
-      if (editService) { const { error } = await supabase.from('provider_services').update(payload).eq('id', editService.id); if (error) throw error; }
-      else { const { error } = await supabase.from('provider_services').insert(payload); if (error) throw error; }
+  /* ── application actions ── */
+  const approveApp = useMutation({
+    mutationFn: async (appId: string) => {
+      const { error } = await supabase.from('provider_applications').update({ status: 'approved', reviewed_at: new Date().toISOString() } as any).eq('id', appId);
+      if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['provider-services'] }); setServiceDialog(false); toast.success(editService ? 'Servicio actualizado' : 'Servicio creado'); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['provider-applications'] }); toast.success('Solicitud aprobada'); },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const toggleService = useMutation({
-    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
-      const { error } = await supabase.from('provider_services').update({ is_active: active }).eq('id', id);
+  const rejectApp = useMutation({
+    mutationFn: async (appId: string) => {
+      const { error } = await supabase.from('provider_applications').update({ status: 'rejected', reviewed_at: new Date().toISOString() } as any).eq('id', appId);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['provider-services'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['provider-applications'] }); toast.success('Solicitud rechazada'); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   /* ── computed ── */
@@ -229,43 +223,216 @@ export default function ProviderMarketplace() {
 
   const totalCommission = orders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.commission_amount, 0);
   const totalRevenue = orders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.total_price, 0);
+  const pendingApps = applications.filter(a => a.status === 'pending');
+  const activeProviders = providers.filter(p => p.is_active);
 
   const toggleExpanded = (id: string) => {
     setExpandedCats(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
 
-  const statusColor = (s: string) => ({ pending: 'bg-yellow-100 text-yellow-800', confirmed: 'bg-blue-100 text-blue-800', completed: 'bg-green-100 text-green-800', cancelled: 'bg-red-100 text-red-800' }[s] ?? 'bg-muted text-muted-foreground');
+  const orderStatusColor = (s: string) => ({ pending: 'bg-yellow-100 text-yellow-800', confirmed: 'bg-blue-100 text-blue-800', completed: 'bg-green-100 text-green-800', cancelled: 'bg-red-100 text-red-800' }[s] ?? 'bg-muted text-muted-foreground');
 
   if (loadingCats) return <div className="p-6 text-muted-foreground">Cargando marketplace…</div>;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2"><Store className="h-6 w-6 text-primary" /> Marketplace de Proveedores</h1>
-        <p className="text-muted-foreground mt-1">Infraestructura de servicios profesionales para abogados. {categories.length} categorías · {subcategories.length} subcategorías · {legalAreas.length} áreas jurídicas</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Store className="h-6 w-6 text-primary" /> Marketplace de Proveedores</h1>
+          <p className="text-muted-foreground mt-1">Panel de administración y monitorización del marketplace.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => window.open('/registro-proveedor', '_blank')}>
+          <ExternalLink className="h-4 w-4 mr-1" />Ver registro público
+        </Button>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Categorías</p><p className="text-2xl font-bold">{categories.length}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Subcategorías</p><p className="text-2xl font-bold">{subcategories.length}</p></CardContent></Card>
-        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Proveedores</p><p className="text-2xl font-bold">{providers.length}</p></CardContent></Card>
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Proveedores activos</p><p className="text-2xl font-bold text-primary">{activeProviders.length}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Total proveedores</p><p className="text-2xl font-bold">{providers.length}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Solicitudes pendientes</p><p className="text-2xl font-bold text-amber-600">{pendingApps.length}</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Servicios</p><p className="text-2xl font-bold">{services.length}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Facturación total</p><p className="text-2xl font-bold">{totalRevenue.toLocaleString('es-ES')}€</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Comisión acumulada</p><p className="text-2xl font-bold text-primary">{totalCommission.toLocaleString('es-ES')}€</p></CardContent></Card>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="catalog"><Layers className="h-4 w-4 mr-1" />Catálogo</TabsTrigger>
+          <TabsTrigger value="overview"><TrendingUp className="h-4 w-4 mr-1" />Resumen</TabsTrigger>
+          <TabsTrigger value="applications" className="relative">
+            <Inbox className="h-4 w-4 mr-1" />Solicitudes
+            {pendingApps.length > 0 && <span className="ml-1 bg-amber-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem]">{pendingApps.length}</span>}
+          </TabsTrigger>
           <TabsTrigger value="providers"><Building2 className="h-4 w-4 mr-1" />Proveedores</TabsTrigger>
-          <TabsTrigger value="services"><Package className="h-4 w-4 mr-1" />Servicios</TabsTrigger>
+          <TabsTrigger value="catalog"><Layers className="h-4 w-4 mr-1" />Catálogo</TabsTrigger>
           <TabsTrigger value="orders"><ShoppingCart className="h-4 w-4 mr-1" />Pedidos</TabsTrigger>
-          <TabsTrigger value="areas"><Scale className="h-4 w-4 mr-1" />Áreas Jurídicas</TabsTrigger>
         </TabsList>
 
-        {/* ── Catálogo jerárquico ── */}
+        {/* ── Overview ── */}
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Solicitudes recientes</CardTitle>
+                <CardDescription>Últimas solicitudes de proveedores que quieren unirse al marketplace.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {applications.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">No hay solicitudes aún</p>
+                ) : (
+                  <div className="space-y-2">
+                    {applications.slice(0, 5).map(a => (
+                      <div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                        <div>
+                          <p className="font-medium text-sm">{a.company_name}</p>
+                          <p className="text-xs text-muted-foreground">{catName(a.category_id)} · {a.contact_email}</p>
+                        </div>
+                        {statusBadge(a.status)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Proveedores por categoría</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {categories.slice(0, 8).map(cat => {
+                    const count = (provsByCat[cat.id] ?? []).length;
+                    return (
+                      <div key={cat.id} className="flex items-center justify-between text-sm">
+                        <span>{cat.name}</span>
+                        <Badge variant={count > 0 ? 'default' : 'outline'}>{count}</Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Enlace de registro público</CardTitle>
+              <CardDescription>Comparte este enlace con proveedores para que se registren en el marketplace.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Input readOnly value={`${window.location.origin}/registro-proveedor`} className="font-mono text-sm" />
+                <Button variant="outline" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/registro-proveedor`); toast.success('Enlace copiado'); }}>Copiar</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Applications ── */}
+        <TabsContent value="applications" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Solicitudes de proveedores</CardTitle>
+              <CardDescription>{pendingApps.length} pendientes de revisión · {applications.length} total</CardDescription>
+            </CardHeader>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Empresa</TableHead>
+                  <TableHead className="hidden md:table-cell">Categoría</TableHead>
+                  <TableHead className="hidden md:table-cell">Contacto</TableHead>
+                  <TableHead>Comisión</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {applications.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay solicitudes</TableCell></TableRow>}
+                {applications.map(a => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">
+                      {a.company_name}
+                      {a.promo_discount_percent && Number(a.promo_discount_percent) > 0 && (
+                        <Badge className="ml-2 bg-green-100 text-green-800 text-xs">{a.promo_discount_percent}% dto</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell"><Badge variant="outline" className="text-xs">{catName(a.category_id)}</Badge></TableCell>
+                    <TableCell className="hidden md:table-cell text-sm">{a.contact_email}</TableCell>
+                    <TableCell>{a.proposed_commission_percent}%</TableCell>
+                    <TableCell>{statusBadge(a.status)}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{format(new Date(a.created_at), 'dd/MM/yy', { locale: es })}</TableCell>
+                    <TableCell>
+                      {a.status === 'pending' && (
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" className="text-green-600 hover:text-green-700" onClick={() => approveApp.mutate(a.id)} title="Aprobar">
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="text-red-600 hover:text-red-700" onClick={() => rejectApp.mutate(a.id)} title="Rechazar">
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+
+        {/* ── Providers ── */}
+        <TabsContent value="providers" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">{providers.length} proveedores · {activeProviders.length} activos</p>
+            <Button onClick={() => openNewProvider()}><Plus className="h-4 w-4 mr-1" />Crear manualmente</Button>
+          </div>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Proveedor</TableHead>
+                  <TableHead className="hidden md:table-cell">Categoría</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Comisión</TableHead>
+                  <TableHead className="hidden md:table-cell">Servicios</TableHead>
+                  <TableHead>Activo</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {providers.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay proveedores</TableCell></TableRow>}
+                {providers.map(p => {
+                  const svcCount = services.filter(s => s.provider_id === p.id).length;
+                  return (
+                    <TableRow key={p.id}>
+                      <TableCell>
+                        <div>
+                          <span className="font-medium">{p.name}</span>
+                          {p.is_featured && <Badge className="ml-1 bg-amber-100 text-amber-800 text-xs">★</Badge>}
+                          {p.short_description && <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px]">{p.short_description}</p>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell"><Badge variant="outline" className="text-xs">{catName(p.category_id)}</Badge></TableCell>
+                      <TableCell>{statusBadge(p.status)}</TableCell>
+                      <TableCell>{p.commission_percent}%</TableCell>
+                      <TableCell className="hidden md:table-cell">{svcCount}</TableCell>
+                      <TableCell><Switch checked={!!p.is_active} onCheckedChange={v => toggleProvider.mutate({ id: p.id, active: v })} /></TableCell>
+                      <TableCell>
+                        <Button size="icon" variant="ghost" onClick={() => openEditProvider(p)}><Edit2 className="h-4 w-4" /></Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+
+        {/* ── Catalog ── */}
         <TabsContent value="catalog" className="space-y-3">
-          <p className="text-sm text-muted-foreground">Estructura completa del marketplace organizada por función real dentro del trabajo jurídico.</p>
+          <p className="text-sm text-muted-foreground">Estructura del marketplace: {categories.length} categorías · {subcategories.length} subcategorías · {legalAreas.length} áreas jurídicas</p>
           {categories.map(cat => {
             const subs = subcatsByCat[cat.id] ?? [];
             const provs = provsByCat[cat.id] ?? [];
@@ -278,47 +445,34 @@ export default function ProviderMarketplace() {
                       <div className="flex items-center gap-3 min-w-0">
                         {isOpen ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm">{cat.name}</span>
-                            {priorityBadge(cat.priority)}
-                          </div>
+                          <span className="font-semibold text-sm">{cat.name}</span>
                           {cat.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{cat.description}</p>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0 ml-2">
-                        <span className="text-xs text-muted-foreground">{subs.length} sub · {provs.length} prov</span>
-                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0 ml-2">{subs.length} sub · {provs.length} prov</span>
                     </button>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="px-4 pb-4 border-t border-border">
-                      <div className="flex items-center justify-between mt-3 mb-2">
-                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Subcategorías</span>
-                        <Button size="sm" variant="outline" onClick={() => openNewProvider(cat.id)}><Plus className="h-3 w-3 mr-1" />Proveedor</Button>
-                      </div>
-                      {subs.length === 0 ? (
-                        <p className="text-xs text-muted-foreground italic">Sin subcategorías definidas</p>
-                      ) : (
-                        <div className="flex flex-wrap gap-1.5">
-                          {subs.map(s => (
-                            <Badge key={s.id} variant="outline" className="text-xs">{s.name}</Badge>
-                          ))}
+                      {subs.length > 0 && (
+                        <div className="mt-3">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Subcategorías</span>
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {subs.map(s => <Badge key={s.id} variant="outline" className="text-xs">{s.name}</Badge>)}
+                          </div>
                         </div>
                       )}
                       {provs.length > 0 && (
                         <div className="mt-3">
-                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Proveedores registrados</span>
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Proveedores</span>
                           <div className="mt-1 space-y-1">
                             {provs.map(p => (
                               <div key={p.id} className="flex items-center justify-between text-sm py-1">
                                 <div className="flex items-center gap-2">
-                                  <span className={p.is_active ? 'text-foreground' : 'text-muted-foreground line-through'}>{p.name}</span>
-                                  {p.is_featured && <Badge className="bg-amber-100 text-amber-800 text-xs">Destacado</Badge>}
+                                  <span className={p.is_active ? '' : 'text-muted-foreground line-through'}>{p.name}</span>
+                                  {statusBadge(p.status)}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-muted-foreground">{p.commission_percent}%</span>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditProvider(p)}><Edit2 className="h-3 w-3" /></Button>
-                                </div>
+                                <span className="text-xs text-muted-foreground">{p.commission_percent}%</span>
                               </div>
                             ))}
                           </div>
@@ -332,92 +486,11 @@ export default function ProviderMarketplace() {
           })}
         </TabsContent>
 
-        {/* ── Proveedores ── */}
-        <TabsContent value="providers" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-muted-foreground">{providers.length} proveedores registrados</p>
-            <Button onClick={() => openNewProvider()}><Plus className="h-4 w-4 mr-1" />Nuevo proveedor</Button>
-          </div>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead className="hidden md:table-cell">Categoría</TableHead>
-                  <TableHead className="hidden md:table-cell">Modalidad</TableHead>
-                  <TableHead>Comisión</TableHead>
-                  <TableHead>Activo</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {providers.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay proveedores registrados</TableCell></TableRow>}
-                {providers.map(p => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {p.name}
-                        {p.is_featured && <Badge className="bg-amber-100 text-amber-800 text-xs">★</Badge>}
-                        {p.is_sponsored && <Badge className="bg-purple-100 text-purple-800 text-xs">Patrocinado</Badge>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell"><Badge variant="outline" className="text-xs">{catName(p.category_id)}</Badge></TableCell>
-                    <TableCell className="hidden md:table-cell text-sm capitalize">{p.modality ?? '—'}</TableCell>
-                    <TableCell>{p.commission_percent}%</TableCell>
-                    <TableCell><Switch checked={p.is_active} onCheckedChange={v => toggleProvider.mutate({ id: p.id, active: v })} /></TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" onClick={() => openEditProvider(p)}><Edit2 className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => openNewService(p.id)}><Plus className="h-4 w-4" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        {/* ── Servicios ── */}
-        <TabsContent value="services" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-muted-foreground">{services.length} servicios</p>
-            <Button onClick={() => openNewService()}><Plus className="h-4 w-4 mr-1" />Nuevo servicio</Button>
-          </div>
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Servicio</TableHead>
-                  <TableHead className="hidden md:table-cell">Proveedor</TableHead>
-                  <TableHead>Precio</TableHead>
-                  <TableHead className="hidden md:table-cell">Promo</TableHead>
-                  <TableHead>Activo</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {services.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay servicios</TableCell></TableRow>}
-                {services.map(s => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell className="hidden md:table-cell">{provName(s.provider_id)}</TableCell>
-                    <TableCell>{s.price.toLocaleString('es-ES')}€ <span className="text-xs text-muted-foreground">({s.price_type})</span></TableCell>
-                    <TableCell className="hidden md:table-cell">{s.promo_price != null ? <Badge className="bg-green-100 text-green-800">{s.promo_label || `${s.promo_price}€`}</Badge> : '—'}</TableCell>
-                    <TableCell><Switch checked={s.is_active} onCheckedChange={v => toggleService.mutate({ id: s.id, active: v })} /></TableCell>
-                    <TableCell><Button size="icon" variant="ghost" onClick={() => openEditService(s)}><Edit2 className="h-4 w-4" /></Button></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-        </TabsContent>
-
-        {/* ── Pedidos ── */}
+        {/* ── Orders ── */}
         <TabsContent value="orders" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Últimos pedidos</CardTitle>
+              <CardTitle className="text-lg">Pedidos</CardTitle>
               <CardDescription>Facturación: {totalRevenue.toLocaleString('es-ES')}€ · Comisiones: {totalCommission.toLocaleString('es-ES')}€</CardDescription>
             </CardHeader>
             <Table>
@@ -432,29 +505,11 @@ export default function ProviderMarketplace() {
                     <TableCell>{provName(o.provider_id)}</TableCell>
                     <TableCell>{o.total_price.toLocaleString('es-ES')}€</TableCell>
                     <TableCell className="text-primary font-medium">{o.commission_amount.toLocaleString('es-ES')}€</TableCell>
-                    <TableCell><Badge className={statusColor(o.status)}>{o.status}</Badge></TableCell>
+                    <TableCell><Badge className={orderStatusColor(o.status)}>{o.status}</Badge></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </Card>
-        </TabsContent>
-
-        {/* ── Áreas Jurídicas ── */}
-        <TabsContent value="areas" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2"><Tag className="h-5 w-5" />Áreas jurídicas vinculables</CardTitle>
-              <CardDescription>Áreas del derecho para vincular proveedores y facilitar filtros y recomendaciones.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {legalAreas.map(a => (
-                  <Badge key={a.id} variant="secondary" className="text-sm py-1 px-3">{a.name}</Badge>
-                ))}
-              </div>
-              {legalAreas.length === 0 && <p className="text-muted-foreground text-sm">No hay áreas jurídicas registradas</p>}
-            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
@@ -462,7 +517,7 @@ export default function ProviderMarketplace() {
       {/* ── Provider Dialog ── */}
       <Dialog open={providerDialog} onOpenChange={setProviderDialog}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editProvider ? 'Editar proveedor' : 'Nuevo proveedor'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editProvider ? 'Editar proveedor' : 'Crear proveedor manualmente'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div><Label>Nombre *</Label><Input value={pf.name} onChange={e => setPf(p => ({ ...p, name: e.target.value }))} /></div>
             <div>
@@ -502,46 +557,6 @@ export default function ProviderMarketplace() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setProviderDialog(false)}>Cancelar</Button>
             <Button onClick={() => saveProvider.mutate()} disabled={!pf.name || !pf.category_id || saveProvider.isPending}>{saveProvider.isPending ? 'Guardando…' : 'Guardar'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Service Dialog ── */}
-      <Dialog open={serviceDialog} onOpenChange={setServiceDialog}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editService ? 'Editar servicio' : 'Nuevo servicio'}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Nombre *</Label><Input value={sf.name} onChange={e => setSf(s => ({ ...s, name: e.target.value }))} /></div>
-            <div>
-              <Label>Proveedor *</Label>
-              <Select value={sf.provider_id} onValueChange={v => setSf(s => ({ ...s, provider_id: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{providers.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Precio (€) *</Label><Input type="number" value={sf.price} onChange={e => setSf(s => ({ ...s, price: e.target.value }))} /></div>
-              <div>
-                <Label>Tipo precio</Label>
-                <Select value={sf.price_type} onValueChange={v => setSf(s => ({ ...s, price_type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fixed">Fijo</SelectItem>
-                    <SelectItem value="from">Desde</SelectItem>
-                    <SelectItem value="per_unit">Por unidad</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Precio promo (€)</Label><Input type="number" value={sf.promo_price} onChange={e => setSf(s => ({ ...s, promo_price: e.target.value }))} /></div>
-              <div><Label>Etiqueta promo</Label><Input placeholder="Ej: -20% lanzamiento" value={sf.promo_label} onChange={e => setSf(s => ({ ...s, promo_label: e.target.value }))} /></div>
-            </div>
-            <div><Label>Descripción</Label><Textarea value={sf.description} onChange={e => setSf(s => ({ ...s, description: e.target.value }))} rows={2} /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setServiceDialog(false)}>Cancelar</Button>
-            <Button onClick={() => saveService.mutate()} disabled={!sf.name || !sf.provider_id || saveService.isPending}>{saveService.isPending ? 'Guardando…' : 'Guardar'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,7 +78,7 @@ export default function MarketplaceLanding() {
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button size="lg" className="gap-2"><Search className="h-4 w-4" />Soy abogado – Buscar proveedores</Button>
-          <Button size="lg" variant="outline" className="gap-2"><Users className="h-4 w-4" />Soy proveedor – Ofrecer mis servicios</Button>
+          <Button size="lg" variant="outline" className="gap-2" asChild><Link to="/registro-proveedor"><Users className="h-4 w-4" />Soy proveedor – Ofrecer mis servicios</Link></Button>
         </div>
       </section>
 
@@ -141,7 +142,7 @@ export default function MarketplaceLanding() {
                 <li key={i} className="flex items-start gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />{b}</li>
               ))}
             </ul>
-            <Button variant="outline" className="mt-5 w-full gap-2"><Users className="h-4 w-4" />Publicar mi servicio</Button>
+            <Button variant="outline" className="mt-5 w-full gap-2" asChild><Link to="/registro-proveedor"><Users className="h-4 w-4" />Publicar mi servicio</Link></Button>
           </CardContent>
         </Card>
       </section>
@@ -192,7 +193,7 @@ export default function MarketplaceLanding() {
         <p className="text-muted-foreground mb-6">Tanto si necesitas servicios como si quieres ofrecerlos, el Marketplace de Asesor.Legal está diseñado para generar oportunidades reales.</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button size="lg" className="gap-2"><Search className="h-4 w-4" />Buscar proveedores<ArrowRight className="h-4 w-4" /></Button>
-          <Button size="lg" variant="outline" className="gap-2"><Users className="h-4 w-4" />Publicar mi servicio<ArrowRight className="h-4 w-4" /></Button>
+          <Button size="lg" variant="outline" className="gap-2" asChild><Link to="/registro-proveedor"><Users className="h-4 w-4" />Publicar mi servicio<ArrowRight className="h-4 w-4" /></Link></Button>
         </div>
       </section>
     </div>
