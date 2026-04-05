@@ -142,7 +142,7 @@ export default function MarketplaceLanding() {
                 <li key={i} className="flex items-start gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />{b}</li>
               ))}
             </ul>
-            <Button variant="outline" className="mt-5 w-full gap-2"><Users className="h-4 w-4" />Publicar mi servicio</Button>
+            <Button variant="outline" className="mt-5 w-full gap-2" asChild><Link to="/registro-proveedor"><Users className="h-4 w-4" />Publicar mi servicio</Link></Button>
           </CardContent>
         </Card>
       </section>
