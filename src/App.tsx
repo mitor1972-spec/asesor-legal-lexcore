@@ -37,6 +37,7 @@ import LawfirmPricing from "@/pages/lawfirm/LawfirmPricing";
 import LawfirmMarketplaceConfig from "@/pages/lawfirm/LawfirmMarketplaceConfig";
 import LawfirmAdvertising from "@/pages/lawfirm/LawfirmAdvertising";
 import LawfirmAIServices from "@/pages/lawfirm/LawfirmAIServices";
+import LawfirmCommercialAssistant from "@/pages/lawfirm/LawfirmCommercialAssistant";
 import LawfirmTeam from "@/pages/lawfirm/LawfirmTeam";
 import LawfirmBranches from "@/pages/lawfirm/LawfirmBranches";
 import LawfirmBilling from "@/pages/lawfirm/LawfirmBilling";
