@@ -251,8 +251,8 @@ function ChatAssistant() {
 }
 
 function DelegateStrategyForm() {
-  const { profile } = useAuthContext();
-  const { lawfirm } = useLawfirmProfile();
+  const { user } = useAuthContext();
+  const { data: lawfirm } = useLawfirmProfile();
   const [strategyMode, setStrategyMode] = useState('advertising_plus_contacts');
   const [provinces, setProvinces] = useState<string[]>([]);
   const [legalAreas, setLegalAreas] = useState<string[]>([]);
