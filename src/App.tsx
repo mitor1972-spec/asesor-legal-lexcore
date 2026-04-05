@@ -28,6 +28,7 @@ import MasterConfig from "@/pages/settings/MasterConfig";
 import AdProductsAdmin from "@/pages/settings/AdProductsAdmin";
 import QualityControl from "@/pages/settings/QualityControl";
 import SeoAnalyzer from "@/pages/settings/SeoAnalyzer";
+import ProviderMarketplace from "@/pages/settings/ProviderMarketplace";
 import LawfirmDashboard from "@/pages/lawfirm/LawfirmDashboard";
 import LawfirmCases from "@/pages/lawfirm/LawfirmCases";
 import LawfirmCaseDetail from "@/pages/lawfirm/LawfirmCaseDetail";
