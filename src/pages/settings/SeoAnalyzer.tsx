@@ -157,6 +157,11 @@ export default function SeoAnalyzer() {
               ⏳ Descargando y analizando la web con IA… esto puede tardar 30-60 segundos.
             </p>
           )}
+          {!loading && (analysis || url) && (
+            <p className="text-xs text-muted-foreground mt-3">
+              Se guarda automáticamente la URL y el último informe para que no pierdas el trabajo.
+            </p>
+          )}
         </CardContent>
       </Card>
 

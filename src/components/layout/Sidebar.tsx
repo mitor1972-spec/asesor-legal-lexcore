@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog, ChevronDown, Key, Cog, Building2, BarChart3, MessageSquare, FileCheck, Bot, AlertTriangle, Crown, ShieldCheck, ClipboardList, Megaphone, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ViewSwitcher } from './ViewSwitcher';
 
@@ -35,14 +35,13 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-function SidebarContent({ onClose }: { onClose?: () => void }) {
+const SidebarContent = forwardRef<HTMLDivElement, { onClose?: () => void }>(({ onClose }, ref) => {
   const location = useLocation();
   const { isAdmin } = useAuthContext();
-  // Always keep config expanded for admins
   const [configOpen, setConfigOpen] = useState(true);
 
   return (
-    <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
+    <div ref={ref} className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center justify-between">
           <Link to="/dashboard" className="flex items-center gap-2" onClick={onClose}>
@@ -65,7 +64,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.href || 
+          const isActive = location.pathname === item.href ||
             (item.href !== '/dashboard' && item.href !== '/leads/new' && location.pathname.startsWith(item.href));
           return (
             <Link
@@ -88,7 +87,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         {isAdmin && (
           <>
             <div className="my-4 border-t border-sidebar-border" />
-            
+
             <Link
               to="/users"
               onClick={onClose}
@@ -144,26 +143,29 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* View Switcher */}
             <ViewSwitcher onClose={onClose} />
           </>
         )}
       </nav>
     </div>
   );
-}
+});
+
+SidebarContent.displayName = 'SidebarContent';
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <>
-      {/* Desktop Sidebar */}
       <div className="hidden md:flex w-64 flex-shrink-0">
         <SidebarContent />
       </div>
 
-      {/* Mobile Sidebar */}
-      <Sheet open={open} onOpenChange={onClose}>
+      <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
         <SheetContent side="left" className="p-0 w-64 bg-sidebar border-sidebar-border">
+          <SheetTitle className="sr-only">Menú principal</SheetTitle>
+          <SheetDescription className="sr-only">
+            Navegación principal del panel de administración.
+          </SheetDescription>
           <SidebarContent onClose={onClose} />
         </SheetContent>
       </Sheet>
