@@ -348,7 +348,7 @@ export default function LawfirmPortada() {
                   <div>
                     <h3 className="text-2xl font-display font-bold">Asesor.Legal</h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-lawfirm-primary font-medium text-sm">Powered by Lexcore™</span>
+                      <span className="text-lawfirm-primary font-medium text-sm">Powered by LexMarket™</span>
                       <div className="flex gap-0.5">
                         {[...Array(5)].map((_, i) => (
                           <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />

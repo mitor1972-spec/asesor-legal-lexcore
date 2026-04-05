@@ -250,7 +250,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </ScrollArea>
 
       <div className="p-4 border-t border-sidebar-border">
-        <div className="text-xs text-sidebar-foreground/50 text-center">Powered by Lexcore™</div>
+        <div className="text-xs text-sidebar-foreground/50 text-center">Powered by LexMarket™</div>
       </div>
     </div>
   );

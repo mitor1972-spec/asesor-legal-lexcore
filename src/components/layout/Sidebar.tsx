@@ -48,7 +48,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               <Scale className="h-5 w-5 text-sidebar-primary-foreground" />
             </div>
             <div>
-              <span className="font-display font-bold text-lg">Lexcore</span>
+              <span className="font-display font-bold text-lg">LexMarket</span>
               <span className="text-sidebar-primary">™</span>
             </div>
           </Link>
