@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,165 +12,151 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
-import { Plus, Building2, Edit2, Trash2, Package, ShoppingCart, Store } from 'lucide-react';
+import { Plus, Building2, Edit2, Package, ShoppingCart, Store, ChevronDown, ChevronRight, Layers, Scale, Tag } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 /* ────────── types ────────── */
 interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  icon: string | null;
-  sort_order: number;
-  is_active: boolean;
+  id: string; name: string; slug: string; description: string | null;
+  icon: string | null; sort_order: number; is_active: boolean; priority: string | null;
 }
-
+interface Subcategory {
+  id: string; category_id: string; name: string; slug: string;
+  description: string | null; sort_order: number; is_active: boolean;
+}
 interface Provider {
-  id: string;
-  category_id: string;
-  name: string;
-  cif: string | null;
-  contact_name: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  website: string | null;
-  description: string | null;
-  commission_percent: number;
-  is_active: boolean;
-  provinces_covered: string[];
-  notes: string | null;
-  created_at: string;
+  id: string; category_id: string; name: string; cif: string | null;
+  contact_name: string | null; contact_email: string | null; contact_phone: string | null;
+  website: string | null; description: string | null; commission_percent: number;
+  is_active: boolean; provinces_covered: string[]; notes: string | null;
+  modality: string | null; response_time: string | null;
+  is_featured: boolean | null; is_sponsored: boolean | null; created_at: string;
 }
-
 interface Service {
-  id: string;
-  provider_id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  price_type: string;
-  promo_price: number | null;
-  promo_label: string | null;
-  is_active: boolean;
+  id: string; provider_id: string; name: string; description: string | null;
+  price: number; price_type: string; promo_price: number | null;
+  promo_label: string | null; is_active: boolean;
 }
-
 interface Order {
-  id: string;
-  service_id: string;
-  provider_id: string;
-  lawfirm_id: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  commission_percent: number;
-  commission_amount: number;
-  provider_payout: number;
-  status: string;
-  notes: string | null;
-  created_at: string;
+  id: string; provider_id: string; total_price: number;
+  commission_amount: number; status: string; created_at: string;
+}
+interface LegalArea {
+  id: string; name: string; slug: string;
 }
 
-/* ────────── queries ────────── */
-function useCategories() {
-  return useQuery({
-    queryKey: ['provider-categories'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('provider_categories')
-        .select('*')
-        .order('sort_order');
-      if (error) throw error;
-      return data as Category[];
-    },
-  });
-}
+/* ────────── hooks ────────── */
+const useCategories = () => useQuery({
+  queryKey: ['provider-categories'],
+  queryFn: async () => {
+    const { data, error } = await supabase.from('provider_categories').select('*').order('sort_order');
+    if (error) throw error;
+    return data as Category[];
+  },
+});
+const useSubcategories = () => useQuery({
+  queryKey: ['provider-subcategories'],
+  queryFn: async () => {
+    const { data, error } = await supabase.from('provider_subcategories').select('*').order('sort_order');
+    if (error) throw error;
+    return data as Subcategory[];
+  },
+});
+const useProviders = () => useQuery({
+  queryKey: ['providers'],
+  queryFn: async () => {
+    const { data, error } = await supabase.from('providers').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return data as Provider[];
+  },
+});
+const useServices = () => useQuery({
+  queryKey: ['provider-services'],
+  queryFn: async () => {
+    const { data, error } = await supabase.from('provider_services').select('*').order('sort_order');
+    if (error) throw error;
+    return data as Service[];
+  },
+});
+const useOrders = () => useQuery({
+  queryKey: ['provider-orders'],
+  queryFn: async () => {
+    const { data, error } = await supabase.from('provider_orders').select('*').order('created_at', { ascending: false }).limit(50);
+    if (error) throw error;
+    return data as Order[];
+  },
+});
+const useLegalAreas = () => useQuery({
+  queryKey: ['marketplace-legal-areas'],
+  queryFn: async () => {
+    const { data, error } = await supabase.from('marketplace_legal_areas').select('*').order('sort_order');
+    if (error) throw error;
+    return data as LegalArea[];
+  },
+});
 
-function useProviders() {
-  return useQuery({
-    queryKey: ['providers'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('providers')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data as Provider[];
-    },
-  });
-}
+/* ────────── helpers ────────── */
+const priorityBadge = (p: string | null) => {
+  if (p === 'alta') return <Badge className="bg-primary/10 text-primary border-primary/20">Alta</Badge>;
+  if (p === 'complementaria') return <Badge variant="outline" className="text-muted-foreground">Complementaria</Badge>;
+  return <Badge variant="secondary">Media</Badge>;
+};
 
-function useServices() {
-  return useQuery({
-    queryKey: ['provider-services'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('provider_services')
-        .select('*')
-        .order('sort_order');
-      if (error) throw error;
-      return data as Service[];
-    },
-  });
-}
-
-function useOrders() {
-  return useQuery({
-    queryKey: ['provider-orders'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('provider_orders')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data as Order[];
-    },
-  });
-}
-
-/* ────────── main component ────────── */
+/* ────────── main ────────── */
 export default function ProviderMarketplace() {
   const qc = useQueryClient();
   const { data: categories = [], isLoading: loadingCats } = useCategories();
-  const { data: providers = [], isLoading: loadingProviders } = useProviders();
+  const { data: subcategories = [] } = useSubcategories();
+  const { data: providers = [] } = useProviders();
   const { data: services = [] } = useServices();
   const { data: orders = [] } = useOrders();
+  const { data: legalAreas = [] } = useLegalAreas();
 
-  const [tab, setTab] = useState('providers');
+  const [tab, setTab] = useState('catalog');
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
 
   /* ── provider dialog ── */
   const [providerDialog, setProviderDialog] = useState(false);
   const [editProvider, setEditProvider] = useState<Provider | null>(null);
-  const [pf, setPf] = useState({ name: '', category_id: '', cif: '', contact_name: '', contact_email: '', contact_phone: '', website: '', description: '', commission_percent: '15', notes: '' });
+  const [pf, setPf] = useState({
+    name: '', category_id: '', cif: '', contact_name: '', contact_email: '',
+    contact_phone: '', website: '', description: '', commission_percent: '15',
+    notes: '', modality: 'ambas', response_time: '',
+  });
 
-  const openNewProvider = () => {
+  const openNewProvider = (catId?: string) => {
     setEditProvider(null);
-    setPf({ name: '', category_id: categories[0]?.id ?? '', cif: '', contact_name: '', contact_email: '', contact_phone: '', website: '', description: '', commission_percent: '15', notes: '' });
+    setPf({
+      name: '', category_id: catId ?? categories[0]?.id ?? '', cif: '',
+      contact_name: '', contact_email: '', contact_phone: '', website: '',
+      description: '', commission_percent: '15', notes: '', modality: 'ambas', response_time: '',
+    });
     setProviderDialog(true);
   };
 
   const openEditProvider = (p: Provider) => {
     setEditProvider(p);
-    setPf({ name: p.name, category_id: p.category_id, cif: p.cif ?? '', contact_name: p.contact_name ?? '', contact_email: p.contact_email ?? '', contact_phone: p.contact_phone ?? '', website: p.website ?? '', description: p.description ?? '', commission_percent: String(p.commission_percent), notes: p.notes ?? '' });
+    setPf({
+      name: p.name, category_id: p.category_id, cif: p.cif ?? '',
+      contact_name: p.contact_name ?? '', contact_email: p.contact_email ?? '',
+      contact_phone: p.contact_phone ?? '', website: p.website ?? '',
+      description: p.description ?? '', commission_percent: String(p.commission_percent),
+      notes: p.notes ?? '', modality: p.modality ?? 'ambas', response_time: p.response_time ?? '',
+    });
     setProviderDialog(true);
   };
 
   const saveProvider = useMutation({
     mutationFn: async () => {
       const payload = {
-        name: pf.name,
-        category_id: pf.category_id,
-        cif: pf.cif || null,
-        contact_name: pf.contact_name || null,
-        contact_email: pf.contact_email || null,
-        contact_phone: pf.contact_phone || null,
-        website: pf.website || null,
-        description: pf.description || null,
-        commission_percent: Number(pf.commission_percent),
-        notes: pf.notes || null,
+        name: pf.name, category_id: pf.category_id, cif: pf.cif || null,
+        contact_name: pf.contact_name || null, contact_email: pf.contact_email || null,
+        contact_phone: pf.contact_phone || null, website: pf.website || null,
+        description: pf.description || null, commission_percent: Number(pf.commission_percent),
+        notes: pf.notes || null, modality: pf.modality, response_time: pf.response_time || null,
       };
       if (editProvider) {
         const { error } = await supabase.from('providers').update(payload).eq('id', editProvider.id);
@@ -180,11 +166,7 @@ export default function ProviderMarketplace() {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['providers'] });
-      setProviderDialog(false);
-      toast.success(editProvider ? 'Proveedor actualizado' : 'Proveedor creado');
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['providers'] }); setProviderDialog(false); toast.success(editProvider ? 'Proveedor actualizado' : 'Proveedor creado'); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -203,7 +185,7 @@ export default function ProviderMarketplace() {
 
   const openNewService = (providerId?: string) => {
     setEditService(null);
-    setSf({ name: '', provider_id: providerId ?? providers[0]?.id ?? '', description: '', price: '0', price_type: 'fixed', promo_price: '', promo_label: '' });
+    setSf({ name: '', provider_id: providerId ?? '', description: '', price: '0', price_type: 'fixed', promo_price: '', promo_label: '' });
     setServiceDialog(true);
   };
 
@@ -215,28 +197,11 @@ export default function ProviderMarketplace() {
 
   const saveService = useMutation({
     mutationFn: async () => {
-      const payload = {
-        name: sf.name,
-        provider_id: sf.provider_id,
-        description: sf.description || null,
-        price: Number(sf.price),
-        price_type: sf.price_type,
-        promo_price: sf.promo_price ? Number(sf.promo_price) : null,
-        promo_label: sf.promo_label || null,
-      };
-      if (editService) {
-        const { error } = await supabase.from('provider_services').update(payload).eq('id', editService.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('provider_services').insert(payload);
-        if (error) throw error;
-      }
+      const payload = { name: sf.name, provider_id: sf.provider_id, description: sf.description || null, price: Number(sf.price), price_type: sf.price_type, promo_price: sf.promo_price ? Number(sf.promo_price) : null, promo_label: sf.promo_label || null };
+      if (editService) { const { error } = await supabase.from('provider_services').update(payload).eq('id', editService.id); if (error) throw error; }
+      else { const { error } = await supabase.from('provider_services').insert(payload); if (error) throw error; }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['provider-services'] });
-      setServiceDialog(false);
-      toast.success(editService ? 'Servicio actualizado' : 'Servicio creado');
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['provider-services'] }); setServiceDialog(false); toast.success(editService ? 'Servicio actualizado' : 'Servicio creado'); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -248,67 +213,156 @@ export default function ProviderMarketplace() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['provider-services'] }),
   });
 
-  /* ── helpers ── */
+  /* ── computed ── */
   const catName = (id: string) => categories.find(c => c.id === id)?.name ?? '—';
   const provName = (id: string) => providers.find(p => p.id === id)?.name ?? '—';
-  const statusColor = (s: string) => ({ pending: 'bg-yellow-100 text-yellow-800', confirmed: 'bg-blue-100 text-blue-800', completed: 'bg-green-100 text-green-800', cancelled: 'bg-red-100 text-red-800' }[s] ?? 'bg-muted text-muted-foreground');
+  const subcatsByCat = useMemo(() => {
+    const map: Record<string, Subcategory[]> = {};
+    subcategories.forEach(s => { (map[s.category_id] ??= []).push(s); });
+    return map;
+  }, [subcategories]);
+  const provsByCat = useMemo(() => {
+    const map: Record<string, Provider[]> = {};
+    providers.forEach(p => { (map[p.category_id] ??= []).push(p); });
+    return map;
+  }, [providers]);
 
   const totalCommission = orders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.commission_amount, 0);
   const totalRevenue = orders.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.total_price, 0);
 
-  if (loadingCats || loadingProviders) {
-    return <div className="p-6 text-muted-foreground">Cargando marketplace…</div>;
-  }
+  const toggleExpanded = (id: string) => {
+    setExpandedCats(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+
+  const statusColor = (s: string) => ({ pending: 'bg-yellow-100 text-yellow-800', confirmed: 'bg-blue-100 text-blue-800', completed: 'bg-green-100 text-green-800', cancelled: 'bg-red-100 text-red-800' }[s] ?? 'bg-muted text-muted-foreground');
+
+  if (loadingCats) return <div className="p-6 text-muted-foreground">Cargando marketplace…</div>;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2"><Store className="h-6 w-6 text-primary" /> Marketplace de Proveedores</h1>
-        <p className="text-muted-foreground mt-1">Gestiona proveedores externos (procuradores, notarios, peritos…) que ofrecen servicios a tus abogados.</p>
+        <p className="text-muted-foreground mt-1">Infraestructura de servicios profesionales para abogados. {categories.length} categorías · {subcategories.length} subcategorías · {legalAreas.length} áreas jurídicas</p>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Categorías</p><p className="text-2xl font-bold">{categories.length}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Subcategorías</p><p className="text-2xl font-bold">{subcategories.length}</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Proveedores</p><p className="text-2xl font-bold">{providers.length}</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Servicios</p><p className="text-2xl font-bold">{services.length}</p></CardContent></Card>
         <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Comisión acumulada</p><p className="text-2xl font-bold text-primary">{totalCommission.toLocaleString('es-ES')}€</p></CardContent></Card>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
+          <TabsTrigger value="catalog"><Layers className="h-4 w-4 mr-1" />Catálogo</TabsTrigger>
           <TabsTrigger value="providers"><Building2 className="h-4 w-4 mr-1" />Proveedores</TabsTrigger>
           <TabsTrigger value="services"><Package className="h-4 w-4 mr-1" />Servicios</TabsTrigger>
           <TabsTrigger value="orders"><ShoppingCart className="h-4 w-4 mr-1" />Pedidos</TabsTrigger>
+          <TabsTrigger value="areas"><Scale className="h-4 w-4 mr-1" />Áreas Jurídicas</TabsTrigger>
         </TabsList>
+
+        {/* ── Catálogo jerárquico ── */}
+        <TabsContent value="catalog" className="space-y-3">
+          <p className="text-sm text-muted-foreground">Estructura completa del marketplace organizada por función real dentro del trabajo jurídico.</p>
+          {categories.map(cat => {
+            const subs = subcatsByCat[cat.id] ?? [];
+            const provs = provsByCat[cat.id] ?? [];
+            const isOpen = expandedCats.has(cat.id);
+            return (
+              <Card key={cat.id} className="overflow-hidden">
+                <Collapsible open={isOpen} onOpenChange={() => toggleExpanded(cat.id)}>
+                  <CollapsibleTrigger asChild>
+                    <button className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors text-left">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {isOpen ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm">{cat.name}</span>
+                            {priorityBadge(cat.priority)}
+                          </div>
+                          {cat.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{cat.description}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0 ml-2">
+                        <span className="text-xs text-muted-foreground">{subs.length} sub · {provs.length} prov</span>
+                      </div>
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="px-4 pb-4 border-t border-border">
+                      <div className="flex items-center justify-between mt-3 mb-2">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Subcategorías</span>
+                        <Button size="sm" variant="outline" onClick={() => openNewProvider(cat.id)}><Plus className="h-3 w-3 mr-1" />Proveedor</Button>
+                      </div>
+                      {subs.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic">Sin subcategorías definidas</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {subs.map(s => (
+                            <Badge key={s.id} variant="outline" className="text-xs">{s.name}</Badge>
+                          ))}
+                        </div>
+                      )}
+                      {provs.length > 0 && (
+                        <div className="mt-3">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Proveedores registrados</span>
+                          <div className="mt-1 space-y-1">
+                            {provs.map(p => (
+                              <div key={p.id} className="flex items-center justify-between text-sm py-1">
+                                <div className="flex items-center gap-2">
+                                  <span className={p.is_active ? 'text-foreground' : 'text-muted-foreground line-through'}>{p.name}</span>
+                                  {p.is_featured && <Badge className="bg-amber-100 text-amber-800 text-xs">Destacado</Badge>}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">{p.commission_percent}%</span>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditProvider(p)}><Edit2 className="h-3 w-3" /></Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </Card>
+            );
+          })}
+        </TabsContent>
 
         {/* ── Proveedores ── */}
         <TabsContent value="providers" className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={openNewProvider}><Plus className="h-4 w-4 mr-1" />Nuevo proveedor</Button>
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">{providers.length} proveedores registrados</p>
+            <Button onClick={() => openNewProvider()}><Plus className="h-4 w-4 mr-1" />Nuevo proveedor</Button>
           </div>
-
           <Card>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead className="hidden md:table-cell">Categoría</TableHead>
-                  <TableHead className="hidden md:table-cell">Contacto</TableHead>
+                  <TableHead className="hidden md:table-cell">Modalidad</TableHead>
                   <TableHead>Comisión</TableHead>
                   <TableHead>Activo</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {providers.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay proveedores registrados</TableCell></TableRow>
-                )}
+                {providers.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay proveedores registrados</TableCell></TableRow>}
                 {providers.map(p => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell className="hidden md:table-cell"><Badge variant="outline">{catName(p.category_id)}</Badge></TableCell>
-                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{p.contact_email || p.contact_phone || '—'}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {p.name}
+                        {p.is_featured && <Badge className="bg-amber-100 text-amber-800 text-xs">★</Badge>}
+                        {p.is_sponsored && <Badge className="bg-purple-100 text-purple-800 text-xs">Patrocinado</Badge>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell"><Badge variant="outline" className="text-xs">{catName(p.category_id)}</Badge></TableCell>
+                    <TableCell className="hidden md:table-cell text-sm capitalize">{p.modality ?? '—'}</TableCell>
                     <TableCell>{p.commission_percent}%</TableCell>
                     <TableCell><Switch checked={p.is_active} onCheckedChange={v => toggleProvider.mutate({ id: p.id, active: v })} /></TableCell>
                     <TableCell>
@@ -326,10 +380,10 @@ export default function ProviderMarketplace() {
 
         {/* ── Servicios ── */}
         <TabsContent value="services" className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">{services.length} servicios</p>
             <Button onClick={() => openNewService()}><Plus className="h-4 w-4 mr-1" />Nuevo servicio</Button>
           </div>
-
           <Card>
             <Table>
               <TableHeader>
@@ -343,9 +397,7 @@ export default function ProviderMarketplace() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {services.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay servicios registrados</TableCell></TableRow>
-                )}
+                {services.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay servicios</TableCell></TableRow>}
                 {services.map(s => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.name}</TableCell>
@@ -366,28 +418,18 @@ export default function ProviderMarketplace() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Últimos pedidos</CardTitle>
-              <CardDescription>Facturación total: {totalRevenue.toLocaleString('es-ES')}€ · Comisiones: {totalCommission.toLocaleString('es-ES')}€</CardDescription>
+              <CardDescription>Facturación: {totalRevenue.toLocaleString('es-ES')}€ · Comisiones: {totalCommission.toLocaleString('es-ES')}€</CardDescription>
             </CardHeader>
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Proveedor</TableHead>
-                  <TableHead className="hidden md:table-cell">Cantidad</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Comisión</TableHead>
-                  <TableHead>Estado</TableHead>
-                </TableRow>
-              </TableHeader>
+              <TableHeader><TableRow>
+                <TableHead>Fecha</TableHead><TableHead>Proveedor</TableHead><TableHead>Total</TableHead><TableHead>Comisión</TableHead><TableHead>Estado</TableHead>
+              </TableRow></TableHeader>
               <TableBody>
-                {orders.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay pedidos todavía</TableCell></TableRow>
-                )}
+                {orders.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No hay pedidos</TableCell></TableRow>}
                 {orders.map(o => (
                   <TableRow key={o.id}>
                     <TableCell className="text-sm">{format(new Date(o.created_at), 'dd/MM/yy', { locale: es })}</TableCell>
                     <TableCell>{provName(o.provider_id)}</TableCell>
-                    <TableCell className="hidden md:table-cell">{o.quantity}</TableCell>
                     <TableCell>{o.total_price.toLocaleString('es-ES')}€</TableCell>
                     <TableCell className="text-primary font-medium">{o.commission_amount.toLocaleString('es-ES')}€</TableCell>
                     <TableCell><Badge className={statusColor(o.status)}>{o.status}</Badge></TableCell>
@@ -395,6 +437,24 @@ export default function ProviderMarketplace() {
                 ))}
               </TableBody>
             </Table>
+          </Card>
+        </TabsContent>
+
+        {/* ── Áreas Jurídicas ── */}
+        <TabsContent value="areas" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2"><Tag className="h-5 w-5" />Áreas jurídicas vinculables</CardTitle>
+              <CardDescription>Áreas del derecho para vincular proveedores y facilitar filtros y recomendaciones.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {legalAreas.map(a => (
+                  <Badge key={a.id} variant="secondary" className="text-sm py-1 px-3">{a.name}</Badge>
+                ))}
+              </div>
+              {legalAreas.length === 0 && <p className="text-muted-foreground text-sm">No hay áreas jurídicas registradas</p>}
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
@@ -415,6 +475,20 @@ export default function ProviderMarketplace() {
             <div className="grid grid-cols-2 gap-3">
               <div><Label>CIF</Label><Input value={pf.cif} onChange={e => setPf(p => ({ ...p, cif: e.target.value }))} /></div>
               <div><Label>Comisión %</Label><Input type="number" value={pf.commission_percent} onChange={e => setPf(p => ({ ...p, commission_percent: e.target.value }))} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Modalidad</Label>
+                <Select value={pf.modality} onValueChange={v => setPf(p => ({ ...p, modality: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="online">Online</SelectItem>
+                    <SelectItem value="presencial">Presencial</SelectItem>
+                    <SelectItem value="ambas">Ambas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Tiempo de respuesta</Label><Input placeholder="Ej: 24h" value={pf.response_time} onChange={e => setPf(p => ({ ...p, response_time: e.target.value }))} /></div>
             </div>
             <div><Label>Persona de contacto</Label><Input value={pf.contact_name} onChange={e => setPf(p => ({ ...p, contact_name: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
