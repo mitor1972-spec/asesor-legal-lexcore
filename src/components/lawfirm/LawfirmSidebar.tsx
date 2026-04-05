@@ -217,17 +217,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           </Link>
         </nav>
 
-        {/* OUTSOURCING COMERCIAL */}
-        <div className="my-4 border-t border-sidebar-border" />
-        <div className="px-3 mb-2">
-          <span className="text-xs font-medium text-sidebar-foreground/50 uppercase tracking-wider">Outsourcing</span>
-        </div>
-        <nav className="space-y-1">
-          <Link to="/despacho/outsourcing" onClick={onClose} className={navLinkClass('/despacho/outsourcing')}>
-            <Handshake className="h-5 w-5" />
-            Outsourcing Comercial
-          </Link>
-        </nav>
 
         {/* AYUDA + LOGOUT */}
         <div className="my-4 border-t border-sidebar-border" />
