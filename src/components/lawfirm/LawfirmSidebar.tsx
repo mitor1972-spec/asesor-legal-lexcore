@@ -63,9 +63,9 @@ const adminNavigation = [
 const marketingNavigation = [
   { name: 'Publicidad Web', href: '/despacho/publicidad?tab=banners-web', icon: Globe },
   { name: 'Secciones Portada', href: '/despacho/publicidad?tab=secciones-portada', icon: Crown },
-  { name: 'Contactos Marketplace', href: '/despacho/publicidad?tab=contactos-marketplace', icon: ShoppingCart },
-  { name: 'Newsletters', href: '/despacho/publicidad?tab=newsletters', icon: Mail },
-  { name: 'Marketing Legal', href: '/despacho/publicidad?tab=marketing-legal', icon: Handshake },
+  { name: 'Contactos Marketplace', href: '/despacho/publicidad?tab=marketplace-contactos', icon: ShoppingCart },
+  { name: 'Newsletters', href: '/despacho/publicidad?tab=newsletter', icon: Mail },
+  { name: 'Marketing Jurídico', href: '/despacho/publicidad?tab=marketing-juridico', icon: Handshake },
 ];
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
