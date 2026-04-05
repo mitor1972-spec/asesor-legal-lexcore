@@ -2176,6 +2176,30 @@ export type Database = {
           },
         ]
       }
+      marketplace_legal_areas: {
+        Row: {
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+          sort_order: number | null
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+          sort_order?: number | null
+        }
+        Update: {
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       marketplace_settings: {
         Row: {
           auto_publish_enabled: boolean | null
@@ -2612,6 +2636,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          priority: string | null
           slug: string
           sort_order: number | null
           updated_at: string | null
@@ -2623,6 +2648,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          priority?: string | null
           slug: string
           sort_order?: number | null
           updated_at?: string | null
@@ -2634,11 +2660,45 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          priority?: string | null
           slug?: string
           sort_order?: number | null
           updated_at?: string | null
         }
         Relationships: []
+      }
+      provider_legal_areas: {
+        Row: {
+          id: string
+          legal_area_id: string
+          provider_id: string
+        }
+        Insert: {
+          id?: string
+          legal_area_id: string
+          provider_id: string
+        }
+        Update: {
+          id?: string
+          legal_area_id?: string
+          provider_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_legal_areas_legal_area_id_fkey"
+            columns: ["legal_area_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_legal_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_legal_areas_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       provider_orders: {
         Row: {
@@ -2772,9 +2832,84 @@ export type Database = {
           },
         ]
       }
+      provider_subcategories: {
+        Row: {
+          category_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+          sort_order: number | null
+        }
+        Insert: {
+          category_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+          sort_order?: number | null
+        }
+        Update: {
+          category_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_subcategories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "provider_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_subcategory_links: {
+        Row: {
+          id: string
+          provider_id: string
+          subcategory_id: string
+        }
+        Insert: {
+          id?: string
+          provider_id: string
+          subcategory_id: string
+        }
+        Update: {
+          id?: string
+          provider_id?: string
+          subcategory_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_subcategory_links_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_subcategory_links_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "provider_subcategories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       providers: {
         Row: {
           category_id: string
+          certifications: string[] | null
           cif: string | null
           commission_percent: number
           contact_email: string | null
@@ -2784,15 +2919,20 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          is_featured: boolean | null
+          is_sponsored: boolean | null
           logo_url: string | null
+          modality: string | null
           name: string
           notes: string | null
           provinces_covered: string[] | null
+          response_time: string | null
           updated_at: string | null
           website: string | null
         }
         Insert: {
           category_id: string
+          certifications?: string[] | null
           cif?: string | null
           commission_percent?: number
           contact_email?: string | null
@@ -2802,15 +2942,20 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_featured?: boolean | null
+          is_sponsored?: boolean | null
           logo_url?: string | null
+          modality?: string | null
           name: string
           notes?: string | null
           provinces_covered?: string[] | null
+          response_time?: string | null
           updated_at?: string | null
           website?: string | null
         }
         Update: {
           category_id?: string
+          certifications?: string[] | null
           cif?: string | null
           commission_percent?: number
           contact_email?: string | null
@@ -2820,10 +2965,14 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_featured?: boolean | null
+          is_sponsored?: boolean | null
           logo_url?: string | null
+          modality?: string | null
           name?: string
           notes?: string | null
           provinces_covered?: string[] | null
+          response_time?: string | null
           updated_at?: string | null
           website?: string | null
         }
