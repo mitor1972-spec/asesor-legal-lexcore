@@ -28,6 +28,7 @@ const configSubItems = [
   { label: 'Productos Publicidad', href: '/settings/ad-products', icon: Megaphone },
   { label: 'Leads Descartados', href: '/settings/discarded-leads', icon: AlertTriangle },
   { label: 'Verificación SEO', href: '/settings/seo-analyzer', icon: Search },
+  { label: 'Marketplace Proveedores', href: '/settings/provider-marketplace', icon: Store },
 ];
 
 interface SidebarProps {
