@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Store, Building2, User, MapPin, Briefcase, CheckCircle, Loader2,
+  Store, Building2, User, Users, MapPin, Briefcase, CheckCircle, Loader2,
   ArrowLeft, ArrowRight, Globe, Languages, Award, Percent, Star,
   FileSearch, Gavel, Eye, Cpu, Megaphone, Headphones, Heart,
   Building, Car, Banknote, GraduationCap, Brain, Network, FileText, ShieldCheck,
