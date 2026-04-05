@@ -156,16 +156,16 @@ export default function LawfirmAdvertising() {
           </Card>
         </TabsContent>
 
-        {/* Amara Assistant */}
-        <TabsContent value="amara">
+        {/* Asistente Virtual IA */}
+        <TabsContent value="asistente">
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bot className="h-5 w-5" />
-                Publicidad en Asistente AMARA
+                Publicidad en Asistente Virtual IA
               </CardTitle>
               <CardDescription>
-                Tu despacho puede ser recomendado directamente por Amara cuando usuarios pregunten por abogados de tus áreas en tus provincias
+                Tu despacho puede ser recomendado directamente por nuestro asistente IA cuando usuarios pregunten por abogados de tus áreas en tus provincias
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -183,14 +183,14 @@ export default function LawfirmAdvertising() {
                     <ul className="space-y-2">
                       <li className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-600 mt-0.5" />
-                        <span>Amara menciona tu despacho como opción</span>
+                        <span>El asistente menciona tu despacho como opción</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-600 mt-0.5" />
                         <span>Apareces en respuestas relevantes</span>
                       </li>
                     </ul>
-                    <Button className="w-full" variant="outline" onClick={() => handleContract('Amara Recomendación')}>
+                    <Button className="w-full" variant="outline" onClick={() => handleContract('Asistente IA Recomendación')}>
                       Contratar
                     </Button>
                   </CardContent>
@@ -210,18 +210,18 @@ export default function LawfirmAdvertising() {
                     <ul className="space-y-2">
                       <li className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-600 mt-0.5" />
-                        <span>Amara recomienda PRIMERO tu despacho</span>
+                        <span>El asistente recomienda PRIMERO tu despacho</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-600 mt-0.5" />
-                        <span>Incluye datos de contacto</span>
+                        <span>Incluye datos de contacto directos</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-green-600 mt-0.5" />
-                        <span>Prioridad absoluta</span>
+                        <span>Prioridad absoluta en todas las consultas</span>
                       </li>
                     </ul>
-                    <Button className="w-full" onClick={() => handleContract('Amara Preferente')}>
+                    <Button className="w-full" onClick={() => handleContract('Asistente IA Preferente')}>
                       Contratar
                     </Button>
                   </CardContent>
