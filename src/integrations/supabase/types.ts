@@ -2604,6 +2604,239 @@ export type Database = {
           },
         ]
       }
+      provider_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      provider_orders: {
+        Row: {
+          commission_amount: number
+          commission_percent: number
+          created_at: string | null
+          id: string
+          lawfirm_id: string
+          notes: string | null
+          provider_id: string
+          provider_payout: number
+          quantity: number | null
+          service_id: string
+          status: string
+          total_price: number
+          unit_price: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          commission_amount: number
+          commission_percent: number
+          created_at?: string | null
+          id?: string
+          lawfirm_id: string
+          notes?: string | null
+          provider_id: string
+          provider_payout: number
+          quantity?: number | null
+          service_id: string
+          status?: string
+          total_price: number
+          unit_price: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          commission_amount?: number
+          commission_percent?: number
+          created_at?: string | null
+          id?: string
+          lawfirm_id?: string
+          notes?: string | null
+          provider_id?: string
+          provider_payout?: number
+          quantity?: number | null
+          service_id?: string
+          status?: string
+          total_price?: number
+          unit_price?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_orders_lawfirm_id_fkey"
+            columns: ["lawfirm_id"]
+            isOneToOne: false
+            referencedRelation: "lawfirms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_orders_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_orders_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "provider_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_services: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+          price_type: string
+          promo_ends_at: string | null
+          promo_label: string | null
+          promo_price: number | null
+          provider_id: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price?: number
+          price_type?: string
+          promo_ends_at?: string | null
+          promo_label?: string | null
+          promo_price?: number | null
+          provider_id: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          price_type?: string
+          promo_ends_at?: string | null
+          promo_label?: string | null
+          promo_price?: number | null
+          provider_id?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_services_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      providers: {
+        Row: {
+          category_id: string
+          cif: string | null
+          commission_percent: number
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          notes: string | null
+          provinces_covered: string[] | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          category_id: string
+          cif?: string | null
+          commission_percent?: number
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          notes?: string | null
+          provinces_covered?: string[] | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          category_id?: string
+          cif?: string | null
+          commission_percent?: number
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          notes?: string | null
+          provinces_covered?: string[] | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "providers_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "provider_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
