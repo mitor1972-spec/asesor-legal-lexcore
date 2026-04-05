@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Scale, Mail, Lock, User, Eye, EyeOff, Building2, ArrowRight } from 'lucide-react';
+import { Scale, Mail, Lock, User, Eye, EyeOff, Building2, ArrowRight, ShoppingCart, Shield, Sparkles, Gavel } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -53,7 +53,8 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
-      <div className="w-full max-w-md space-y-8">
+      <div className="w-full max-w-md space-y-6">
+        {/* Brand header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="p-2 rounded-lg gradient-brand">
@@ -61,15 +62,50 @@ export default function Login() {
             </div>
           </div>
           <h1 className="text-3xl font-display font-bold tracking-tight">
-            Lexcore<span className="text-primary">™</span>
+            LexMarket<span className="text-primary">™</span>
           </h1>
           <p className="text-muted-foreground text-sm">Asesor.Legal</p>
         </div>
 
+        {/* Alta Despacho CTA — BEFORE login */}
+        <Card className="border-2 border-primary/30 hover:border-primary/50 transition-all duration-300 cursor-pointer group relative overflow-hidden"
+          onClick={() => navigate('/alta-despacho')}>
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-blue-500/5 group-hover:from-primary/10 group-hover:to-blue-500/10 transition-all" />
+          <CardContent className="p-5 relative">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
+                <Building2 className="h-7 w-7 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-base">¿Eres abogado? Alta de despacho</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Accede al marketplace de casos jurídicos en exclusiva</p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
+            </div>
+            <div className="flex gap-3 mt-3 ml-[60px]">
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <ShoppingCart className="h-3 w-3" /> Market exclusivo
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Shield className="h-3 w-3" /> Contactos garantizados
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Sparkles className="h-3 w-3" /> IA Lexcore™
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Login Card */}
         <Card className="shadow-large border-0">
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-xl">Accede a tu cuenta</CardTitle>
-            <CardDescription>CRM para gestión de leads legales</CardDescription>
+            <CardDescription>
+              Market jurídico · Contactos garantizados y exclusivos
+            </CardDescription>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Los contactos no se ofrecen a múltiples despachos — todos son en exclusiva para un solo contratante
+            </p>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login" className="w-full">
@@ -138,23 +174,8 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        {/* Alta Despacho CTA */}
-        <Card className="border-2 border-primary/30 hover:border-primary/50 transition-colors cursor-pointer group"
-          onClick={() => navigate('/alta-despacho')}>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-              <Building2 className="h-6 w-6 text-primary" />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-sm">¿Eres abogado? Alta de despacho</p>
-              <p className="text-xs text-muted-foreground">Accede al marketplace de casos jurídicos</p>
-            </div>
-            <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-          </CardContent>
-        </Card>
-
         <p className="text-center text-xs text-muted-foreground">
-          Lexcore™ v1.0 — © 2026 Asesor.Legal
+          LexMarket™ v1.0 — © 2026 Asesor.Legal
         </p>
       </div>
     </div>
