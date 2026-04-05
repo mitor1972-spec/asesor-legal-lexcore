@@ -78,7 +78,7 @@ export default function MarketplaceLanding() {
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button size="lg" className="gap-2"><Search className="h-4 w-4" />Soy abogado – Buscar proveedores</Button>
-          <Button size="lg" variant="outline" className="gap-2"><Users className="h-4 w-4" />Soy proveedor – Ofrecer mis servicios</Button>
+          <Button size="lg" variant="outline" className="gap-2" asChild><Link to="/registro-proveedor"><Users className="h-4 w-4" />Soy proveedor – Ofrecer mis servicios</Link></Button>
         </div>
       </section>
 
