@@ -46,6 +46,7 @@ import LawfirmCommission from "@/pages/lawfirm/LawfirmCommission";
 import LawfirmRadar from "@/pages/lawfirm/LawfirmRadar";
 import LawfirmPortada from "@/pages/lawfirm/LawfirmPortada";
 import RegistroDespacho from "@/pages/RegistroDespacho";
+import AltaDespacho from "@/pages/AltaDespacho";
 import SalesReport from "@/pages/reports/SalesReport";
 import NotFound from "@/pages/NotFound";
 import { RequireAdmin } from "@/components/auth/RequireAdmin";
