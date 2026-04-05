@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -63,7 +63,9 @@ export default function AltaDespacho() {
   const [allSpain, setAllSpain] = useState(false);
   const [preferences, setPreferences] = useState({
     monthly_capacity: 20, max_price: 40, min_score: 40,
+    auto_purchase_enabled: false,
     interested_in_advertising: false,
+    ad_directorio: false, ad_asistente: false, ad_newsletter: false, ad_web: false,
     interested_in_services_sales: false,
     interested_in_commission: true,
     referral_source: '',
@@ -150,6 +152,7 @@ export default function AltaDespacho() {
             monthly_capacity: preferences.monthly_capacity,
             max_lead_price: preferences.max_price,
             min_lead_score: preferences.min_score,
+            auto_purchase_enabled: preferences.auto_purchase_enabled,
             interested_in_advertising: preferences.interested_in_advertising,
             interested_in_services_sales: preferences.interested_in_services_sales,
             commission_enabled: preferences.interested_in_commission,
@@ -660,73 +663,141 @@ export default function AltaDespacho() {
         <div className="container mx-auto px-4 py-8 max-w-2xl">
           <StepIndicator current={4} total={totalSteps} regType={regType} />
 
-          {/* Lead preferences */}
+          {/* Lead acquisition preferences */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />
-                Preferencias de Leads
+                Preferencia de leads
               </CardTitle>
+              <CardDescription>¿Te gustaría recibir contactos de clientes?</CardDescription>
             </CardHeader>
-            <CardContent className="grid sm:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs">Leads/mes máximos</Label>
-                <Input type="number" value={preferences.monthly_capacity}
-                  onChange={e => setPreferences(p => ({ ...p, monthly_capacity: +e.target.value || 0 }))} min={1} />
+            <CardContent className="space-y-5">
+              {/* Auto-purchase */}
+              <div className="p-4 rounded-lg border space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <Checkbox checked={preferences.auto_purchase_enabled}
+                    onCheckedChange={c => setPreferences(p => ({ ...p, auto_purchase_enabled: !!c }))} className="mt-0.5" />
+                  <div>
+                    <p className="font-medium text-sm flex items-center gap-2">
+                      <ShoppingCart className="h-4 w-4 text-primary" /> Compra automática de leads
+                    </p>
+                    <p className="text-xs text-muted-foreground">Recibe leads automáticamente según tus criterios</p>
+                  </div>
+                </label>
+                {preferences.auto_purchase_enabled && (
+                  <div className="grid sm:grid-cols-3 gap-3 pl-7">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Leads/mes máximos</Label>
+                      <Input type="number" value={preferences.monthly_capacity}
+                        onChange={e => setPreferences(p => ({ ...p, monthly_capacity: +e.target.value || 0 }))} min={1} className="h-8" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Precio máx. por lead (€)</Label>
+                      <Input type="number" value={preferences.max_price}
+                        onChange={e => setPreferences(p => ({ ...p, max_price: +e.target.value || 0 }))} min={1} className="h-8" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Score mínimo (0-100)</Label>
+                      <Input type="number" value={preferences.min_score}
+                        onChange={e => setPreferences(p => ({ ...p, min_score: +e.target.value || 0 }))} min={0} max={100} className="h-8" />
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Precio máx. por lead (€)</Label>
-                <Input type="number" value={preferences.max_price}
-                  onChange={e => setPreferences(p => ({ ...p, max_price: +e.target.value || 0 }))} min={1} />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Score mínimo (0-100)</Label>
-                <Input type="number" value={preferences.min_score}
-                  onChange={e => setPreferences(p => ({ ...p, min_score: +e.target.value || 0 }))} min={0} max={100} />
+
+              {/* Other acquisition modes — info only */}
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Otros modos de adquisición (configurable una vez dentro)</p>
+                <div className="grid sm:grid-cols-3 gap-2">
+                  <div className="flex items-center gap-2 text-sm p-2 rounded border bg-background">
+                    <Gavel className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-xs">Adquisición a comisión</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm p-2 rounded border bg-background">
+                    <ShoppingCart className="h-4 w-4 text-blue-500 shrink-0" />
+                    <span className="text-xs">Compra manual</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm p-2 rounded border bg-background">
+                    <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
+                    <span className="text-xs">Radar de avisos</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Extra services interest */}
+          {/* Services + Advertising */}
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5" />
-                Servicios adicionales
+                Servicios y Publicidad
               </CardTitle>
-              <CardDescription>Indica tu interés (sin compromiso)</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted transition-colors">
-                <Checkbox checked={preferences.interested_in_commission}
-                  onCheckedChange={c => setPreferences(p => ({ ...p, interested_in_commission: !!c }))} className="mt-0.5" />
-                <div>
-                  <p className="font-medium text-sm flex items-center gap-2">
-                    <Gavel className="h-4 w-4 text-primary" /> Casos a comisión
-                  </p>
-                  <p className="text-xs text-muted-foreground">Recibe casos sin coste inicial. Pagas un porcentaje solo si ganas el caso.</p>
-                </div>
-              </label>
-              <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted transition-colors">
-                <Checkbox checked={preferences.interested_in_services_sales}
-                  onCheckedChange={c => setPreferences(p => ({ ...p, interested_in_services_sales: !!c }))} className="mt-0.5" />
-                <div>
-                  <p className="font-medium text-sm flex items-center gap-2">
-                    <Package className="h-4 w-4 text-blue-500" /> Venta de servicios legales
-                  </p>
-                  <p className="text-xs text-muted-foreground">Publica tus servicios a precio fijo en nuestro directorio de servicios legales.</p>
-                </div>
-              </label>
-              <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted transition-colors">
-                <Checkbox checked={preferences.interested_in_advertising}
-                  onCheckedChange={c => setPreferences(p => ({ ...p, interested_in_advertising: !!c }))} className="mt-0.5" />
-                <div>
-                  <p className="font-medium text-sm flex items-center gap-2">
-                    <Megaphone className="h-4 w-4 text-amber-500" /> Publicidad y visibilidad
-                  </p>
-                  <p className="text-xs text-muted-foreground">Planes de visibilidad en el portal, asistente virtual y boletines.</p>
-                </div>
-              </label>
+            <CardContent className="space-y-4">
+              {/* Services sales */}
+              <div className="p-4 rounded-lg border">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <Checkbox checked={preferences.interested_in_services_sales}
+                    onCheckedChange={c => setPreferences(p => ({ ...p, interested_in_services_sales: !!c }))} className="mt-0.5" />
+                  <div>
+                    <p className="font-medium text-sm flex items-center gap-2">
+                      <Package className="h-4 w-4 text-blue-500" /> ¿Quieres que vendamos tus servicios legales?
+                    </p>
+                    <p className="text-xs text-muted-foreground">Publica tus servicios a precio fijo en nuestro directorio y recibe clientes directamente.</p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Advertising */}
+              <div className="p-4 rounded-lg border space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <Checkbox checked={preferences.interested_in_advertising}
+                    onCheckedChange={c => setPreferences(p => ({ ...p, interested_in_advertising: !!c }))} className="mt-0.5" />
+                  <div>
+                    <p className="font-medium text-sm flex items-center gap-2">
+                      <Megaphone className="h-4 w-4 text-amber-500" /> ¿Estás interesado en publicidad?
+                    </p>
+                    <p className="text-xs text-muted-foreground">Solicita información sobre nuestros planes de visibilidad.</p>
+                  </div>
+                </label>
+                {preferences.interested_in_advertising && (
+                  <div className="pl-7 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">¿En qué canales te interesa aparecer?</p>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox checked={preferences.ad_directorio} onCheckedChange={c => setPreferences(p => ({ ...p, ad_directorio: !!c }))} />
+                      <span className="text-sm">Publicidad en directorio de abogados</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox checked={preferences.ad_asistente} onCheckedChange={c => setPreferences(p => ({ ...p, ad_asistente: !!c }))} />
+                      <span className="text-sm">Publicidad en asistente IA</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox checked={preferences.ad_newsletter} onCheckedChange={c => setPreferences(p => ({ ...p, ad_newsletter: !!c }))} />
+                      <span className="text-sm">Publicidad en newsletters</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox checked={preferences.ad_web} onCheckedChange={c => setPreferences(p => ({ ...p, ad_web: !!c }))} />
+                      <span className="text-sm">Publicidad en web y contenido</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Commission */}
+              <div className="p-4 rounded-lg border">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <Checkbox checked={preferences.interested_in_commission}
+                    onCheckedChange={c => setPreferences(p => ({ ...p, interested_in_commission: !!c }))} className="mt-0.5" />
+                  <div>
+                    <p className="font-medium text-sm flex items-center gap-2">
+                      <Gavel className="h-4 w-4 text-primary" /> Casos a comisión
+                    </p>
+                    <p className="text-xs text-muted-foreground">Recibe casos sin coste inicial. Solo pagas si ganas.</p>
+                  </div>
+                </label>
+              </div>
             </CardContent>
           </Card>
 
@@ -859,6 +930,13 @@ function TermsCheckboxes({ preferences, setPreferences }: {
 }
 
 function SuccessScreen({ navigate, regType }: { navigate: (path: string) => void; regType: RegistrationType }) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      navigate('/despacho/portada');
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [navigate]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex items-center justify-center p-4">
       <Card className="max-w-md w-full text-center">
@@ -872,7 +950,7 @@ function SuccessScreen({ navigate, regType }: { navigate: (path: string) => void
           <p className="text-muted-foreground">
             {regType === 'quick'
               ? 'Tu cuenta está lista. Revisa tu email para confirmar el registro y acceder al marketplace.'
-              : 'Tu despacho está dado de alta en Asesor.Legal. Revisa tu email para confirmar y empezar a recibir casos.'}
+              : 'Tu despacho está dado de alta en Asesor.Legal. Entrando en la plataforma...'}
           </p>
           {regType === 'full' && (
             <div className="bg-muted/50 rounded-lg p-4 text-left">
@@ -886,15 +964,16 @@ function SuccessScreen({ navigate, regType }: { navigate: (path: string) => void
             </div>
           )}
           <div className="flex flex-col gap-2">
-            <Button className="w-full gradient-brand text-white" onClick={() => navigate('/login')}>
-              Iniciar sesión
+            <Button className="w-full gradient-brand text-white" onClick={() => navigate('/despacho/portada')}>
+              Entrar en la plataforma
             </Button>
             {regType === 'quick' && (
               <Button variant="outline" className="w-full" onClick={() => navigate('/login')}>
-                Completar perfil más tarde
+                Iniciar sesión
               </Button>
             )}
           </div>
+          <p className="text-xs text-muted-foreground animate-pulse">Redirigiendo automáticamente...</p>
         </CardContent>
       </Card>
     </div>

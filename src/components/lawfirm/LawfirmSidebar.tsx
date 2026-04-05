@@ -136,7 +136,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <Scale className="h-4 w-4 text-white" />
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="font-display font-bold text-lg">Lexcore</span>
+            <span className="font-display font-bold text-lg">LexMarket</span>
             <span className="text-[10px] text-sidebar-foreground/50">Portal del Despacho</span>
           </div>
         </Link>
@@ -250,7 +250,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </ScrollArea>
 
       <div className="p-4 border-t border-sidebar-border">
-        <div className="text-xs text-sidebar-foreground/50 text-center">Powered by Lexcore™</div>
+        <div className="text-xs text-sidebar-foreground/50 text-center">Powered by LexMarket™</div>
       </div>
     </div>
   );

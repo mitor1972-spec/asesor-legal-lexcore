@@ -9,8 +9,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLawfirmProfile, useUpdateLawfirmProfile } from '@/hooks/useLawfirmProfile';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Receipt, CreditCard, Loader2, Save, AlertTriangle, CheckCircle2, Clock, Banknote, FileText } from 'lucide-react';
+import { Receipt, CreditCard, Loader2, Save, AlertTriangle, CheckCircle2, Clock, Banknote, FileText, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface CardData {
+  id: string;
+  holder_name: string;
+  card_number: string;
+  expiry: string;
+  cvv: string;
+}
 
 export default function LawfirmBilling() {
   const { data: lawfirm, isLoading } = useLawfirmProfile();
@@ -26,6 +34,16 @@ export default function LawfirmBilling() {
     fiscal_postal_code: '',
   });
 
+  const [creditRequestAmount, setCreditRequestAmount] = useState(500);
+  const [cards, setCards] = useState<CardData[]>([]);
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [newCard, setNewCard] = useState<Omit<CardData, 'id'>>({
+    holder_name: '',
+    card_number: '',
+    expiry: '',
+    cvv: '',
+  });
+
   useEffect(() => {
     if (lawfirm) {
       setFiscal({
@@ -37,6 +55,8 @@ export default function LawfirmBilling() {
         fiscal_province: lawfirm.fiscal_province || lawfirm.province || '',
         fiscal_postal_code: lawfirm.fiscal_postal_code || lawfirm.postal_code || '',
       });
+      // Pre-fill card holder name
+      setNewCard(p => ({ ...p, holder_name: lawfirm.contact_person || lawfirm.name || '' }));
     }
   }, [lawfirm]);
 
@@ -47,7 +67,6 @@ export default function LawfirmBilling() {
   const creditLineAmount = lawfirm?.credit_line_amount ?? 0;
   const balance = lawfirm?.marketplace_balance ?? 0;
   const creditUsed = Math.max(0, creditLineAmount - balance);
-  const hasValidCard = lawfirm?.has_valid_card ?? false;
 
   // Fetch transactions
   const { data: transactions } = useQuery({
@@ -79,11 +98,44 @@ export default function LawfirmBilling() {
       await updateProfile.mutateAsync({
         credit_line_status: 'pending',
         credit_line_requested_at: new Date().toISOString(),
+        credit_line_amount: creditRequestAmount,
       });
-      toast.success('Solicitud de línea de crédito enviada. Te notificaremos cuando sea aprobada.');
+      toast.success(`Solicitud de línea de crédito de ${creditRequestAmount}€ enviada.`);
     } catch {
       toast.error('Error al solicitar línea de crédito');
     }
+  };
+
+  const handleAddCard = () => {
+    if (!newCard.card_number || !newCard.expiry || !newCard.cvv || !newCard.holder_name) {
+      toast.error('Rellena todos los campos de la tarjeta');
+      return;
+    }
+    const cleaned = newCard.card_number.replace(/\s/g, '');
+    if (cleaned.length < 13 || cleaned.length > 19) {
+      toast.error('Número de tarjeta no válido');
+      return;
+    }
+    setCards(prev => [...prev, { ...newCard, id: crypto.randomUUID() }]);
+    setNewCard({ holder_name: lawfirm?.contact_person || '', card_number: '', expiry: '', cvv: '' });
+    setShowAddCard(false);
+    toast.success('Tarjeta añadida correctamente');
+  };
+
+  const handleRemoveCard = (id: string) => {
+    setCards(prev => prev.filter(c => c.id !== id));
+    toast.success('Tarjeta eliminada');
+  };
+
+  const formatCardNumber = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 16);
+    return digits.replace(/(.{4})/g, '$1 ').trim();
+  };
+
+  const formatExpiry = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 4);
+    if (digits.length >= 3) return digits.slice(0, 2) + '/' + digits.slice(2);
+    return digits;
   };
 
   if (isLoading) {
@@ -114,20 +166,20 @@ export default function LawfirmBilling() {
       )}
 
       <Tabs defaultValue="fiscal" className="space-y-4">
-        <TabsList className="h-9">
-          <TabsTrigger value="fiscal" className="text-xs">
+        <TabsList className="h-10 bg-muted/80 p-1">
+          <TabsTrigger value="fiscal" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <FileText className="mr-1.5 h-3.5 w-3.5" />
             Datos Fiscales
           </TabsTrigger>
-          <TabsTrigger value="payment" className="text-xs">
+          <TabsTrigger value="payment" className="text-xs data-[state=active]:bg-blue-600 data-[state=active]:text-white">
             <CreditCard className="mr-1.5 h-3.5 w-3.5" />
             Método de Pago
           </TabsTrigger>
-          <TabsTrigger value="credit" className="text-xs">
+          <TabsTrigger value="credit" className="text-xs data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
             <Banknote className="mr-1.5 h-3.5 w-3.5" />
             Línea de Crédito
           </TabsTrigger>
-          <TabsTrigger value="history" className="text-xs">
+          <TabsTrigger value="history" className="text-xs data-[state=active]:bg-amber-600 data-[state=active]:text-white">
             <Receipt className="mr-1.5 h-3.5 w-3.5" />
             Movimientos
           </TabsTrigger>
@@ -185,31 +237,83 @@ export default function LawfirmBilling() {
         <TabsContent value="payment">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Método de Pago</CardTitle>
-              <CardDescription className="text-xs">Tarjeta de crédito obligatoria para compra directa de leads</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Método de Pago</CardTitle>
+                  <CardDescription className="text-xs">Tarjeta de crédito/débito para compra de leads</CardDescription>
+                </div>
+                <Button size="sm" onClick={() => setShowAddCard(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1.5" /> Añadir tarjeta
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {hasValidCard ? (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              {/* Existing cards */}
+              {cards.length > 0 ? (
+                <div className="space-y-3">
+                  {cards.map((card) => (
+                    <div key={card.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+                      <CreditCard className="h-8 w-8 text-blue-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{card.holder_name}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          •••• •••• •••• {card.card_number.replace(/\s/g, '').slice(-4)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Caduca: {card.expiry}</p>
+                      </div>
+                      <Badge variant="outline" className="text-emerald-600 border-emerald-300 text-[10px]">Activa</Badge>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveCard(card.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : !showAddCard ? (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
                   <div>
-                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Tarjeta válida registrada</p>
-                    <p className="text-xs text-emerald-600 dark:text-emerald-500">Puedes realizar compras directas</p>
+                    <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Sin tarjeta registrada</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-500">Añade una tarjeta para poder comprar leads</p>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                    <AlertTriangle className="h-5 w-5 text-amber-600" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Sin tarjeta registrada</p>
-                      <p className="text-xs text-amber-600 dark:text-amber-500">No puedes realizar compras directas sin tarjeta válida</p>
+              ) : null}
+
+              {/* Add card form */}
+              {showAddCard && (
+                <div className="border rounded-lg p-4 space-y-3 bg-muted/20">
+                  <p className="text-sm font-semibold flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" /> Nueva tarjeta
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <Label className="text-xs">Titular de la tarjeta</Label>
+                      <Input value={newCard.holder_name} onChange={e => setNewCard(p => ({ ...p, holder_name: e.target.value }))}
+                        placeholder="Nombre como aparece en la tarjeta" className="h-9" />
+                    </div>
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <Label className="text-xs">Número de tarjeta</Label>
+                      <Input value={newCard.card_number}
+                        onChange={e => setNewCard(p => ({ ...p, card_number: formatCardNumber(e.target.value) }))}
+                        placeholder="1234 5678 9012 3456" className="h-9 font-mono" maxLength={19} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Fecha de caducidad</Label>
+                      <Input value={newCard.expiry}
+                        onChange={e => setNewCard(p => ({ ...p, expiry: formatExpiry(e.target.value) }))}
+                        placeholder="MM/AA" className="h-9 font-mono w-24" maxLength={5} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">CVV</Label>
+                      <Input value={newCard.cvv}
+                        onChange={e => setNewCard(p => ({ ...p, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                        placeholder="123" className="h-9 font-mono w-20" maxLength={4} type="password" />
                     </div>
                   </div>
-                  <div className="bg-muted/50 rounded-lg p-6 text-center">
-                    <CreditCard className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
-                    <p className="text-sm text-muted-foreground">Integración de pagos próximamente</p>
-                    <Badge variant="secondary" className="mt-2 text-xs">Próximamente</Badge>
+                  <div className="flex gap-2 pt-2">
+                    <Button size="sm" onClick={handleAddCard}>
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Guardar tarjeta
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowAddCard(false)}>Cancelar</Button>
                   </div>
                 </div>
               )}
@@ -243,7 +347,7 @@ export default function LawfirmBilling() {
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
                     <div
-                      className="bg-lawfirm-primary h-2 rounded-full transition-all"
+                      className="bg-primary h-2 rounded-full transition-all"
                       style={{ width: `${creditLineAmount > 0 ? Math.min(100, (creditUsed / creditLineAmount) * 100) : 0}%` }}
                     />
                   </div>
@@ -268,16 +372,32 @@ export default function LawfirmBilling() {
                   </Button>
                 </div>
               ) : (
-                <div className="text-center py-6">
-                  <Banknote className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground mb-1">No tienes línea de crédito activa</p>
-                  <p className="text-xs text-muted-foreground mb-4">Solicita una línea de crédito para operar sin prepago</p>
-                  <Button onClick={handleRequestCreditLine} disabled={!isFiscalComplete}>
-                    Solicitar línea de crédito
-                  </Button>
-                  {!isFiscalComplete && (
-                    <p className="text-xs text-destructive mt-2">Completa tus datos fiscales primero</p>
-                  )}
+                <div className="text-center py-6 space-y-4">
+                  <Banknote className="h-10 w-10 mx-auto text-muted-foreground/40" />
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">No tienes línea de crédito activa</p>
+                    <p className="text-xs text-muted-foreground mb-4">Solicita una línea de crédito para operar sin prepago</p>
+                  </div>
+                  <div className="max-w-xs mx-auto space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Importe solicitado (€)</Label>
+                      <Input
+                        type="number"
+                        value={creditRequestAmount}
+                        onChange={e => setCreditRequestAmount(Math.max(100, +e.target.value || 500))}
+                        min={100}
+                        step={100}
+                        className="h-10 text-center text-lg font-bold"
+                      />
+                      <p className="text-[10px] text-muted-foreground">Mínimo 100€ · Se recomienda empezar con 500€</p>
+                    </div>
+                    <Button onClick={handleRequestCreditLine} disabled={!isFiscalComplete} className="w-full">
+                      Solicitar línea de {creditRequestAmount}€
+                    </Button>
+                    {!isFiscalComplete && (
+                      <p className="text-xs text-destructive">Completa tus datos fiscales primero</p>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>
