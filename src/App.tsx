@@ -37,6 +37,7 @@ import LawfirmPricing from "@/pages/lawfirm/LawfirmPricing";
 import LawfirmMarketplaceConfig from "@/pages/lawfirm/LawfirmMarketplaceConfig";
 import LawfirmAdvertising from "@/pages/lawfirm/LawfirmAdvertising";
 import LawfirmAIServices from "@/pages/lawfirm/LawfirmAIServices";
+import LawfirmCommercialAssistant from "@/pages/lawfirm/LawfirmCommercialAssistant";
 import LawfirmTeam from "@/pages/lawfirm/LawfirmTeam";
 import LawfirmBranches from "@/pages/lawfirm/LawfirmBranches";
 import LawfirmBilling from "@/pages/lawfirm/LawfirmBilling";
@@ -102,6 +103,7 @@ const App = () => (
                   <Route path="configuracion-marketplace" element={<LawfirmMarketplaceConfig />} />
                   <Route path="publicidad" element={<LawfirmAdvertising />} />
                   <Route path="ia-servicios" element={<LawfirmAIServices />} />
+                  <Route path="asesor-comercial" element={<LawfirmCommercialAssistant />} />
                   <Route path="equipo" element={<LawfirmTeam />} />
                   <Route path="sucursales" element={<LawfirmBranches />} />
                   <Route path="facturacion" element={<LawfirmBilling />} />

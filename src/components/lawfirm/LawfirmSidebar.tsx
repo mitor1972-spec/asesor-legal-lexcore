@@ -23,6 +23,7 @@ import {
   ChevronDown,
   CreditCard,
   Brain,
+  MessageCircle,
   Globe,
   Bot,
   Mail,
@@ -214,6 +215,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <Link to="/despacho/ia-servicios" onClick={onClose} className={navLinkClass('/despacho/ia-servicios')}>
             <Brain className="h-5 w-5" />
             IA para Despachos
+          </Link>
+          <Link to="/despacho/asesor-comercial" onClick={onClose} className={navLinkClass('/despacho/asesor-comercial')}>
+            <MessageCircle className="h-5 w-5" />
+            Asesor Comercial IA
           </Link>
         </nav>
 
