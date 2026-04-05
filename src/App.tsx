@@ -103,6 +103,7 @@ const App = () => (
                   <Route path="configuracion-marketplace" element={<LawfirmMarketplaceConfig />} />
                   <Route path="publicidad" element={<LawfirmAdvertising />} />
                   <Route path="ia-servicios" element={<LawfirmAIServices />} />
+                  <Route path="asesor-comercial" element={<LawfirmCommercialAssistant />} />
                   <Route path="equipo" element={<LawfirmTeam />} />
                   <Route path="sucursales" element={<LawfirmBranches />} />
                   <Route path="facturacion" element={<LawfirmBilling />} />

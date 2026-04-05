@@ -299,8 +299,8 @@ function DelegateStrategyForm() {
     return (
       <Card className="max-w-2xl mx-auto">
         <CardContent className="pt-8 pb-8 text-center space-y-4">
-          <div className="mx-auto w-16 h-16 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
-            <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+          <div className="mx-auto w-16 h-16 rounded-full bg-lawfirm-primary/10 flex items-center justify-center">
+            <CheckCircle2 className="h-8 w-8 text-lawfirm-primary" />
           </div>
           <h3 className="text-xl font-display font-bold">¡Solicitud recibida!</h3>
           <p className="text-muted-foreground max-w-md mx-auto">
