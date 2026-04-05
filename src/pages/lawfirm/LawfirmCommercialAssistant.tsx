@@ -355,7 +355,7 @@ function DelegateStrategyForm() {
         <div className="space-y-2">
           <Label className="font-medium">Áreas del derecho *</Label>
           <MultiSelect
-            options={LEGAL_AREAS.map((a) => ({ label: a, value: a }))}
+            options={LEGAL_AREAS}
             selected={legalAreas}
             onChange={setLegalAreas}
             placeholder="Selecciona áreas legales..."
