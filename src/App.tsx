@@ -89,6 +89,7 @@ const App = () => (
                   <Route path="settings/master-config" element={<RequireAdmin><MasterConfig /></RequireAdmin>} />
                   <Route path="settings/quality-control" element={<RequireAdmin><QualityControl /></RequireAdmin>} />
                   <Route path="settings/ad-products" element={<RequireAdmin><AdProductsAdmin /></RequireAdmin>} />
+                  <Route path="settings/seo-analyzer" element={<RequireAdmin><SeoAnalyzer /></RequireAdmin>} />
                   <Route path="informes/ventas" element={<SalesReport />} />
                 </Route>
                 <Route path="/despacho" element={<LawfirmLayout />}>

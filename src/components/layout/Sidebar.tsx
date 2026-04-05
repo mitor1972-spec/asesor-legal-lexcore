@@ -27,6 +27,7 @@ const configSubItems = [
   { label: 'Control de Calidad', href: '/settings/quality-control', icon: ShieldCheck },
   { label: 'Productos Publicidad', href: '/settings/ad-products', icon: Megaphone },
   { label: 'Leads Descartados', href: '/settings/discarded-leads', icon: AlertTriangle },
+  { label: 'Verificación SEO', href: '/settings/seo-analyzer', icon: Search },
 ];
 
 interface SidebarProps {
