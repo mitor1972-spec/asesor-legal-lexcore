@@ -117,6 +117,7 @@ const App = () => (
                   <Route path="outsourcing" element={<LawfirmOutsourcing />} />
                   <Route path="comision" element={<LawfirmCommission />} />
                   <Route path="radar" element={<LawfirmRadar />} />
+                  <Route path="marketplace" element={<MarketplaceLanding />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
