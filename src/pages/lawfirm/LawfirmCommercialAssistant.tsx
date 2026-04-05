@@ -44,8 +44,8 @@ function ChatAssistant() {
   const [showSendSummary, setShowSendSummary] = useState(false);
   const [summarySent, setSummarySent] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { profile } = useAuthContext();
-  const { lawfirm } = useLawfirmProfile();
+  const { user } = useAuthContext();
+  const { data: lawfirm } = useLawfirmProfile();
 
   useEffect(() => {
     if (scrollRef.current) {
