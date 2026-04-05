@@ -63,7 +63,9 @@ export default function AltaDespacho() {
   const [allSpain, setAllSpain] = useState(false);
   const [preferences, setPreferences] = useState({
     monthly_capacity: 20, max_price: 40, min_score: 40,
+    auto_purchase_enabled: false,
     interested_in_advertising: false,
+    ad_directorio: false, ad_asistente: false, ad_newsletter: false, ad_web: false,
     interested_in_services_sales: false,
     interested_in_commission: true,
     referral_source: '',
