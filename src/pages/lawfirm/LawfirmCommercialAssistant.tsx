@@ -227,8 +227,8 @@ function ChatAssistant() {
       )}
 
       {summarySent && (
-        <div className="py-2 px-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg mb-3 flex items-center gap-2 text-sm text-green-700 dark:text-green-300">
-          <CheckCircle2 className="h-4 w-4" />
+        <div className="py-2 px-4 bg-accent/50 border border-accent rounded-lg mb-3 flex items-center gap-2 text-sm text-foreground">
+          <CheckCircle2 className="h-4 w-4 text-lawfirm-primary" />
           Resumen enviado. Nuestro equipo comercial te contactará pronto.
         </div>
       )}
