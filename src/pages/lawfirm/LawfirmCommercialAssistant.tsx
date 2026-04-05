@@ -344,7 +344,7 @@ function DelegateStrategyForm() {
         <div className="space-y-2">
           <Label className="font-medium">Provincias donde operáis *</Label>
           <MultiSelect
-            options={PROVINCES.map((p) => ({ label: p, value: p }))}
+            options={PROVINCES}
             selected={provinces}
             onChange={setProvinces}
             placeholder="Selecciona provincias..."
