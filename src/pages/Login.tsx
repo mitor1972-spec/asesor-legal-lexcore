@@ -138,8 +138,23 @@ export default function Login() {
           </CardContent>
         </Card>
 
+        {/* Alta Despacho CTA */}
+        <Card className="border-2 border-primary/30 hover:border-primary/50 transition-colors cursor-pointer group"
+          onClick={() => navigate('/alta-despacho')}>
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <Building2 className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">¿Eres abogado? Alta de despacho</p>
+              <p className="text-xs text-muted-foreground">Accede al marketplace de casos jurídicos</p>
+            </div>
+            <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+          </CardContent>
+        </Card>
+
         <p className="text-center text-xs text-muted-foreground">
-          Lexcore™ v1.0 — © 2025 Asesor.Legal
+          Lexcore™ v1.0 — © 2026 Asesor.Legal
         </p>
       </div>
     </div>
