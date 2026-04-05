@@ -35,6 +35,7 @@ import {
   LogOut,
   FileText,
   SlidersHorizontal,
+  Crown,
 } from 'lucide-react';
 
 interface LawfirmSidebarProps {
