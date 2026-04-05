@@ -25,6 +25,7 @@ const configSubItems = [
   { label: 'Solicitudes Despachos', href: '/settings/solicitudes', icon: FileCheck },
   { label: 'Chatwoot', href: '/settings/chatwoot', icon: MessageSquare },
   { label: 'Control de Calidad', href: '/settings/quality-control', icon: ShieldCheck },
+  { label: 'Productos Publicidad', href: '/settings/ad-products', icon: Megaphone },
   { label: 'Leads Descartados', href: '/settings/discarded-leads', icon: AlertTriangle },
 ];
 
