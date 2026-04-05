@@ -930,13 +930,12 @@ function TermsCheckboxes({ preferences, setPreferences }: {
 }
 
 function SuccessScreen({ navigate, regType }: { navigate: (path: string) => void; regType: RegistrationType }) {
-  // Auto-redirect after 3 seconds so they don't have to click
-  useState(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       navigate('/despacho/portada');
     }, 4000);
     return () => clearTimeout(timer);
-  });
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex items-center justify-center p-4">
