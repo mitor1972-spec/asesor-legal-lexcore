@@ -13,6 +13,7 @@ const navItems = [
   { label: 'Leads', href: '/leads', icon: Users },
   { label: 'Nuevo Lead', href: '/leads/new', icon: Plus },
   { label: 'Informes', href: '/informes/ventas', icon: BarChart3 },
+  { label: 'Alta Despacho (vista)', href: '/alta-despacho', icon: ClipboardList },
 ];
 
 const configSubItems = [
