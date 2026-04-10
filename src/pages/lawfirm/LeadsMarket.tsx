@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { purchaseWithStripe } from '@/lib/stripe';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { Card, CardContent } from '@/components/ui/card';
@@ -367,6 +368,30 @@ export default function LeadsMarket() {
     setShowCart(false);
   };
 
+  // Stripe checkout - for single leads only (Stripe handles one at a time)
+  const handleStripeCheckout = async (selectedIds: string[]) => {
+    if (selectedIds.length === 0) return;
+    if (!isImpersonating && !isProfileComplete) {
+      setShowProfileGate(true);
+      return;
+    }
+
+    // Stripe checkout works one lead at a time
+    const leadId = selectedIds[0];
+    if (selectedIds.length > 1) {
+      toast.info('El pago con tarjeta procesa un lead a la vez. Se procesará el primero seleccionado.');
+    }
+
+    setIsCheckingOut(true);
+    try {
+      await purchaseWithStripe({ leadId, lawfirmId: lawfirmId! });
+    } catch (error: any) {
+      console.error('Error Stripe checkout:', error);
+      toast.error(error.message || 'Error al iniciar el pago con Stripe');
+      setIsCheckingOut(false);
+    }
+  };
+
   const isInCart = (id: string) => cartItems.some(item => item.id === id);
 
   const handleQuickFilter = (filter: string) => {
@@ -635,6 +660,7 @@ export default function LeadsMarket() {
         onRemoveItem={handleRemoveFromCart}
         onClearCart={handleClearCart}
         onCheckout={handleCheckout}
+        onStripeCheckout={handleStripeCheckout}
         onToggleCommission={handleToggleCommission}
         balance={balance}
         isCheckingOut={isCheckingOut}
