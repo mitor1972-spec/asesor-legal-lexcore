@@ -54,6 +54,8 @@ import RegistroProveedor from "@/pages/RegistroProveedor";
 import MarketplaceLanding from "@/pages/lawfirm/MarketplaceLanding";
 import AltaDespacho from "@/pages/AltaDespacho";
 import SalesReport from "@/pages/reports/SalesReport";
+import PaymentSuccess from "@/pages/payment/PaymentSuccess";
+import PaymentCancel from "@/pages/payment/PaymentCancel";
 import NotFound from "@/pages/NotFound";
 import { RequireAdmin } from "@/components/auth/RequireAdmin";
 
@@ -73,6 +75,8 @@ const App = () => (
                 <Route path="/registro-despacho" element={<RegistroDespacho />} />
                 <Route path="/registro-proveedor" element={<RegistroProveedor />} />
                 <Route path="/alta-despacho" element={<AltaDespacho />} />
+                <Route path="/payment/success" element={<PaymentSuccess />} />
+                <Route path="/payment/cancel" element={<PaymentCancel />} />
                 <Route path="/" element={<MainLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />

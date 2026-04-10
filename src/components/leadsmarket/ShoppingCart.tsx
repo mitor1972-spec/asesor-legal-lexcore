@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { 
-  ShoppingCart as CartIcon, Trash2, Scale, MapPin, AlertCircle, Loader2, Wallet, Percent 
+  ShoppingCart as CartIcon, Trash2, Scale, MapPin, AlertCircle, Loader2, Wallet, Percent, CreditCard 
 } from 'lucide-react';
 import type { CartItem } from '@/types/marketplace';
 
@@ -18,6 +18,7 @@ interface ShoppingCartProps {
   onRemoveItem: (id: string) => void;
   onClearCart: () => void;
   onCheckout: (selectedIds: string[]) => void;
+  onStripeCheckout?: (selectedIds: string[]) => void;
   onToggleCommission: (id: string, isCommission: boolean) => void;
   balance: number;
   isCheckingOut: boolean;
@@ -30,6 +31,7 @@ export function ShoppingCart({
   onRemoveItem, 
   onClearCart, 
   onCheckout,
+  onStripeCheckout,
   onToggleCommission,
   balance,
   isCheckingOut
@@ -222,34 +224,51 @@ export function ShoppingCart({
           </>
         )}
 
-        <SheetFooter className="border-t pt-4 gap-2 sm:gap-2">
+        <SheetFooter className="border-t pt-4 flex-col gap-2">
           {items.length > 0 && (
             <>
-              <Button 
-                variant="outline" 
-                onClick={onClearCart}
-                disabled={isCheckingOut}
-              >
-                Vaciar carrito
-              </Button>
-              <Button 
-                onClick={handleCheckout}
-                disabled={!canAfford || selectedItems.length === 0 || isCheckingOut}
-                className="flex-1"
-              >
-                {isCheckingOut ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Procesando...
-                  </>
-                ) : (
-                  <>
-                    💰 Comprar {selectedItems.length} lead{selectedItems.length !== 1 ? 's' : ''} 
-                    {subtotal > 0 ? ` - ${subtotal.toFixed(0)}€` : ''}
-                    {commissionCount > 0 ? ` + ${commissionCount} a comisión` : ''}
-                  </>
-                )}
-              </Button>
+              <div className="flex gap-2 w-full">
+                <Button 
+                  variant="outline" 
+                  onClick={onClearCart}
+                  disabled={isCheckingOut}
+                  size="sm"
+                >
+                  Vaciar carrito
+                </Button>
+                <Button 
+                  onClick={handleCheckout}
+                  disabled={!canAfford || selectedItems.length === 0 || isCheckingOut}
+                  className="flex-1"
+                  size="sm"
+                >
+                  {isCheckingOut ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="h-4 w-4 mr-1" />
+                      Con crédito
+                      {subtotal > 0 ? ` - ${subtotal.toFixed(0)}€` : ''}
+                    </>
+                  )}
+                </Button>
+              </div>
+              {onStripeCheckout && subtotal > 0 && (
+                <Button 
+                  variant="outline"
+                  onClick={() => onStripeCheckout(Array.from(selectedIds))}
+                  disabled={selectedItems.length === 0 || isCheckingOut}
+                  className="w-full border-blue-500/40 text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                  size="sm"
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Pagar con tarjeta (Stripe)
+                  {subtotal > 0 ? ` - ${subtotal.toFixed(0)}€` : ''}
+                </Button>
+              )}
             </>
           )}
         </SheetFooter>
