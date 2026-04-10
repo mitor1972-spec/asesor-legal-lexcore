@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { 
-  ShoppingCart as CartIcon, Trash2, Scale, MapPin, AlertCircle, Loader2, Wallet, Percent 
+  ShoppingCart as CartIcon, Trash2, Scale, MapPin, AlertCircle, Loader2, Wallet, Percent, CreditCard 
 } from 'lucide-react';
 import type { CartItem } from '@/types/marketplace';
 
@@ -18,6 +18,7 @@ interface ShoppingCartProps {
   onRemoveItem: (id: string) => void;
   onClearCart: () => void;
   onCheckout: (selectedIds: string[]) => void;
+  onStripeCheckout?: (selectedIds: string[]) => void;
   onToggleCommission: (id: string, isCommission: boolean) => void;
   balance: number;
   isCheckingOut: boolean;
@@ -30,6 +31,7 @@ export function ShoppingCart({
   onRemoveItem, 
   onClearCart, 
   onCheckout,
+  onStripeCheckout,
   onToggleCommission,
   balance,
   isCheckingOut
