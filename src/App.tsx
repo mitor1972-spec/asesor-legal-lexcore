@@ -54,6 +54,8 @@ import RegistroProveedor from "@/pages/RegistroProveedor";
 import MarketplaceLanding from "@/pages/lawfirm/MarketplaceLanding";
 import AltaDespacho from "@/pages/AltaDespacho";
 import SalesReport from "@/pages/reports/SalesReport";
+import PaymentSuccess from "@/pages/payment/PaymentSuccess";
+import PaymentCancel from "@/pages/payment/PaymentCancel";
 import NotFound from "@/pages/NotFound";
 import { RequireAdmin } from "@/components/auth/RequireAdmin";
 
