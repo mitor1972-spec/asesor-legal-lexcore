@@ -26,23 +26,8 @@ export async function purchaseWithStripe({ leadId, lawfirmId }: StripePurchasePa
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
 
-  // If we got a session URL, redirect directly
-  if (data?.sessionUrl) {
-    window.location.href = data.sessionUrl;
-    return;
-  }
-
-  // Fallback: use Stripe.js redirect
-  if (data?.sessionId) {
-    const stripe = await getStripe();
-    if (!stripe) throw new Error('Error al cargar Stripe');
-
-    const { error: stripeError } = await stripe.redirectToCheckout({
-      sessionId: data.sessionId,
-    });
-
-    if (stripeError) {
-      throw new Error(stripeError.message);
-    }
-  }
+  const redirectUrl = data?.sessionUrl;
+  if (!redirectUrl) throw new Error('No se recibió URL de pago');
+  
+  window.location.href = redirectUrl;
 }
