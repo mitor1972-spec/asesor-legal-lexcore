@@ -1,10 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// Block private/internal IP ranges and cloud metadata endpoints to prevent SSRF
+function isPrivateOrLocalHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  if (["localhost", "0.0.0.0", "127.0.0.1", "::1", "metadata.google.internal"].includes(h)) return true;
+  if (h.endsWith(".local") || h.endsWith(".internal")) return true;
+  if (h.startsWith("169.254.")) return true;
+  if (h.startsWith("10.")) return true;
+  if (h.startsWith("192.168.")) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(h)) return true;
+  if (/^127\./.test(h)) return true;
+  return false;
+}
 
 const SYSTEM_PROMPT = `Eres un consultor SEO experto especializado en páginas web de despachos de abogados en España. Tu misión es analizar la web de un despacho y generar un diagnóstico claro, útil y comercial.
 
@@ -148,6 +162,28 @@ serve(async (req) => {
   }
 
   try {
+    // === AUTH CHECK ===
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // === END AUTH ===
+
     const { url } = await req.json();
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ error: "URL es obligatoria" }), {
@@ -160,6 +196,30 @@ serve(async (req) => {
     if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
       targetUrl = `https://${targetUrl}`;
     }
+
+    // === SSRF PROTECTION: validate URL ===
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(targetUrl);
+    } catch {
+      return new Response(JSON.stringify({ error: "URL inválida" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      return new Response(JSON.stringify({ error: "Solo se permiten URLs http/https" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (isPrivateOrLocalHost(parsedUrl.hostname)) {
+      return new Response(JSON.stringify({ error: "URL no permitida" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // === END SSRF PROTECTION ===
 
     console.log("Fetching URL for SEO analysis:", targetUrl);
 
