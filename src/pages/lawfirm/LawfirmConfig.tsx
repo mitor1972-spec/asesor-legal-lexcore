@@ -57,7 +57,10 @@ export default function LawfirmConfig() {
     try {
       await updateProfile.mutateAsync(formData);
       toast.success('Datos del despacho guardados');
-    } catch {
+      // Scroll to top so the user sees confirmation on mobile
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error('[LawfirmConfig] Save failed:', err);
       toast.error('Error al guardar');
     }
   };

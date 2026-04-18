@@ -88,9 +88,25 @@ export default function LawfirmBilling() {
     try {
       await updateProfile.mutateAsync(fiscal);
       toast.success('Datos fiscales guardados');
-    } catch {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error('[LawfirmBilling] Save fiscal failed:', err);
       toast.error('Error al guardar');
     }
+  };
+
+  const handleCopyFromLawfirm = () => {
+    if (!lawfirm) return;
+    setFiscal({
+      fiscal_name: lawfirm.name || '',
+      cif: lawfirm.cif || '',
+      fiscal_email: lawfirm.contact_email || '',
+      fiscal_address: lawfirm.address || '',
+      fiscal_city: lawfirm.city || '',
+      fiscal_province: lawfirm.province || '',
+      fiscal_postal_code: lawfirm.postal_code || '',
+    });
+    toast.success('Datos copiados desde el perfil del despacho');
   };
 
   const handleRequestCreditLine = async () => {
@@ -189,14 +205,21 @@ export default function LawfirmBilling() {
         <TabsContent value="fiscal">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-base">Datos Fiscales</CardTitle>
-                <Button onClick={handleSaveFiscal} disabled={updateProfile.isPending} size="sm">
-                  {updateProfile.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
-                  Guardar
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={handleCopyFromLawfirm} variant="outline" size="sm" type="button">
+                    Usar dirección del despacho
+                  </Button>
+                  <Button onClick={handleSaveFiscal} disabled={updateProfile.isPending} size="sm">
+                    {updateProfile.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
+                    Guardar
+                  </Button>
+                </div>
               </div>
-              <CardDescription className="text-xs">Información utilizada para la emisión de facturas</CardDescription>
+              <CardDescription className="text-xs">
+                Información utilizada para emitir facturas. Si coincide con la dirección de tu despacho, pulsa "Usar dirección del despacho".
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 sm:grid-cols-2">
