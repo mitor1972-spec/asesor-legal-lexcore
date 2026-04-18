@@ -93,7 +93,7 @@ export default function LeadsMarket() {
       if (!lawfirmId) return null;
       const { data, error } = await supabase
         .from('lawfirms')
-        .select('id, name, marketplace_balance')
+        .select('id, name, marketplace_balance, credit_line_enabled, credit_line_status')
         .eq('id', lawfirmId)
         .single();
       if (error) throw error;
@@ -264,6 +264,7 @@ export default function LeadsMarket() {
   }, [rawLeads, areaFilter, provinceFilter, minScore, sortBy, quickFilter, minPrice, maxPrice]);
 
   const balance = lawfirm?.marketplace_balance || 0;
+  const hasCreditLine = !!(lawfirm as any)?.credit_line_enabled && ((lawfirm as any)?.credit_line_status === 'approved' || (lawfirm as any)?.credit_line_status === 'active');
 
   // Add to cart (with optional commission mode)
   const handleAddToCart = (lead: MarketplaceLead, isCommission?: boolean) => {
@@ -663,6 +664,7 @@ export default function LeadsMarket() {
         onStripeCheckout={handleStripeCheckout}
         onToggleCommission={handleToggleCommission}
         balance={balance}
+        hasCreditLine={hasCreditLine}
         isCheckingOut={isCheckingOut}
       />
 
