@@ -53,7 +53,10 @@ export function useCreateVoiceNote() {
       audioBlob: Blob;
       durationSeconds: number;
     }) => {
-      const filename = `${leadId}/${Date.now()}.webm`;
+      // Folder MUST start with the user's id (RLS policy on storage.objects).
+      // Inside, we keep the lead id for organization.
+      if (!user?.id) throw new Error('Debes iniciar sesión para grabar notas de voz');
+      const filename = `${user.id}/${leadId}/${Date.now()}.webm`;
 
       // Upload to storage
       const { data: uploadData, error: uploadError } = await supabase.storage
