@@ -208,6 +208,8 @@ serve(async (req) => {
     }
 
     // 5. Create lead assignment
+    // NOTE: service_type only accepts: 'consulta'|'procedimiento'|'juicio'|'acuerdo'
+    // The commission vs marketplace distinction is tracked via the is_commission flag.
     const { error: assignmentError } = await supabaseAdmin
       .from('lead_assignments')
       .insert({
@@ -216,14 +218,16 @@ serve(async (req) => {
         assigned_by_user_id: user.id,
         status_delivery: 'delivered',
         firm_status: 'received',
-        service_type: is_commission ? 'commission' : 'marketplace',
         is_commission: is_commission || false,
         commission_percent: is_commission ? (commission_percent || 20) : null,
+        commission_origin: is_commission ? 'marketplace_commission' : null,
+        commission_terms_confirmed_at: is_commission ? new Date().toISOString() : null,
         lead_cost: is_commission ? 0 : price,
       });
 
     if (assignmentError) {
       console.error('Error creating assignment:', assignmentError);
+      throw new Error(`Error al crear asignación: ${assignmentError.message}`);
     }
 
     // 6. Log the purchase in lead history
