@@ -205,14 +205,21 @@ export default function LawfirmBilling() {
         <TabsContent value="fiscal">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-base">Datos Fiscales</CardTitle>
-                <Button onClick={handleSaveFiscal} disabled={updateProfile.isPending} size="sm">
-                  {updateProfile.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
-                  Guardar
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={handleCopyFromLawfirm} variant="outline" size="sm" type="button">
+                    Usar dirección del despacho
+                  </Button>
+                  <Button onClick={handleSaveFiscal} disabled={updateProfile.isPending} size="sm">
+                    {updateProfile.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
+                    Guardar
+                  </Button>
+                </div>
               </div>
-              <CardDescription className="text-xs">Información utilizada para la emisión de facturas</CardDescription>
+              <CardDescription className="text-xs">
+                Información utilizada para emitir facturas. Si coincide con la dirección de tu despacho, pulsa "Usar dirección del despacho".
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 sm:grid-cols-2">
