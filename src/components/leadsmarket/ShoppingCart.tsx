@@ -22,6 +22,8 @@ interface ShoppingCartProps {
   onToggleCommission: (id: string, isCommission: boolean) => void;
   balance: number;
   isCheckingOut: boolean;
+  /** True only if the firm has an approved/active credit line */
+  hasCreditLine?: boolean;
 }
 
 export function ShoppingCart({ 
@@ -34,7 +36,8 @@ export function ShoppingCart({
   onStripeCheckout,
   onToggleCommission,
   balance,
-  isCheckingOut
+  isCheckingOut,
+  hasCreditLine = false,
 }: ShoppingCartProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(items.map(i => i.id)));
 
@@ -59,7 +62,8 @@ export function ShoppingCart({
   const selectedItems = items.filter(i => selectedIds.has(i.id));
   const subtotal = selectedItems.reduce((sum, i) => sum + (i.isCommission ? 0 : i.price), 0);
   const commissionCount = selectedItems.filter(i => i.isCommission).length;
-  const canAfford = balance >= subtotal;
+  // Only relevant when the firm actually has a credit line
+  const canAffordWithCredit = hasCreditLine && balance >= subtotal;
   const newBalance = balance - subtotal;
 
   const getScoreColor = (score: number) => {
@@ -73,8 +77,9 @@ export function ShoppingCart({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
+    <Sheet open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <SheetContent className="w-full sm:max-w-lg flex flex-col">
+
         <SheetHeader className="border-b pb-4">
           <SheetTitle className="flex items-center gap-2">
             <CartIcon className="h-5 w-5" />
