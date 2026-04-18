@@ -59,13 +59,7 @@ export function ProfileGateDialog({ open, onClose, missingFields }: ProfileGateD
           <Button variant="outline" onClick={onClose}>
             Más tarde
           </Button>
-          <Button
-            onClick={() => {
-              onClose();
-              navigate('/despacho/configuracion');
-            }}
-            className="gap-2"
-          >
+          <Button onClick={handleGoToConfig} className="gap-2">
             <Settings className="h-4 w-4" />
             Ir a Configuración
           </Button>
