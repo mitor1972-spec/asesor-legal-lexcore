@@ -408,6 +408,7 @@ export default function LawfirmDashboard() {
         onCheckout={handleCheckout}
         onToggleCommission={handleToggleCommission}
         balance={balance}
+        hasCreditLine={!!(lawfirm as any)?.credit_line_enabled && ((lawfirm as any)?.credit_line_status === 'approved' || (lawfirm as any)?.credit_line_status === 'active')}
         isCheckingOut={isCheckingOut}
       />
       <ProfileGateDialog 
