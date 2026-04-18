@@ -235,21 +235,21 @@ export function ShoppingCart({
         <SheetFooter className="border-t pt-4 flex-col gap-2">
           {items.length > 0 && (
             <>
-              {/* Stripe primary when no credit available; credit primary when there is balance */}
-              {canAfford && balance > 0 ? (
+              {hasCreditLine ? (
                 <>
+                  {/* Firms with credit line: pay with credit (primary) + Stripe fallback */}
                   <div className="flex gap-2 w-full">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={onClearCart}
                       disabled={isCheckingOut}
                       size="sm"
                     >
                       Vaciar carrito
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleCheckout}
-                      disabled={selectedItems.length === 0 || isCheckingOut}
+                      disabled={selectedItems.length === 0 || isCheckingOut || !canAffordWithCredit}
                       className="flex-1"
                       size="sm"
                     >
@@ -268,25 +268,25 @@ export function ShoppingCart({
                     </Button>
                   </div>
                   {onStripeCheckout && subtotal > 0 && (
-                    <Button 
+                    <Button
                       variant="outline"
                       onClick={() => onStripeCheckout(Array.from(selectedIds))}
                       disabled={selectedItems.length === 0 || isCheckingOut}
-                      className="w-full border-blue-500/40 text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                      className="w-full"
                       size="sm"
                     >
                       <CreditCard className="h-4 w-4 mr-2" />
-                      Pagar con tarjeta (Stripe)
+                      Pagar con tarjeta
                       {` - ${subtotal.toFixed(0)}€`}
                     </Button>
                   )}
                 </>
               ) : (
                 <>
-                  {/* No credit: Stripe is the only / primary option */}
+                  {/* No credit line: card payment is the only option (no scary "insufficient balance") */}
                   <div className="flex gap-2 w-full">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={onClearCart}
                       disabled={isCheckingOut}
                       size="sm"
@@ -294,10 +294,10 @@ export function ShoppingCart({
                       Vaciar carrito
                     </Button>
                     {onStripeCheckout && subtotal > 0 ? (
-                      <Button 
+                      <Button
                         onClick={() => onStripeCheckout(Array.from(selectedIds))}
                         disabled={selectedItems.length === 0 || isCheckingOut}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                        className="flex-1"
                         size="sm"
                       >
                         {isCheckingOut ? (
@@ -314,7 +314,7 @@ export function ShoppingCart({
                         )}
                       </Button>
                     ) : (
-                      <Button 
+                      <Button
                         onClick={handleCheckout}
                         disabled={selectedItems.length === 0 || isCheckingOut}
                         className="flex-1"
@@ -331,11 +331,6 @@ export function ShoppingCart({
                       </Button>
                     )}
                   </div>
-                  {balance <= 0 && subtotal > 0 && (
-                    <p className="text-xs text-muted-foreground text-center w-full">
-                      Sin crédito disponible — el pago se realizará con tarjeta
-                    </p>
-                  )}
                 </>
               )}
             </>
