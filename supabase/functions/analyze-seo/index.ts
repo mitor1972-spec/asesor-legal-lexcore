@@ -162,6 +162,28 @@ serve(async (req) => {
   }
 
   try {
+    // === AUTH CHECK ===
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // === END AUTH ===
+
     const { url } = await req.json();
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ error: "URL es obligatoria" }), {
@@ -174,6 +196,30 @@ serve(async (req) => {
     if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
       targetUrl = `https://${targetUrl}`;
     }
+
+    // === SSRF PROTECTION: validate URL ===
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(targetUrl);
+    } catch {
+      return new Response(JSON.stringify({ error: "URL inválida" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      return new Response(JSON.stringify({ error: "Solo se permiten URLs http/https" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (isPrivateOrLocalHost(parsedUrl.hostname)) {
+      return new Response(JSON.stringify({ error: "URL no permitida" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // === END SSRF PROTECTION ===
 
     console.log("Fetching URL for SEO analysis:", targetUrl);
 
