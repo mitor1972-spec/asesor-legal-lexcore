@@ -20,8 +20,14 @@ interface ProfileGateDialogProps {
 export function ProfileGateDialog({ open, onClose, missingFields }: ProfileGateDialogProps) {
   const navigate = useNavigate();
 
+  const handleGoToConfig = () => {
+    // Close dialog first, then navigate after Radix unmount completes
+    onClose();
+    setTimeout(() => navigate('/despacho/configuracion'), 50);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
