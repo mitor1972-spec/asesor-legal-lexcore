@@ -58,6 +58,7 @@ import PaymentSuccess from "@/pages/payment/PaymentSuccess";
 import PaymentCancel from "@/pages/payment/PaymentCancel";
 import NotFound from "@/pages/NotFound";
 import { RequireAdmin } from "@/components/auth/RequireAdmin";
+import { RouteCleanup } from "@/components/layout/RouteCleanup";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <RouteCleanup />
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/registro-despacho" element={<RegistroDespacho />} />
