@@ -157,9 +157,9 @@ SidebarContent.displayName = 'SidebarContent';
 export function Sidebar({ open, onClose }: SidebarProps) {
   return (
     <>
-      <div className="hidden md:flex w-64 flex-shrink-0">
+      <aside className="hidden md:flex md:flex-col w-64 flex-shrink-0 overflow-hidden">
         <SidebarContent />
-      </div>
+      </aside>
 
       <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
         <SheetContent side="left" className="p-0 w-64 bg-sidebar border-sidebar-border">
