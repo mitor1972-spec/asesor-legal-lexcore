@@ -42,7 +42,7 @@ const SidebarContent = forwardRef<HTMLDivElement, { onClose?: () => void }>(({ o
   const [configOpen, setConfigOpen] = useState(true);
 
   return (
-    <div ref={ref} className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
+    <div ref={ref} className="flex flex-col h-full w-full min-w-0 bg-sidebar text-sidebar-foreground overflow-hidden">
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center justify-between">
           <Link to="/dashboard" className="flex items-center gap-2" onClick={onClose}>
