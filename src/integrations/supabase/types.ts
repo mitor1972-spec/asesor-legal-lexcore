@@ -372,36 +372,108 @@ export type Database = {
           },
         ]
       }
+      ai_logs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          function_name: string | null
+          id: string
+          input: Json | null
+          lead_id: string | null
+          model: string | null
+          output: string | null
+          prompt_key: string
+          prompt_version: number | null
+          status: string
+          tokens_input: number | null
+          tokens_output: number | null
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          function_name?: string | null
+          id?: string
+          input?: Json | null
+          lead_id?: string | null
+          model?: string | null
+          output?: string | null
+          prompt_key: string
+          prompt_version?: number | null
+          status?: string
+          tokens_input?: number | null
+          tokens_output?: number | null
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          function_name?: string | null
+          id?: string
+          input?: Json | null
+          lead_id?: string | null
+          model?: string | null
+          output?: string | null
+          prompt_key?: string
+          prompt_version?: number | null
+          status?: string
+          tokens_input?: number | null
+          tokens_output?: number | null
+        }
+        Relationships: []
+      }
       ai_prompts: {
         Row: {
           created_at: string
           description: string | null
           id: string
           is_active: boolean | null
+          max_tokens: number
+          model: string
           prompt_key: string
           prompt_name: string
           prompt_text: string
+          response_format: string
+          system_prompt: string | null
+          temperature: number
           updated_at: string
+          user_template: string | null
+          version: number
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean | null
+          max_tokens?: number
+          model?: string
           prompt_key: string
           prompt_name: string
           prompt_text: string
+          response_format?: string
+          system_prompt?: string | null
+          temperature?: number
           updated_at?: string
+          user_template?: string | null
+          version?: number
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean | null
+          max_tokens?: number
+          model?: string
           prompt_key?: string
           prompt_name?: string
           prompt_text?: string
+          response_format?: string
+          system_prompt?: string | null
+          temperature?: number
           updated_at?: string
+          user_template?: string | null
+          version?: number
         }
         Relationships: []
       }
