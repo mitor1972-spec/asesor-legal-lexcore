@@ -1,287 +1,242 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.90.1";
+// =====================================================================
+// generate-legal-help
+//
+// Refactor (Fase 6 · paso 4):
+//   - El prompt vive ahora en `ai_prompts.legal_help` (editable desde
+//     /settings/ai-prompts).
+//   - Esta función SOLO se encarga de:
+//       1. validar auth + permisos del usuario sobre el lead
+//       2. cargar lead + lawfirm
+//       3. preparar variables y llamar a callAI()
+//       4. persistir el resultado en lead_legal_help
+//   - Cada ejecución queda registrada en `ai_logs` automáticamente.
+//
+// La firma externa se mantiene 100% compatible: { success, data }
+//
+// IMPORTANTE: Se ha cambiado el proveedor de Lovable AI (Gemini + tool
+// calling) a OpenAI gpt-4o-mini con response_format=json_object, según
+// la configuración del prompt en BD. Si el prompt cambia de modelo,
+// la función lo respeta automáticamente.
+// =====================================================================
+
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { callAI, AIError } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { lead_id, lawfirm_id } = await req.json();
-    
+
     if (!lead_id) {
-      throw new Error('lead_id is required');
+      throw new Error("lead_id is required");
     }
 
-    console.log('Generating legal help for lead:', lead_id, 'lawfirm:', lawfirm_id);
+    console.log(
+      `[generate-legal-help] lead_id=${lead_id} lawfirm_id=${lawfirm_id ?? "(none)"}`,
+    );
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    
-    // Create admin client for data operations
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Create user client to check authorization
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      throw new Error('Authorization header is required');
+
+    // ---- Auth ----
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw new Error("Authorization header is required");
     }
-    
+
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
+      global: { headers: { Authorization: authHeader } },
     });
-    
-    // Get current user (compatible with signing keys)
-    const token = authHeader.replace('Bearer ', '');
+
+    const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: authError } = await supabaseUser.auth.getClaims(token);
     if (authError || !claimsData?.claims) {
-      console.error('Auth error:', authError);
-      throw new Error('Unauthorized: Invalid token');
+      console.error("Auth error:", authError);
+      throw new Error("Unauthorized: Invalid token");
+    }
+    const userId = claimsData.claims.sub as string;
+
+    // ---- Authorization (intacto: roles internos vs lawfirm asignado) ----
+    const { data: userRoles } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+
+    const isInternal = userRoles?.some(
+      (r) => r.role === "admin" || r.role === "operator",
+    );
+
+    const { data: userProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("lawfirm_id, is_active")
+      .eq("id", userId)
+      .single();
+
+    if (!userProfile?.is_active) {
+      throw new Error("Unauthorized: User account is inactive");
     }
 
-    const userId = claimsData.claims.sub as string;
-    console.log('Authenticated user:', userId);
-    
-    // Check if user has access to this lead
-    // Option 1: Internal user (admin/operator) - can access any lead
-    const { data: userRoles } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId);
-    
-    const isInternal = userRoles?.some(r => r.role === 'admin' || r.role === 'operator');
-    
-    // Option 2: Lawfirm user - can only access leads assigned to their lawfirm
-    const { data: userProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('lawfirm_id, is_active')
-      .eq('id', userId)
-      .single();
-    
-    if (!userProfile?.is_active) {
-      throw new Error('Unauthorized: User account is inactive');
-    }
-    
     const userLawfirmId = userProfile?.lawfirm_id;
-    
-    // Verify authorization
+
     if (!isInternal) {
       if (!userLawfirmId) {
-        throw new Error('Unauthorized: No lawfirm associated with user');
+        throw new Error("Unauthorized: No lawfirm associated with user");
       }
-
-      // For lawfirm users, check if lead is assigned to their lawfirm
       const { data: assignment, error: assignmentError } = await supabaseAdmin
-        .from('lead_assignments')
-        .select('id')
-        .eq('lead_id', lead_id)
-        .eq('lawfirm_id', userLawfirmId)
+        .from("lead_assignments")
+        .select("id")
+        .eq("lead_id", lead_id)
+        .eq("lawfirm_id", userLawfirmId)
         .maybeSingle();
-      
       if (assignmentError || !assignment) {
-        throw new Error('Unauthorized: Lead not assigned to your lawfirm');
+        throw new Error("Unauthorized: Lead not assigned to your lawfirm");
       }
-      
-      // Also verify the lawfirm_id matches if provided
       if (lawfirm_id && lawfirm_id !== userLawfirmId) {
-        throw new Error('Unauthorized: Cannot generate help for other lawfirms');
+        throw new Error("Unauthorized: Cannot generate help for other lawfirms");
       }
     }
-    
-    console.log('Authorization verified - isInternal:', isInternal, 'userLawfirmId:', userLawfirmId);
 
-    // Fetch lead data using admin client
+    // ---- Fetch lead ----
     const { data: lead, error: leadError } = await supabaseAdmin
-      .from('leads')
-      .select('*')
-      .eq('id', lead_id)
+      .from("leads")
+      .select("*")
+      .eq("id", lead_id)
       .single();
 
     if (leadError || !lead) {
-      throw new Error(`Lead not found: ${leadError?.message || 'Unknown error'}`);
+      throw new Error(`Lead not found: ${leadError?.message || "Unknown error"}`);
     }
 
-    // Determine which lawfirm_id to use
-    // In internal preview mode there may be no lawfirm; store it as NULL (FK-safe)
     const targetLawfirmId = (lawfirm_id ?? userLawfirmId ?? null) as string | null;
-    let lawfirmName = 'Asesor.Legal';
-    if (targetLawfirmId && targetLawfirmId !== '00000000-0000-0000-0000-000000000000') {
-      const { data: lawfirm } = await supabaseAdmin
-        .from('lawfirms')
-        .select('name')
-        .eq('id', targetLawfirmId)
-        .single();
-      
-      if (lawfirm) {
-        lawfirmName = lawfirm.name;
-      }
-    }
 
-    // Prepare case context
-    const structuredFields = lead.structured_fields || {};
-    const caseSummary = lead.case_summary || '';
+    // ---- Build variables for the centralized prompt ----
+    const sf = lead.structured_fields || {};
+    const variables = {
+      case_summary: lead.case_summary || "",
+      area_legal: sf.area_legal || "",
+      provincia: sf.provincia || "",
+      urgencia_nivel: sf.urgencia_nivel || "",
+      cuantia: sf.cuantia
+        ? `${Number(sf.cuantia).toLocaleString("es-ES")}€`
+        : (sf.cuantia_estimada || ""),
+      documentacion: Array.isArray(sf.documentacion_mencionada)
+        ? sf.documentacion_mencionada.join(", ")
+        : (sf.documentacion_disponible || ""),
+      preferencia_contacto: sf.preferencia_contacto || "",
+      horario_contacto: sf.franja_horaria || sf.horario_contacto || "",
+      lead_text: (lead.lead_text || "").substring(0, 3000),
+    };
 
-    const prompt = `Eres un asistente legal experto que ayuda a abogados españoles a gestionar nuevos casos.
+    console.log(`[generate-legal-help] callAI(legal_help) for lead ${lead_id}...`);
 
-DATOS DEL CASO:
-"""
-${caseSummary}
-"""
-
-DATOS ESTRUCTURADOS:
-"""
-Área legal: ${structuredFields.area_legal || ''}
-Provincia: ${structuredFields.provincia || ''}
-Urgencia: ${structuredFields.urgencia_nivel || ''}
-Cuantía estimada: ${structuredFields.cuantia_estimada || ''}
-Documentación disponible: ${structuredFields.documentacion_disponible || ''}
-Contacto preferido: ${structuredFields.preferencia_contacto || ''}
-Horario contacto: ${structuredFields.horario_contacto || ''}
-"""
-
-CONVERSACIÓN ORIGINAL:
-"""
-${lead.lead_text?.substring(0, 3000) || 'No disponible'}
-"""
-
-Genera una guía práctica para el abogado que va a llevar este caso.`;
-
-    // Call Lovable AI Gateway
-    const apiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!apiKey) {
-      throw new Error('LOVABLE_API_KEY is not configured');
-    }
-
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          { role: 'system', content: 'Eres un asistente legal experto para abogados españoles. Responde siempre en JSON válido.' },
-          { role: 'user', content: prompt }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "provide_legal_help",
-              description: "Proporciona orientación legal estructurada para el abogado",
-              parameters: {
-                type: "object",
-                properties: {
-                  legal_orientation: {
-                    type: "string",
-                    description: "Orientación legal sobre el tipo de caso, legislación aplicable, jurisprudencia relevante. 3-5 puntos en formato markdown con viñetas."
-                  },
-                  documentation_needed: {
-                    type: "string",
-                    description: "Lista de documentos que debe solicitar al cliente para poder actuar. 5-8 puntos específicos en formato markdown con viñetas."
-                  },
-                  commercial_next_steps: {
-                    type: "string",
-                    description: "Pasos comerciales inmediatos: cómo contactar, qué decir, cómo cerrar el cliente. 3-5 puntos en formato markdown con viñetas."
-                  },
-                  legal_next_steps: {
-                    type: "string",
-                    description: "Pasos jurídicos a seguir una vez contratado: demandas, plazos, juzgado competente. 4-6 puntos en formato markdown con viñetas."
-                  },
-                  risks_alerts: {
-                    type: "string",
-                    description: "Riesgos y alertas importantes del caso. Puntos débiles, posibles problemas. 2-4 puntos con emoji ⚠️ en formato markdown."
-                  },
-                  estimated_complexity: {
-                    type: "string",
-                    description: "Alta / Media / Baja - con breve justificación de una línea."
-                  }
-                },
-                required: ["legal_orientation", "documentation_needed", "commercial_next_steps", "legal_next_steps", "risks_alerts", "estimated_complexity"],
-                additionalProperties: false
-              }
-            }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "provide_legal_help" } }
-      }),
+    const result = await callAI({
+      prompt_key: "legal_help",
+      variables,
+      function_name: "generate-legal-help",
+      lead_id,
+      admin: supabaseAdmin,
     });
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limits exceeded, please try again later.' }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: 'Payment required, please add funds to your account.' }), {
-          status: 402,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      const errorText = await aiResponse.text();
-      console.error('AI gateway error:', aiResponse.status, errorText);
-      throw new Error(`AI gateway error: ${aiResponse.status}`);
+    const legalHelp = result.parsed as Record<string, any> | null;
+    if (!legalHelp) {
+      throw new Error("Failed to parse AI response");
     }
 
-    const aiData = await aiResponse.json();
-    console.log('AI response received');
+    // ---- Coerce values to text markdown (model may return string | array | object) ----
+    const toMarkdown = (val: unknown): string => {
+      if (val === null || val === undefined) return "";
+      if (typeof val === "string") return val;
+      if (Array.isArray(val)) {
+        return val
+          .map((item) =>
+            typeof item === "string"
+              ? `- ${item}`
+              : `- ${JSON.stringify(item)}`,
+          )
+          .join("\n");
+      }
+      if (typeof val === "object") {
+        // estimated_complexity may come as { nivel, justificacion }
+        const obj = val as Record<string, unknown>;
+        if (obj.nivel || obj.justificacion) {
+          return `${obj.nivel ?? ""}${obj.justificacion ? ` — ${obj.justificacion}` : ""}`.trim();
+        }
+        return JSON.stringify(val);
+      }
+      return String(val);
+    };
 
-    // Extract the tool call arguments
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
-      throw new Error('No tool call in AI response');
+    const required = [
+      "legal_orientation",
+      "documentation_needed",
+      "commercial_next_steps",
+      "legal_next_steps",
+      "risks_alerts",
+      "estimated_complexity",
+    ];
+    const missing = required.filter((k) => !legalHelp[k]);
+    if (missing.length) {
+      console.warn(`[generate-legal-help] Missing fields: ${missing.join(", ")}`);
     }
 
-    const legalHelp = JSON.parse(toolCall.function.arguments);
-
-    // Save to database
+    // ---- Persist (sin cambios de esquema; coerción text-safe) ----
     const { data: insertedHelp, error: insertError } = await supabaseAdmin
-      .from('lead_legal_help')
+      .from("lead_legal_help")
       .insert({
         lead_id,
         lawfirm_id: targetLawfirmId,
-        legal_orientation: legalHelp.legal_orientation,
-        documentation_needed: legalHelp.documentation_needed,
-        commercial_next_steps: legalHelp.commercial_next_steps,
-        legal_next_steps: legalHelp.legal_next_steps,
-        risks_alerts: legalHelp.risks_alerts,
-        estimated_complexity: legalHelp.estimated_complexity,
-        llm_response_json: aiData
+        legal_orientation: toMarkdown(legalHelp.legal_orientation),
+        documentation_needed: toMarkdown(legalHelp.documentation_needed),
+        commercial_next_steps: toMarkdown(legalHelp.commercial_next_steps),
+        legal_next_steps: toMarkdown(legalHelp.legal_next_steps),
+        risks_alerts: toMarkdown(legalHelp.risks_alerts),
+        estimated_complexity: toMarkdown(legalHelp.estimated_complexity),
+        llm_response_json: legalHelp,
       })
       .select()
       .single();
 
     if (insertError) {
-      console.error('Error saving legal help:', insertError);
+      console.error("Error saving legal help:", insertError);
       throw new Error(`Error saving legal help: ${insertError.message}`);
     }
 
-    console.log('Legal help generated and saved successfully');
+    console.log(
+      `[generate-legal-help] Done. v${result.prompt_version} · ${result.duration_ms}ms`,
+    );
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      data: insertedHelp 
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: insertedHelp,
+        prompt_version: result.prompt_version,
+        duration_ms: result.duration_ms,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (error) {
-    console.error('Error in generate-legal-help:', error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }), {
-      status: error instanceof Error && error.message.includes('Unauthorized') ? 403 : 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error("[generate-legal-help] Error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const status = error instanceof AIError
+      ? error.status
+      : message.includes("Unauthorized")
+        ? 403
+        : 500;
+    return new Response(
+      JSON.stringify({ error: message }),
+      { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });
