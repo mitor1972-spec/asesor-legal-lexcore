@@ -127,9 +127,34 @@ export default function LexcoreConfig() {
         <h1 className="text-2xl font-display font-bold flex items-center gap-2">
           <Cog className="h-6 w-6" />
           Configuración Lexcore
+          <Badge variant="outline" className="ml-2 border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/30">
+            Legacy
+          </Badge>
         </h1>
-        <p className="text-muted-foreground">Ajustes del sistema de scoring</p>
+        <p className="text-muted-foreground">Ajustes del sistema de scoring (módulo obsoleto)</p>
       </div>
+
+      <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+        <AlertTriangle className="h-4 w-4 text-amber-600" />
+        <AlertTitle className="text-amber-800 dark:text-amber-300">
+          Este módulo está obsoleto
+        </AlertTitle>
+        <AlertDescription className="text-amber-700 dark:text-amber-400 space-y-2">
+          <p>
+            El scoring actual se configura en{' '}
+            <Link
+              to="/settings/ai-prompts"
+              className="font-semibold underline inline-flex items-center gap-1"
+            >
+              Centro IA → Lexcore <ExternalLink className="h-3 w-3" />
+            </Link>
+            {' '}(prompt <code className="text-xs bg-amber-100 dark:bg-amber-900/50 px-1 rounded">lexcore_scoring_system</code>).
+          </p>
+          <p className="text-xs">
+            Esta página se mantiene en <strong>modo solo lectura</strong> por seguridad. La edición está deshabilitada para evitar dos fuentes de verdad. La eliminación definitiva está planificada para una fase posterior.
+          </p>
+        </AlertDescription>
+      </Alert>
 
       <Card className="shadow-soft">
         <CardContent className="p-0">
