@@ -58,17 +58,26 @@ export default function LexcoreConfig() {
   
   const activeConfig = configs?.find(c => c.is_active);
 
+  // Guard de readonly: cualquier intento de escritura desde la UI legacy se bloquea aquí.
+  const legacyBlock = () => {
+    toast.error('Módulo legacy en solo lectura. Configura el scoring en /settings/ai-prompts (lexcore_scoring_system).');
+    return true;
+  };
+
   const handleActivate = async (configId: string) => {
+    if (LEGACY_READONLY) return legacyBlock();
     await activateConfig.mutateAsync(configId);
   };
 
   const handleDuplicate = (config: LexcoreConfigType) => {
+    if (LEGACY_READONLY) return legacyBlock();
     setSelectedConfig(config);
     setNewVersionName(`${config.version_name} (copia)`);
     setDuplicateDialogOpen(true);
   };
 
   const confirmDuplicate = async () => {
+    if (LEGACY_READONLY) return legacyBlock();
     if (selectedConfig && newVersionName.trim()) {
       await duplicateConfig.mutateAsync({ 
         config: selectedConfig, 
@@ -81,6 +90,7 @@ export default function LexcoreConfig() {
   };
 
   const handleExport = (config: LexcoreConfigType) => {
+    // Exportar (descarga JSON) sigue permitido — es solo lectura.
     const blob = new Blob([JSON.stringify(config.config_json, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -92,6 +102,7 @@ export default function LexcoreConfig() {
   };
 
   const handleUpdatePriceSteps = async (configId: string, priceSteps: PriceStep[]) => {
+    if (LEGACY_READONLY) return legacyBlock();
     if (!activeConfig) return;
     const newConfigJson: LexcoreConfigJson = {
       ...activeConfig.config_json,
@@ -101,6 +112,7 @@ export default function LexcoreConfig() {
   };
 
   const handleUpdateWeights = async (configId: string, mode: 'a' | 'b', weights: Record<string, number>) => {
+    if (LEGACY_READONLY) return legacyBlock();
     if (!activeConfig) return;
     const key = mode === 'a' ? 'weights_mode_a' : 'weights_mode_b';
     const newConfigJson: LexcoreConfigJson = {
@@ -109,6 +121,7 @@ export default function LexcoreConfig() {
     };
     await updateConfigJson.mutateAsync({ configId, configJson: newConfigJson });
   };
+
 
   // Find the lexcore_scoring_rules prompt
   const scoringRulesPrompt = aiPrompts?.find(p => p.prompt_key === 'lexcore_scoring_rules');
