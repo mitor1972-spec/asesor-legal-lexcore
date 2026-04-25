@@ -1,4 +1,16 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// =====================================================================
+// commercial-assistant
+//
+// Refactor (Fase 6 · paso 4):
+//   - El system prompt vive ahora en `ai_prompts.commercial_assistant`
+//     (editable desde /settings/ai-prompts).
+//   - Se mantiene streaming SSE con Lovable AI Gateway (UX en tiempo real).
+//   - callAI NO se usa aquí (no soporta streaming): cargamos manualmente
+//     el system_prompt desde BD y registramos el evento mínimo en ai_logs.
+//
+// Razón: streaming token-a-token es esencial para la UX del chat.
+// =====================================================================
+
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -7,55 +19,77 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `Eres un asesor comercial experto de Asesor.Legal / LexMarket, una plataforma que conecta clientes con abogados en España. Tu objetivo es ayudar a los abogados a elegir la mejor estrategia de publicidad y captación de clientes para su despacho.
+// Fallback en caso de que el prompt no esté en BD (deploy inicial / BD vacía).
+const FALLBACK_SYSTEM_PROMPT = `Eres un asesor comercial experto de Asesor.Legal / LexMarket. Ayudas a abogados españoles a elegir la mejor estrategia de captación de clientes y publicidad para su despacho. Sé claro, profesional, conciso y orientado a resultados. Responde siempre en español.`;
 
-SERVICIOS DISPONIBLES:
-1. **Publicidad Web (Banners)**: Visibilidad en el directorio web. 4 niveles:
-   - Básico: Banner lateral en resultados
-   - Premium: Banner destacado + posición preferente
-   - Destacado: Banner grande + primera posición + badge verificado
-   - Exclusivo: Dominio completo de una categoría/provincia
-   Precios varían por población (A: grandes ciudades, B: medianas, C: pequeñas, D: rurales)
+async function loadSystemPrompt(admin: ReturnType<typeof createClient>) {
+  try {
+    const { data, error } = await admin
+      .from("ai_prompts")
+      .select("system_prompt, version, is_active")
+      .eq("prompt_key", "commercial_assistant")
+      .maybeSingle();
 
-2. **Secciones Nacionales**: Presencia fija en páginas de especialidad legal (ej: divorcios, herencias, accidentes laborales). Precio trimestral/semestral/anual con descuentos.
+    if (error) {
+      console.warn("[commercial-assistant] Error loading prompt:", error.message);
+      return { systemPrompt: FALLBACK_SYSTEM_PROMPT, version: 0, source: "fallback" as const };
+    }
+    if (!data || !data.is_active || !data.system_prompt) {
+      console.warn("[commercial-assistant] Prompt missing or inactive, using fallback");
+      return { systemPrompt: FALLBACK_SYSTEM_PROMPT, version: 0, source: "fallback" as const };
+    }
+    return {
+      systemPrompt: data.system_prompt,
+      version: data.version ?? 1,
+      source: "db" as const,
+    };
+  } catch (e) {
+    console.warn("[commercial-assistant] Exception loading prompt:", e);
+    return { systemPrompt: FALLBACK_SYSTEM_PROMPT, version: 0, source: "fallback" as const };
+  }
+}
 
-3. **Contactos Marketplace (LeadMarket)**: Compra directa de contactos de clientes cualificados. Tres modalidades:
-   - IA Chatbot: contactos generados por el asistente virtual
-   - Teléfono: contactos telefónicos verificados
-   - Email/Web: contactos por formulario
-   Precios por contacto según área legal y zona geográfica.
+async function logToAiLogs(
+  admin: ReturnType<typeof createClient>,
+  payload: {
+    user_id: string;
+    prompt_version: number;
+    source: string;
+    messages_count: number;
+    status: "success" | "error";
+    error_message?: string;
+  },
+) {
+  try {
+    await admin.from("ai_logs").insert({
+      prompt_key: "commercial_assistant",
+      prompt_version: payload.prompt_version,
+      function_name: "commercial-assistant",
+      lead_id: null,
+      model: "google/gemini-3-flash-preview",
+      input: {
+        user_id: payload.user_id,
+        messages_count: payload.messages_count,
+        prompt_source: payload.source,
+        streaming: true,
+      },
+      output: null, // streaming: respuesta no se captura
+      status: payload.status,
+      error_message: payload.error_message ?? null,
+      duration_ms: 0, // no medible con streaming
+    });
+  } catch (e) {
+    console.warn("[commercial-assistant] Failed to write ai_logs:", e);
+  }
+}
 
-4. **Casos a Comisión (Radar)**: Recibir casos sin coste inicial, pagando un % sobre los honorarios cobrados (típicamente 20%). Ideal para despachos que quieren minimizar riesgo.
-
-5. **Newsletter**: Inclusión en newsletters temáticas enviadas a potenciales clientes.
-
-6. **Asistente Virtual IA (Amara)**: Chatbot personalizado con la marca del despacho para su web.
-
-7. **Outsourcing Comercial**: Equipo de ventas dedicado para captación activa.
-
-INSTRUCCIONES:
-- Pregunta al abogado sobre su despacho: áreas de práctica, provincias donde opera, tamaño, presupuesto disponible.
-- Si el abogado menciona una especialidad que no está en las áreas estándar, sugiérela como nueva especialidad recomendada.
-- Explica las opciones de forma clara y sencilla, evitando jerga técnica.
-- Ayuda a calcular presupuestos orientativos.
-- Recomienda combinaciones de servicios que maximicen el ROI.
-- Siempre ofrece la opción de "delegarnos la estrategia" si el abogado parece abrumado.
-- Sé amable, profesional y orientado a resultados.
-- Responde siempre en español.
-- Sé conciso pero informativo. No hagas listas largas a menos que te lo pidan.
-- Cuando tengas suficiente información, ofrece generar un resumen ejecutivo para que el equipo comercial contacte al abogado.
-
-ÁREAS LEGALES PRINCIPALES: Derecho de Familia, Derecho Penal, Derecho Laboral, Accidentes de Tráfico, Derecho Civil, Derecho Inmobiliario, Herencias y Sucesiones, Derecho Mercantil, Extranjería, Derecho Administrativo.
-
-ÁREAS ESPECIALIZADAS: Negligencias Médicas, Derecho Bancario, Propiedad Intelectual, Derecho Tecnológico, Derecho Deportivo, Derecho Ambiental, Derecho Tributario, Seguros, Consumidores, Vivienda, Urbanismo, entre otras.`;
-
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // === AUTH CHECK ===
+    // ---- Auth ----
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -67,7 +101,7 @@ serve(async (req) => {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
+      { global: { headers: { Authorization: authHeader } } },
     );
 
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
@@ -77,8 +111,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    // === END AUTH ===
 
+    // ---- Body ----
     const body = await req.json();
     const { messages } = body;
     if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50) {
@@ -88,6 +122,19 @@ serve(async (req) => {
       });
     }
 
+    // ---- Admin client (para cargar el prompt y loguear) ----
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+
+    // ---- Load centralized system prompt from BD ----
+    const { systemPrompt, version, source } = await loadSystemPrompt(admin);
+    console.log(
+      `[commercial-assistant] prompt source=${source} v${version} · user=${user.id} · msgs=${messages.length}`,
+    );
+
+    // ---- Lovable AI (streaming) ----
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -102,43 +149,76 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
           messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: systemPrompt },
             ...messages,
           ],
           stream: true,
         }),
-      }
+      },
     );
 
     if (!response.ok) {
       if (response.status === 429) {
+        await logToAiLogs(admin, {
+          user_id: user.id,
+          prompt_version: version,
+          source,
+          messages_count: messages.length,
+          status: "error",
+          error_message: "Rate limited (429)",
+        });
         return new Response(
           JSON.stringify({ error: "Demasiadas solicitudes, inténtalo de nuevo en unos segundos." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       if (response.status === 402) {
+        await logToAiLogs(admin, {
+          user_id: user.id,
+          prompt_version: version,
+          source,
+          messages_count: messages.length,
+          status: "error",
+          error_message: "Credits exhausted (402)",
+        });
         return new Response(
           JSON.stringify({ error: "Créditos agotados. Contacta con soporte." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
+      await logToAiLogs(admin, {
+        user_id: user.id,
+        prompt_version: version,
+        source,
+        messages_count: messages.length,
+        status: "error",
+        error_message: `Gateway ${response.status}: ${t.slice(0, 200)}`,
+      });
       return new Response(
         JSON.stringify({ error: "Error del servicio de IA" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    // ---- Log success (fire-and-forget, antes de devolver el stream) ----
+    await logToAiLogs(admin, {
+      user_id: user.id,
+      prompt_version: version,
+      source,
+      messages_count: messages.length,
+      status: "success",
+    });
 
     return new Response(response.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
-    console.error("commercial-assistant error:", e);
+    console.error("[commercial-assistant] error:", e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Error desconocido" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
