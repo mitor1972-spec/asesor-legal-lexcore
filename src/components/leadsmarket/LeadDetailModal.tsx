@@ -107,8 +107,10 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     );
   };
 
-  // Redact contact info from summaries
-  const redactedSummary = redactContactFromText(lead.case_summary || lead.marketplace_summary, fields);
+  // Prefer marketplace_summary (already anonymized) over case_summary (internal, contains contact data).
+  // Always run through redactor as a final safety net, then strip placeholder lines/intro phrases.
+  const rawSummary = lead.marketplace_summary || lead.case_summary || '';
+  const redactedSummary = redactContactFromText(rawSummary, fields);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
