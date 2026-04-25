@@ -6,7 +6,22 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Cog, Check, Copy, Download, Upload, Loader2, Radio, FileText, Save, RotateCcw, Sparkles } from 'lucide-react';
+import { Cog, Check, Copy, Download, Upload, Loader2, Radio, FileText, Save, RotateCcw, Sparkles, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Link } from 'react-router-dom';
+
+// =====================================================================
+// LEGACY PANEL — NO TOCAR LA LÓGICA DE NEGOCIO
+//
+// Esta página queda marcada como obsoleta a partir de Fase 6.
+// El scoring real se gestiona desde:
+//   /settings/ai-prompts → prompt_key: lexcore_scoring_system
+//
+// Se mantiene visible (sin borrar) por seguridad, pero en modo readonly
+// para evitar dos fuentes de verdad. Cuando se migren tramos/pesos a
+// ai_prompts se podrá eliminar definitivamente.
+// =====================================================================
+const LEGACY_READONLY = true;
 import { 
   useLexcoreConfigs, 
   useActivateConfig, 
