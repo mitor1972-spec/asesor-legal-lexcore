@@ -154,7 +154,30 @@ Deno.serve(async (req) => {
       throw new Error("Failed to parse AI response");
     }
 
-    // ---- Validate required fields ----
+    // ---- Coerce values to text markdown (model may return string | array | object) ----
+    const toMarkdown = (val: unknown): string => {
+      if (val === null || val === undefined) return "";
+      if (typeof val === "string") return val;
+      if (Array.isArray(val)) {
+        return val
+          .map((item) =>
+            typeof item === "string"
+              ? `- ${item}`
+              : `- ${JSON.stringify(item)}`,
+          )
+          .join("\n");
+      }
+      if (typeof val === "object") {
+        // estimated_complexity may come as { nivel, justificacion }
+        const obj = val as Record<string, unknown>;
+        if (obj.nivel || obj.justificacion) {
+          return `${obj.nivel ?? ""}${obj.justificacion ? ` — ${obj.justificacion}` : ""}`.trim();
+        }
+        return JSON.stringify(val);
+      }
+      return String(val);
+    };
+
     const required = [
       "legal_orientation",
       "documentation_needed",
@@ -168,18 +191,18 @@ Deno.serve(async (req) => {
       console.warn(`[generate-legal-help] Missing fields: ${missing.join(", ")}`);
     }
 
-    // ---- Persist (sin cambios de esquema) ----
+    // ---- Persist (sin cambios de esquema; coerción text-safe) ----
     const { data: insertedHelp, error: insertError } = await supabaseAdmin
       .from("lead_legal_help")
       .insert({
         lead_id,
         lawfirm_id: targetLawfirmId,
-        legal_orientation: legalHelp.legal_orientation ?? "",
-        documentation_needed: legalHelp.documentation_needed ?? "",
-        commercial_next_steps: legalHelp.commercial_next_steps ?? "",
-        legal_next_steps: legalHelp.legal_next_steps ?? "",
-        risks_alerts: legalHelp.risks_alerts ?? "",
-        estimated_complexity: legalHelp.estimated_complexity ?? "",
+        legal_orientation: toMarkdown(legalHelp.legal_orientation),
+        documentation_needed: toMarkdown(legalHelp.documentation_needed),
+        commercial_next_steps: toMarkdown(legalHelp.commercial_next_steps),
+        legal_next_steps: toMarkdown(legalHelp.legal_next_steps),
+        risks_alerts: toMarkdown(legalHelp.risks_alerts),
+        estimated_complexity: toMarkdown(legalHelp.estimated_complexity),
         llm_response_json: legalHelp,
       })
       .select()
