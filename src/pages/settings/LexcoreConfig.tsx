@@ -204,6 +204,10 @@ export default function LexcoreConfig() {
               <ScoringRulesEditor 
                 prompt={scoringRulesPrompt}
                 onSave={async (id, text) => {
+                  if (LEGACY_READONLY) {
+                    legacyBlock();
+                    return;
+                  }
                   await updateAiPrompt.mutateAsync({ id, prompt_text: text });
                 }}
                 isPending={updateAiPrompt.isPending}
