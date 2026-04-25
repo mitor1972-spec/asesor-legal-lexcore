@@ -5,7 +5,6 @@
 // `ai_logs` with function_name = 'test-ai-prompt' for traceability.
 // =====================================================================
 
-import "https://deno.land/x/[email protected]/load.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { callAI, AIError } from "../_shared/ai-client.ts";
 
