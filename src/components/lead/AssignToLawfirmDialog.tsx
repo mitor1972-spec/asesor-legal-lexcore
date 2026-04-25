@@ -77,27 +77,29 @@ export function AssignToLawfirmDialog({
       return;
     }
 
+    const lawfirm = lawfirms?.find(lf => lf.id === selectedLawfirmId);
+    if (!lawfirm) {
+      toast.error('Despacho no encontrado');
+      return;
+    }
+
     setIsAssigning(true);
     try {
-      // 1. Create the assignment
-      const { error: assignError } = await supabase
+      // 1. Create the assignment (delivery pending until email confirmed)
+      const { data: assignment, error: assignError } = await supabase
         .from('lead_assignments')
         .insert({
           lead_id: leadId,
           lawfirm_id: selectedLawfirmId,
           firm_status: 'received',
           status_delivery: 'pending',
-        });
+        })
+        .select('id')
+        .single();
 
       if (assignError) throw assignError;
 
-      // 2. Update lead status to "Enviado"
-      await updateLead.mutateAsync({
-        id: leadId,
-        status_internal: 'Enviado',
-      });
-
-      // 3. Generate legal help if checked
+      // 2. Generate legal help (optional, non-blocking)
       if (generateHelp) {
         try {
           await generateLegalHelp.mutateAsync({ leadId });
@@ -106,18 +108,85 @@ export function AssignToLawfirmDialog({
         }
       }
 
-      // 4. TODO: Send email notification if checked
+      // 3. Send email — only mark lead as "Enviado" if email succeeds
+      let emailOk = !sendEmail; // if user disabled email, treat as success path
+      let emailError: string | null = null;
+
       if (sendEmail) {
-        // Email sending logic would go here
-        console.log('Would send email notification to lawfirm');
+        // Fetch lead data for variables
+        const { data: lead } = await supabase
+          .from('leads')
+          .select('structured_fields, case_summary, lead_text')
+          .eq('id', leadId)
+          .single();
+
+        const sf = (lead?.structured_fields ?? {}) as Record<string, unknown>;
+        const recipient = lawfirm.contact_email;
+
+        if (!recipient) {
+          emailError = 'El despacho no tiene email de contacto configurado';
+        } else {
+          const variables: Record<string, string> = {
+            nombre_despacho: lawfirm.name || '',
+            area_legal: String(sf.area_legal || leadArea || 'No especificada'),
+            ciudad: String(sf.ciudad || 'No especificada'),
+            provincia: String(sf.provincia || leadProvince || 'No especificada'),
+            nombre_cliente: [sf.nombre, sf.apellidos].filter(Boolean).join(' ').trim() || 'No facilitado',
+            telefono_cliente: String(sf.telefono || 'No facilitado'),
+            email_cliente: String(sf.email || 'No facilitado'),
+            resumen_caso: String(lead?.case_summary || lead?.lead_text || '').slice(0, 1500),
+            enlace_caso: `${window.location.origin}/despacho/casos/${leadId}`,
+          };
+
+          try {
+            const { data: emailRes, error: emailErr } = await supabase.functions.invoke('send-email', {
+              body: {
+                to: recipient,
+                template_key: 'lead_assigned',
+                variables,
+                lead_id: leadId,
+                lawfirm_id: selectedLawfirmId,
+                assignment_id: assignment.id,
+              },
+            });
+
+            if (emailErr) {
+              emailError = emailErr.message || 'Error al invocar envío de email';
+            } else if (emailRes && (emailRes as { status?: string }).status === 'failed') {
+              emailError = (emailRes as { error?: string }).error || 'Email no enviado';
+            } else {
+              emailOk = true;
+            }
+          } catch (e) {
+            emailError = e instanceof Error ? e.message : 'Error desconocido al enviar email';
+          }
+        }
       }
 
-      toast.success('Lead asignado correctamente');
+      // 4. Only mark as "Enviado" if email succeeded (or was not requested)
+      if (emailOk) {
+        await updateLead.mutateAsync({
+          id: leadId,
+          status_internal: 'Enviado',
+        });
+        toast.success(
+          sendEmail
+            ? `Caso asignado y email enviado a ${lawfirm.name}`
+            : `Caso asignado a ${lawfirm.name} (sin envío de email)`
+        );
+      } else {
+        // Asignación creada pero email falló: status_delivery ya quedó 'failed' por la edge function
+        toast.error(
+          `Caso asignado pero el email NO se envió: ${emailError}. Puedes reenviarlo desde Asignaciones globales.`,
+          { duration: 8000 }
+        );
+      }
+
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
       console.error('Assignment error:', error);
-      toast.error('Error al asignar el lead');
+      toast.error(error instanceof Error ? error.message : 'Error al asignar el lead');
     } finally {
       setIsAssigning(false);
     }
