@@ -6,7 +6,22 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Cog, Check, Copy, Download, Upload, Loader2, Radio, FileText, Save, RotateCcw, Sparkles } from 'lucide-react';
+import { Cog, Check, Copy, Download, Upload, Loader2, Radio, FileText, Save, RotateCcw, Sparkles, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Link } from 'react-router-dom';
+
+// =====================================================================
+// LEGACY PANEL — NO TOCAR LA LÓGICA DE NEGOCIO
+//
+// Esta página queda marcada como obsoleta a partir de Fase 6.
+// El scoring real se gestiona desde:
+//   /settings/ai-prompts → prompt_key: lexcore_scoring_system
+//
+// Se mantiene visible (sin borrar) por seguridad, pero en modo readonly
+// para evitar dos fuentes de verdad. Cuando se migren tramos/pesos a
+// ai_prompts se podrá eliminar definitivamente.
+// =====================================================================
+const LEGACY_READONLY = true;
 import { 
   useLexcoreConfigs, 
   useActivateConfig, 
@@ -43,17 +58,26 @@ export default function LexcoreConfig() {
   
   const activeConfig = configs?.find(c => c.is_active);
 
+  // Guard de readonly: cualquier intento de escritura desde la UI legacy se bloquea aquí.
+  const legacyBlock = () => {
+    toast.error('Módulo legacy en solo lectura. Configura el scoring en /settings/ai-prompts (lexcore_scoring_system).');
+    return true;
+  };
+
   const handleActivate = async (configId: string) => {
+    if (LEGACY_READONLY) return legacyBlock();
     await activateConfig.mutateAsync(configId);
   };
 
   const handleDuplicate = (config: LexcoreConfigType) => {
+    if (LEGACY_READONLY) return legacyBlock();
     setSelectedConfig(config);
     setNewVersionName(`${config.version_name} (copia)`);
     setDuplicateDialogOpen(true);
   };
 
   const confirmDuplicate = async () => {
+    if (LEGACY_READONLY) return legacyBlock();
     if (selectedConfig && newVersionName.trim()) {
       await duplicateConfig.mutateAsync({ 
         config: selectedConfig, 
@@ -66,6 +90,7 @@ export default function LexcoreConfig() {
   };
 
   const handleExport = (config: LexcoreConfigType) => {
+    // Exportar (descarga JSON) sigue permitido — es solo lectura.
     const blob = new Blob([JSON.stringify(config.config_json, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -77,6 +102,7 @@ export default function LexcoreConfig() {
   };
 
   const handleUpdatePriceSteps = async (configId: string, priceSteps: PriceStep[]) => {
+    if (LEGACY_READONLY) return legacyBlock();
     if (!activeConfig) return;
     const newConfigJson: LexcoreConfigJson = {
       ...activeConfig.config_json,
@@ -86,6 +112,7 @@ export default function LexcoreConfig() {
   };
 
   const handleUpdateWeights = async (configId: string, mode: 'a' | 'b', weights: Record<string, number>) => {
+    if (LEGACY_READONLY) return legacyBlock();
     if (!activeConfig) return;
     const key = mode === 'a' ? 'weights_mode_a' : 'weights_mode_b';
     const newConfigJson: LexcoreConfigJson = {
@@ -94,6 +121,7 @@ export default function LexcoreConfig() {
     };
     await updateConfigJson.mutateAsync({ configId, configJson: newConfigJson });
   };
+
 
   // Find the lexcore_scoring_rules prompt
   const scoringRulesPrompt = aiPrompts?.find(p => p.prompt_key === 'lexcore_scoring_rules');
@@ -112,9 +140,34 @@ export default function LexcoreConfig() {
         <h1 className="text-2xl font-display font-bold flex items-center gap-2">
           <Cog className="h-6 w-6" />
           Configuración Lexcore
+          <Badge variant="outline" className="ml-2 border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/30">
+            Legacy
+          </Badge>
         </h1>
-        <p className="text-muted-foreground">Ajustes del sistema de scoring</p>
+        <p className="text-muted-foreground">Ajustes del sistema de scoring (módulo obsoleto)</p>
       </div>
+
+      <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+        <AlertTriangle className="h-4 w-4 text-amber-600" />
+        <AlertTitle className="text-amber-800 dark:text-amber-300">
+          Este módulo está obsoleto
+        </AlertTitle>
+        <AlertDescription className="text-amber-700 dark:text-amber-400 space-y-2">
+          <p>
+            El scoring actual se configura en{' '}
+            <Link
+              to="/settings/ai-prompts"
+              className="font-semibold underline inline-flex items-center gap-1"
+            >
+              Centro IA → Lexcore <ExternalLink className="h-3 w-3" />
+            </Link>
+            {' '}(prompt <code className="text-xs bg-amber-100 dark:bg-amber-900/50 px-1 rounded">lexcore_scoring_system</code>).
+          </p>
+          <p className="text-xs">
+            Esta página se mantiene en <strong>modo solo lectura</strong> por seguridad. La edición está deshabilitada para evitar dos fuentes de verdad. La eliminación definitiva está planificada para una fase posterior.
+          </p>
+        </AlertDescription>
+      </Alert>
 
       <Card className="shadow-soft">
         <CardContent className="p-0">
@@ -151,6 +204,10 @@ export default function LexcoreConfig() {
               <ScoringRulesEditor 
                 prompt={scoringRulesPrompt}
                 onSave={async (id, text) => {
+                  if (LEGACY_READONLY) {
+                    legacyBlock();
+                    return;
+                  }
                   await updateAiPrompt.mutateAsync({ id, prompt_text: text });
                 }}
                 isPending={updateAiPrompt.isPending}
