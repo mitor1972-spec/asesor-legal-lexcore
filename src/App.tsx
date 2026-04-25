@@ -29,6 +29,7 @@ import AdProductsAdmin from "@/pages/settings/AdProductsAdmin";
 import QualityControl from "@/pages/settings/QualityControl";
 import SeoAnalyzer from "@/pages/settings/SeoAnalyzer";
 import ProviderMarketplace from "@/pages/settings/ProviderMarketplace";
+import AssignmentsTracking from "@/pages/settings/AssignmentsTracking";
 import LawfirmDashboard from "@/pages/lawfirm/LawfirmDashboard";
 import LawfirmCases from "@/pages/lawfirm/LawfirmCases";
 import LawfirmCaseDetail from "@/pages/lawfirm/LawfirmCaseDetail";
@@ -101,6 +102,7 @@ const App = () => (
                   <Route path="settings/ad-products" element={<RequireAdmin><AdProductsAdmin /></RequireAdmin>} />
                   <Route path="settings/seo-analyzer" element={<RequireAdmin><SeoAnalyzer /></RequireAdmin>} />
                   <Route path="settings/provider-marketplace" element={<RequireAdmin><ProviderMarketplace /></RequireAdmin>} />
+                  <Route path="settings/assignments-tracking" element={<RequireAdmin><AssignmentsTracking /></RequireAdmin>} />
                   <Route path="informes/ventas" element={<SalesReport />} />
                 </Route>
                 <Route path="/despacho" element={<LawfirmLayout />}>

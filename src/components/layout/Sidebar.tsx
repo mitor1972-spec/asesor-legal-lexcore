@@ -2,7 +2,7 @@ import { forwardRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog, ChevronDown, Key, Cog, Building2, BarChart3, MessageSquare, FileCheck, Bot, AlertTriangle, Crown, ShieldCheck, ClipboardList, Megaphone, Search, Store } from 'lucide-react';
+import { Scale, LayoutDashboard, Users, Plus, Settings, X, UserCog, ChevronDown, Key, Cog, Building2, BarChart3, MessageSquare, FileCheck, Bot, AlertTriangle, Crown, ShieldCheck, ClipboardList, Megaphone, Search, Store, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -29,6 +29,7 @@ const configSubItems = [
   { label: 'Leads Descartados', href: '/settings/discarded-leads', icon: AlertTriangle },
   { label: 'Verificación SEO', href: '/settings/seo-analyzer', icon: Search },
   { label: 'Marketplace Proveedores', href: '/settings/provider-marketplace', icon: Store },
+  { label: 'Asignaciones globales', href: '/settings/assignments-tracking', icon: Send },
 ];
 
 interface SidebarProps {
