@@ -1,165 +1,181 @@
-import { useState } from 'react';
-import { useAiPrompts, useUpdateAiPrompt } from '@/hooks/useAiPrompts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, Bot, Sparkles, RotateCcw } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { useMemo, useState } from 'react';
+import { useAiPrompts, AiPrompt } from '@/hooks/useAiPrompts';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, Bot, Sparkles, Gauge, LifeBuoy, BarChart3, ScrollText, Info } from 'lucide-react';
+import { PromptCard } from '@/components/ai/PromptCard';
+import { TestPromptDialog } from '@/components/ai/TestPromptDialog';
+import { AiLogsTab } from '@/components/ai/AiLogsTab';
 
-const PROMPT_ICONS: Record<string, React.ReactNode> = {
-  'marketplace_summary': <Sparkles className="h-5 w-5" />,
-  'scoring_conclusion': <Bot className="h-5 w-5" />,
-};
-
-const DEFAULT_PROMPTS: Record<string, string> = {
-  'marketplace_summary': 'Un párrafo de 3-5 frases que describa de qué trata este caso legal de forma clara y atractiva para abogados. Debe explicar: el tipo de problema legal, la situación del cliente, qué busca conseguir y por qué es un caso interesante. NO incluir datos personales (nombre, teléfono, email). Redactar en tercera persona.',
-  'scoring_conclusion': '2-4 líneas resumiendo el lead y el scoring',
-};
+// =====================================================================
+// Logical grouping for the UI. If a prompt_key is not listed here it
+// will appear under "Otros" so nothing is ever hidden.
+// =====================================================================
+const GROUPS: Array<{
+  key: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  prompt_keys: string[];
+}> = [
+  {
+    key: 'leads',
+    title: 'Leads',
+    description: 'Extracción, ficha interna y resumen público de cada lead.',
+    icon: <Sparkles className="h-4 w-4" />,
+    prompt_keys: ['extract_lead', 'case_summary', 'marketplace_summary'],
+  },
+  {
+    key: 'scoring',
+    title: 'Scoring (Lexcore)',
+    description: 'Cálculo y conclusión del scoring Lexcore.',
+    icon: <Gauge className="h-4 w-4" />,
+    prompt_keys: ['lexcore_scoring_system', 'lexcore_scoring_rules', 'scoring_conclusion'],
+  },
+  {
+    key: 'support',
+    title: 'Soporte al despacho',
+    description: 'Ayuda legal y procesado de documentos para abogados.',
+    icon: <LifeBuoy className="h-4 w-4" />,
+    prompt_keys: ['legal_help', 'process_document'],
+  },
+  {
+    key: 'commercial',
+    title: 'Comercial / Marketing',
+    description: 'Asistente comercial y auditoría SEO.',
+    icon: <BarChart3 className="h-4 w-4" />,
+    prompt_keys: ['commercial_assistant', 'seo_analyzer'],
+  },
+];
 
 export default function AiPromptsSettings() {
   const { data: prompts, isLoading } = useAiPrompts();
-  const updatePrompt = useUpdateAiPrompt();
-  const [editedPrompts, setEditedPrompts] = useState<Record<string, string>>({});
+  const [testPrompt, setTestPrompt] = useState<AiPrompt | null>(null);
+  const [testOpen, setTestOpen] = useState(false);
 
-  const handleChange = (id: string, value: string) => {
-    setEditedPrompts(prev => ({ ...prev, [id]: value }));
-  };
+  const grouped = useMemo(() => {
+    const byKey = new Map((prompts ?? []).map((p) => [p.prompt_key, p]));
+    const placedKeys = new Set<string>();
+    const groups = GROUPS.map((g) => {
+      const items = g.prompt_keys
+        .map((k) => byKey.get(k))
+        .filter((p): p is AiPrompt => Boolean(p));
+      items.forEach((i) => placedKeys.add(i.prompt_key));
+      return { ...g, items };
+    });
+    const others = (prompts ?? []).filter((p) => !placedKeys.has(p.prompt_key));
+    return { groups, others };
+  }, [prompts]);
 
-  const handleSave = async (id: string) => {
-    const newText = editedPrompts[id];
-    if (newText !== undefined) {
-      await updatePrompt.mutateAsync({ id, prompt_text: newText });
-      setEditedPrompts(prev => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    }
-  };
-
-  const handleReset = (id: string, key: string) => {
-    const defaultText = DEFAULT_PROMPTS[key];
-    if (defaultText) {
-      setEditedPrompts(prev => ({ ...prev, [id]: defaultText }));
-    }
-  };
-
-  const hasChanges = (id: string, originalText: string) => {
-    return editedPrompts[id] !== undefined && editedPrompts[id] !== originalText;
+  const handleTest = (prompt: AiPrompt) => {
+    setTestPrompt(prompt);
+    setTestOpen(true);
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
+  const totalActive = (prompts ?? []).filter((p) => p.is_active).length;
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-display font-bold flex items-center gap-2">
-          <Bot className="h-6 w-6" />
-          Instrucciones IA
-        </h1>
-        <p className="text-muted-foreground">
-          Configura las instrucciones que la IA utiliza para generar resúmenes y conclusiones
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-display font-bold flex items-center gap-2">
+            <Bot className="h-6 w-6" />
+            Centro de control IA
+          </h1>
+          <p className="text-muted-foreground">
+            Único punto de gestión de todos los prompts del sistema. Edita, activa/desactiva y prueba sin tocar producción.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="font-semibold text-foreground">{totalActive}</span> prompts activos /
+          <span className="font-semibold text-foreground">{prompts?.length ?? 0}</span> totales
+        </div>
       </div>
 
-      <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
-        <CardContent className="py-4">
-          <div className="flex items-start gap-3">
-            <Sparkles className="h-5 w-5 text-primary mt-0.5" />
-            <div>
-              <p className="text-sm font-medium">¿Cómo funcionan estas instrucciones?</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Estas instrucciones se envían a la IA cada vez que se calcula el scoring de un lead.
-                La IA las usa para generar los resúmenes y conclusiones. Si modificas las instrucciones,
-                los nuevos leads usarán las nuevas instrucciones. Para actualizar leads existentes,
-                usa el botón "Re-ejecutar Lexcore" en la página de Leads.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Alert className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
+        <Info className="h-4 w-4 text-primary" />
+        <AlertTitle>Single source of truth</AlertTitle>
+        <AlertDescription className="text-sm">
+          Toda la lógica IA del sistema se sirve desde la tabla <code>ai_prompts</code> a través
+          del helper centralizado <code>_shared/ai-client.ts</code>. Cada ejecución (real o de
+          prueba) se registra en <code>ai_logs</code>.{' '}
+          <strong>La sección antigua &laquo;Configuración Lexcore&raquo; queda como legacy</strong>{' '}
+          hasta que validemos la migración completa de las edge functions (Fase 6).
+        </AlertDescription>
+      </Alert>
 
-      <div className="space-y-6">
-        {prompts?.map((prompt) => {
-          const currentText = editedPrompts[prompt.id] ?? prompt.prompt_text;
-          const isModified = hasChanges(prompt.id, prompt.prompt_text);
+      <Tabs defaultValue="prompts" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="prompts" className="flex items-center gap-2">
+            <Bot className="h-4 w-4" /> Prompts
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-2">
+            <ScrollText className="h-4 w-4" /> Logs de ejecución
+          </TabsTrigger>
+        </TabsList>
 
-          return (
-            <Card key={prompt.id} className="shadow-soft">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                      {PROMPT_ICONS[prompt.prompt_key] || <Bot className="h-5 w-5" />}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{prompt.prompt_name}</CardTitle>
-                      <CardDescription>{prompt.description}</CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isModified && (
-                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
-                        Sin guardar
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="text-xs">
-                      {prompt.prompt_key}
-                    </Badge>
-                  </div>
+        <TabsContent value="prompts" className="space-y-8">
+          {grouped.groups.map((group) => (
+            <section key={group.key} className="space-y-3">
+              <div className="flex items-center gap-2 border-b pb-2">
+                <div className="p-1.5 rounded bg-primary/10 text-primary">{group.icon}</div>
+                <div>
+                  <h2 className="text-lg font-semibold">{group.title}</h2>
+                  <p className="text-xs text-muted-foreground">{group.description}</p>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Textarea
-                  value={currentText}
-                  onChange={(e) => handleChange(prompt.id, e.target.value)}
-                  className="min-h-[150px] font-mono text-sm"
-                  placeholder="Escribe las instrucciones para la IA..."
-                />
-                
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">
-                    Última actualización: {format(new Date(prompt.updated_at), "d MMM yyyy 'a las' HH:mm", { locale: es })}
-                  </p>
-                  
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleReset(prompt.id, prompt.prompt_key)}
-                      disabled={updatePrompt.isPending}
-                    >
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      Restaurar por defecto
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleSave(prompt.id)}
-                      disabled={!isModified || updatePrompt.isPending}
-                      className="gradient-brand"
-                    >
-                      {updatePrompt.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="mr-2 h-4 w-4" />
-                      )}
-                      Guardar cambios
-                    </Button>
-                  </div>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {group.items.length} prompt{group.items.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              {group.items.length === 0 ? (
+                <Card>
+                  <CardContent className="py-6 text-center text-sm text-muted-foreground">
+                    Sin prompts en esta sección.
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {group.items.map((p) => (
+                    <PromptCard key={p.id} prompt={p} onTest={handleTest} />
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+              )}
+            </section>
+          ))}
+
+          {grouped.others.length > 0 && (
+            <section className="space-y-3">
+              <div className="flex items-center gap-2 border-b pb-2">
+                <h2 className="text-lg font-semibold">Otros</h2>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {grouped.others.length} prompt{grouped.others.length === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div className="space-y-3">
+                {grouped.others.map((p) => (
+                  <PromptCard key={p.id} prompt={p} onTest={handleTest} />
+                ))}
+              </div>
+            </section>
+          )}
+        </TabsContent>
+
+        <TabsContent value="logs">
+          <AiLogsTab availablePromptKeys={(prompts ?? []).map((p) => p.prompt_key)} />
+        </TabsContent>
+      </Tabs>
+
+      <TestPromptDialog prompt={testPrompt} open={testOpen} onOpenChange={setTestOpen} />
     </div>
   );
 }

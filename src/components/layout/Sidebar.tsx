@@ -16,11 +16,16 @@ const navItems = [
   { label: 'Alta Despacho (vista)', href: '/alta-despacho', icon: ClipboardList },
 ];
 
-const configSubItems = [
+const configSubItems: Array<{
+  label: string;
+  href: string;
+  icon: typeof Crown;
+  badge?: string;
+}> = [
   { label: 'Config. Maestra', href: '/settings/master-config', icon: Crown },
   { label: 'API Keys', href: '/settings/api-keys', icon: Key },
-  { label: 'Configuración Lexcore', href: '/settings/lexcore', icon: Cog },
-  { label: 'Instrucciones IA', href: '/settings/ai-prompts', icon: Bot },
+  { label: 'Centro IA', href: '/settings/ai-prompts', icon: Bot },
+  { label: 'Lexcore (legacy)', href: '/settings/lexcore', icon: Cog, badge: 'Legacy' },
   { label: 'Gestión de Despachos', href: '/settings/lawfirms', icon: Building2 },
   { label: 'Solicitudes Despachos', href: '/settings/solicitudes', icon: FileCheck },
   { label: 'Chatwoot', href: '/settings/chatwoot', icon: MessageSquare },
@@ -138,7 +143,12 @@ const SidebarContent = forwardRef<HTMLDivElement, { onClose?: () => void }>(({ o
                       )}
                     >
                       <Icon className="h-4 w-4" />
-                      {item.label}
+                      <span className="flex-1">{item.label}</span>
+                      {item.badge && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                          {item.badge}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
