@@ -7,11 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Sparkles, Mail, FileText, Loader2, Copy, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Sparkles, Mail, FileText, Loader2, Copy, RefreshCw, AlertTriangle, Scale, FileSignature, Download } from 'lucide-react';
 import { useLegalHelp, useGenerateLegalHelp } from '@/hooks/useLegalHelp';
 import { useGenerateCaseSummary } from '@/hooks/useCaseSummary';
 import { processAndSanitize } from '@/lib/sanitize';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CaseAITabProps {
   leadId: string;
