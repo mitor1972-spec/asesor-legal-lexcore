@@ -3739,6 +3739,16 @@ export type Database = {
         Args: { _lawfirm_id: string; _user_id: string }
         Returns: boolean
       }
+      purchase_lead_atomic: {
+        Args: {
+          _commission_percent?: number
+          _is_commission?: boolean
+          _lawfirm_id: string
+          _lead_id: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       resolve_commission_origin: {
         Args: { _lawfirm_id: string; _specialty_id: string }
         Returns: string

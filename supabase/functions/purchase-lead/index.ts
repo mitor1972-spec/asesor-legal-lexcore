@@ -14,15 +14,20 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Get authenticated user
-    const authHeader = req.headers.get('Authorization')!;
+    // ---- AUTH ----
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'No autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const token = authHeader.replace('Bearer ', '');
-    
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
     if (userError || !user) {
       return new Response(
@@ -40,7 +45,7 @@ serve(async (req) => {
       );
     }
 
-    // SECURITY: Verify user belongs to the lawfirm they're purchasing for
+    // ---- AUTHORIZATION: user belongs to lawfirm OR is internal (admin/operator) ----
     const { data: userProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('lawfirm_id')
@@ -54,7 +59,6 @@ serve(async (req) => {
       );
     }
 
-    // Allow internal users (admin/operator) to purchase on behalf of any lawfirm (impersonation)
     const { data: userRole } = await supabaseAdmin
       .from('user_roles')
       .select('role')
@@ -65,9 +69,9 @@ serve(async (req) => {
     const isInternalUser = !!userRole;
 
     if (!isInternalUser && userProfile.lawfirm_id !== lawfirm_id) {
-      console.warn(`Security: User ${user.id} tried to purchase for lawfirm ${lawfirm_id} but belongs to ${userProfile.lawfirm_id}`);
+      console.warn(`[SECURITY] User ${user.id} tried to purchase for lawfirm ${lawfirm_id} but belongs to ${userProfile.lawfirm_id}`);
       return new Response(
-        JSON.stringify({ error: 'No autorizado: Solo puedes comprar para tu propio despacho' }),
+        JSON.stringify({ error: 'No autorizado: solo puedes comprar para tu propio despacho' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -76,201 +80,61 @@ serve(async (req) => {
       console.log(`[IMPERSONATION] Internal user ${user.id} purchasing for lawfirm ${lawfirm_id}`);
     }
 
-    // FASE 5: Check if lead is already assigned (EXCLUSIVITY)
-    const { data: existingAssignment } = await supabaseAdmin
-      .from('lead_assignments')
-      .select('id, lawfirm_id')
-      .eq('lead_id', lead_id)
-      .maybeSingle();
+    // ---- ATOMIC PURCHASE via RPC ----
+    // Single transaction with FOR UPDATE locking on leads + lawfirms.
+    // Handles: golden rule, exclusivity, balance check, deduction, assignment, history.
+    const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('purchase_lead_atomic', {
+      _lead_id: lead_id,
+      _lawfirm_id: lawfirm_id,
+      _user_id: user.id,
+      _is_commission: !!is_commission,
+      _commission_percent: is_commission ? (commission_percent ?? 20) : null,
+    });
 
-    if (existingAssignment) {
-      console.warn(`[EXCLUSIVITY] Lead ${lead_id} already assigned to lawfirm ${existingAssignment.lawfirm_id}`);
+    if (rpcError) {
+      console.error('[PURCHASE RPC ERROR]', rpcError);
       return new Response(
-        JSON.stringify({ error: 'Este lead ya ha sido asignado a otro despacho' }),
-        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: rpcError.message || 'Error interno al procesar la compra' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get lead details
-    const { data: lead, error: leadError } = await supabaseAdmin
-      .from('leads')
-      .select('*')
-      .eq('id', lead_id)
-      .eq('status_internal', 'Pendiente')
-      .single();
+    const result = rpcResult as Record<string, unknown>;
 
-    if (leadError || !lead) {
-      console.warn(`[PURCHASE] Lead ${lead_id} not found or not pending. Error: ${leadError?.message}`);
+    if (!result?.success) {
+      const code = (result?.code as string) || 'UNKNOWN';
+      const status =
+        code === 'ALREADY_ASSIGNED' ? 409 :
+        code === 'INSUFFICIENT_BALANCE' ? 400 :
+        code === 'NO_CONTACT' ? 400 :
+        code === 'LEAD_UNAVAILABLE' || code === 'LEAD_NOT_FOUND' ? 404 :
+        code === 'LAWFIRM_NOT_FOUND' ? 404 :
+        500;
+
+      console.warn(`[PURCHASE FAILED] code=${code} lead=${lead_id} lawfirm=${lawfirm_id} msg=${result?.error}`);
       return new Response(
-        JSON.stringify({ error: 'Lead no disponible en el marketplace' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: result?.error || 'No se pudo completar la compra', code }),
+        { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // GOLDEN RULE check
-    const fields = lead.structured_fields || {};
-    const hasEmail = fields.email && fields.email.trim() !== '';
-    const hasPhone = fields.telefono && fields.telefono.trim() !== '';
-    
-    if (!hasEmail && !hasPhone) {
-      console.warn(`[GOLDEN RULE] Lead ${lead_id} rejected: no email or phone`);
-      return new Response(
-        JSON.stringify({ error: 'Lead sin contacto válido' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get lawfirm balance
-    const { data: lawfirm, error: lawfirmError } = await supabaseAdmin
-      .from('lawfirms')
-      .select('id, name, marketplace_balance')
-      .eq('id', lawfirm_id)
-      .single();
-
-    if (lawfirmError || !lawfirm) {
-      return new Response(
-        JSON.stringify({ error: 'Despacho no encontrado' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const price = is_commission ? 0 : (lead.marketplace_price || lead.price_final || 0);
-    const currentBalance = lawfirm.marketplace_balance || 0;
-
-    if (!is_commission && currentBalance < price) {
-      return new Response(
-        JSON.stringify({ error: 'Saldo insuficiente' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const newBalance = currentBalance - price;
-
-    // Start transaction-like operations
-    // 1. Update lawfirm balance
-    const { error: balanceError } = await supabaseAdmin
-      .from('lawfirms')
-      .update({ marketplace_balance: newBalance })
-      .eq('id', lawfirm_id);
-
-    if (balanceError) {
-      console.error('Error updating balance:', balanceError);
-      throw new Error('Error al actualizar saldo');
-    }
-
-    // 2. Create purchase record
-    const { error: purchaseError } = await supabaseAdmin
-      .from('lead_purchases')
-      .insert({
-        lead_id,
-        lawfirm_id,
-        user_id: user.id,
-        price_paid: price,
-        previous_balance: currentBalance,
-        new_balance: newBalance,
-      });
-
-    if (purchaseError) {
-      console.error('Error creating purchase:', purchaseError);
-      // Rollback balance
-      await supabaseAdmin
-        .from('lawfirms')
-        .update({ marketplace_balance: currentBalance })
-        .eq('id', lawfirm_id);
-      throw new Error('Error al registrar compra');
-    }
-
-    // 3. Create balance transaction record
-    await supabaseAdmin
-      .from('balance_transactions')
-      .insert({
-        lawfirm_id,
-        type: 'purchase',
-        amount: -price,
-        description: `Compra de lead en LeadsMarket`,
-        reference_id: lead_id,
-        balance_before: currentBalance,
-        balance_after: newBalance,
-        created_by: user.id,
-      });
-
-    // 4. Remove lead from marketplace and update status
-    const { error: leadUpdateError } = await supabaseAdmin
-      .from('leads')
-      .update({
-        is_in_marketplace: false,
-        status_internal: 'Enviado',
-      })
-      .eq('id', lead_id);
-
-    if (leadUpdateError) {
-      console.error('Error updating lead:', leadUpdateError);
-    }
-
-    // 5. Create lead assignment
-    // NOTE: service_type only accepts: 'consulta'|'procedimiento'|'juicio'|'acuerdo'
-    // The commission vs marketplace distinction is tracked via the is_commission flag.
-    const { error: assignmentError } = await supabaseAdmin
-      .from('lead_assignments')
-      .insert({
-        lead_id,
-        lawfirm_id,
-        assigned_by_user_id: user.id,
-        status_delivery: 'delivered',
-        firm_status: 'received',
-        is_commission: is_commission || false,
-        commission_percent: is_commission ? (commission_percent || 20) : null,
-        commission_origin: is_commission ? 'marketplace_commission' : null,
-        commission_terms_confirmed_at: is_commission ? new Date().toISOString() : null,
-        lead_cost: is_commission ? 0 : price,
-      });
-
-    if (assignmentError) {
-      console.error('Error creating assignment:', assignmentError);
-      // Unique-violation race: another buyer beat us to it. Roll back balance.
-      if ((assignmentError as any).code === '23505') {
-        await supabaseAdmin
-          .from('lawfirms')
-          .update({ marketplace_balance: currentBalance })
-          .eq('id', lawfirm_id);
-        return new Response(
-          JSON.stringify({ error: 'Este lead ya ha sido asignado a otro despacho' }),
-          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      throw new Error(`Error al crear asignación: ${assignmentError.message}`);
-    }
-
-    // 6. Log the purchase in lead history
-    await supabaseAdmin
-      .from('lead_history')
-      .insert({
-        lead_id,
-        user_id: user.id,
-        action: 'purchased_marketplace',
-        details: {
-          lawfirm_id,
-          lawfirm_name: lawfirm.name,
-          price_paid: price,
-        },
-      });
-
-    console.log(`[PURCHASE SUCCESS] Lead ${lead_id} purchased by lawfirm ${lawfirm_id} (${lawfirm.name}) for ${price}€. New balance: ${newBalance}€`);
+    console.log(`[PURCHASE SUCCESS] lead=${lead_id} lawfirm=${lawfirm_id} price=${result.price_paid}€ balance=${result.new_balance}€`);
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
         purchase: {
           lead_id,
-          price_paid: price,
-          new_balance: newBalance,
-        }
+          price_paid: result.price_paid,
+          new_balance: result.new_balance,
+          is_commission: result.is_commission,
+        },
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: unknown) {
-    console.error('Error in purchase-lead function:', error);
+    console.error('[purchase-lead] uncaught', error);
     const message = error instanceof Error ? error.message : 'Error interno del servidor';
     return new Response(
       JSON.stringify({ error: message }),
