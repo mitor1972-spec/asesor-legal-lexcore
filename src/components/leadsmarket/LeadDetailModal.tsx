@@ -229,6 +229,40 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               </CardContent>
             </Card>
 
+            {/* Hechos clave (if extracted) */}
+            {redactedHechos && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <ClipboardList className="h-5 w-5 text-lawfirm-primary" />
+                    Hechos Clave
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-muted/30 p-4 rounded-lg">
+                    <p className="text-sm leading-relaxed whitespace-pre-line">{redactedHechos}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pretensión del cliente (if extracted) */}
+            {redactedPretension && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Target className="h-5 w-5 text-lawfirm-primary" />
+                    Pretensión del Cliente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-muted/30 p-4 rounded-lg">
+                    <p className="text-sm leading-relaxed whitespace-pre-line">{redactedPretension}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Case Summary (redacted) */}
             <Card>
               <CardHeader className="pb-3">
