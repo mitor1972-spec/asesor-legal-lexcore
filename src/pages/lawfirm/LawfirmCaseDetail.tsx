@@ -34,6 +34,7 @@ import { useUpdateOperationalStatus } from '@/hooks/useCaseOperationalStatus';
 import { CaseTimelineTab } from '@/components/lawfirm/CaseTimelineTab';
 import { CaseTasksTab } from '@/components/lawfirm/CaseTasksTab';
 import { CaseClientTab } from '@/components/lawfirm/CaseClientTab';
+import { UploadLinkDialog } from '@/components/lawfirm/UploadLinkDialog';
 
 const statusLabels: Record<string, string> = {
   received: 'Nuevo', reviewing: 'Revisando', contacted: 'Contactado',
@@ -56,6 +57,7 @@ export default function LawfirmCaseDetail() {
   const [resultType, setResultType] = useState<'won' | 'lost'>('won');
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [uploadLinkOpen, setUploadLinkOpen] = useState(false);
 
   if (caseData && !isNotesLoaded) {
     setNotes(caseData.firm_notes || '');
@@ -391,18 +393,31 @@ export default function LawfirmCaseDetail() {
       {/* Quick Actions */}
       <Card className="shadow-soft">
         <CardContent className="py-3 px-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">Acciones:</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground mr-1">Acciones rápidas:</span>
             {!caseData.contacted_at && (
               <Button size="sm" onClick={handleMarkContacted} disabled={updateStatus.isPending}>
-                <Phone className="h-4 w-4 mr-2" />Marcar contactado
+                <Phone className="h-4 w-4 mr-1.5" />Marcar contactado
               </Button>
             )}
-            <Button variant="outline" size="sm" className="text-green-600 border-green-600 hover:bg-green-50" onClick={() => { setResultType('won'); setResultDialogOpen(true); }}>
-              <CheckCircle2 className="h-4 w-4 mr-2" />Cerrar ganado
+            <Button size="sm" variant="outline" onClick={() => setUploadLinkOpen(true)}>
+              <Upload className="h-4 w-4 mr-1.5" />Solicitar documentos
             </Button>
-            <Button variant="outline" size="sm" className="text-destructive border-destructive hover:bg-destructive/10" onClick={() => { setResultType('lost'); setResultDialogOpen(true); }}>
-              <XCircle className="h-4 w-4 mr-2" />Perdido
+            {getContactPhone(f) && (
+              <Button size="sm" variant="outline" asChild>
+                <a href={`tel:${getContactPhone(f)}`}><Phone className="h-4 w-4 mr-1.5" />Llamar</a>
+              </Button>
+            )}
+            {getContactEmail(f) && (
+              <Button size="sm" variant="outline" asChild>
+                <a href={`mailto:${getContactEmail(f)}`}><Mail className="h-4 w-4 mr-1.5" />Email</a>
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="text-green-600 border-green-600 hover:bg-green-50" onClick={() => { setResultType('won'); setResultDialogOpen(true); }}>
+              <CheckCircle2 className="h-4 w-4 mr-1.5" />Cerrar ganado
+            </Button>
+            <Button size="sm" variant="outline" className="text-destructive border-destructive hover:bg-destructive/10" onClick={() => { setResultType('lost'); setResultDialogOpen(true); }}>
+              <XCircle className="h-4 w-4 mr-1.5" />Perdido
             </Button>
           </div>
         </CardContent>
@@ -417,6 +432,16 @@ export default function LawfirmCaseDetail() {
           assignmentId={id}
           currentBranchId={(caseData as any).branch_id || null}
           currentLawyerId={caseData.assigned_lawyer_id || null}
+        />
+      )}
+      {caseData.lead_id && (
+        <UploadLinkDialog
+          open={uploadLinkOpen}
+          onOpenChange={setUploadLinkOpen}
+          leadId={caseData.lead_id}
+          clientEmail={getContactEmail(f)}
+          clientPhone={getContactPhone(f)}
+          clientName={getDisplayName(f)}
         />
       )}
     </div>
