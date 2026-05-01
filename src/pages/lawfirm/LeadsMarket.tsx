@@ -400,11 +400,16 @@ export default function LeadsMarket() {
       return;
     }
 
-    // Stripe checkout works one lead at a time
-    const leadId = selectedIds[0];
-    if (selectedIds.length > 1) {
-      toast.info('El pago con tarjeta procesa un lead a la vez. Se procesará el primero seleccionado.');
+    // Stripe Checkout sólo soporta 1 lead por sesión (compra múltiple real no implementada)
+    const paidIds = selectedIds.filter(id => {
+      const it = cartItems.find(c => c.id === id);
+      return it && !it.isCommission;
+    });
+    if (paidIds.length > 1) {
+      toast.error('Pago con tarjeta: selecciona un solo lead. Para varios usa saldo o línea de crédito.');
+      return;
     }
+    const leadId = paidIds[0] || selectedIds[0];
 
     setIsCheckingOut(true);
     try {
