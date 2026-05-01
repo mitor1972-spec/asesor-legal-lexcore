@@ -14,6 +14,9 @@ import type { MarketplaceLead } from '@/types/marketplace';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { redactContactFromText, isContactField, LEXCORE_SCORING_GROUPS, getGroupScore, hasAnyScoring, extractSection } from '@/lib/contactSanitizer';
+import { buildLegalOrientation } from '@/lib/legalDefaults';
+import { processAndSanitize } from '@/lib/sanitize';
+import { Clock, FileCheck } from 'lucide-react';
 
 interface LeadDetailModalProps {
   lead: MarketplaceLead | null;
