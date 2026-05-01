@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
 
 // Block private/internal IP ranges and cloud metadata endpoints to prevent SSRF
 function isPrivateOrLocalHost(hostname: string): boolean {
@@ -157,9 +153,8 @@ Responde SOLO con JSON válido (sin markdown, sin backticks). Estructura exacta:
 1. Indexación aparente 2. Robots/meta robots 3. Sitemap 4. HTTPS 5. Velocidad básica 6. Adaptación móvil 7. Title SEO 8. Meta description 9. H1 10. Estructura H2-H3 11. URL amigable 12. Longitud/calidad contenido 13. Keyword principal 14. Intención de búsqueda 15. Contenido duplicado/genérico 16. EEAT/confianza/autoridad 17. NAP (nombre-dirección-teléfono) 18. Ciudad/provincia visible 19. Señales SEO local 20. CTA visible 21. Formulario/contacto 22. Propuesta de valor 23. Enlazado interno 24. Autoridad básica 25. Preparación SEO para IA 26. Claridad semántica 27. Estructura de respuestas 28. FAQ o bloques informativos 29. Comprensión del servicio por IA 30. Potencial de captación`;
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const __pre = handleCorsPreflight(req); if (__pre) return __pre;
+  const corsHeaders = buildCorsHeaders(req);
 
   try {
     // === AUTH CHECK ===

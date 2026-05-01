@@ -13,11 +13,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
 
 // Fallback en caso de que el prompt no esté en BD (deploy inicial / BD vacía).
 const FALLBACK_SYSTEM_PROMPT = `Eres un asesor comercial experto de Asesor.Legal / LexMarket. Ayudas a abogados españoles a elegir la mejor estrategia de captación de clientes y publicidad para su despacho. Sé claro, profesional, conciso y orientado a resultados. Responde siempre en español.`;
@@ -84,9 +80,8 @@ async function logToAiLogs(
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const __pre = handleCorsPreflight(req); if (__pre) return __pre;
+  const corsHeaders = buildCorsHeaders(req);
 
   try {
     // ---- Auth ----

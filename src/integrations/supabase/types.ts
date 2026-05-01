@@ -2280,6 +2280,7 @@ export type Database = {
           price_final: number | null
           score_final: number | null
           source_channel: Database["public"]["Enums"]["source_channel"] | null
+          specialty_id: string | null
           status_internal: Database["public"]["Enums"]["lead_status"] | null
           structured_fields: Json | null
           updated_at: string | null
@@ -2304,6 +2305,7 @@ export type Database = {
           price_final?: number | null
           score_final?: number | null
           source_channel?: Database["public"]["Enums"]["source_channel"] | null
+          specialty_id?: string | null
           status_internal?: Database["public"]["Enums"]["lead_status"] | null
           structured_fields?: Json | null
           updated_at?: string | null
@@ -2328,6 +2330,7 @@ export type Database = {
           price_final?: number | null
           score_final?: number | null
           source_channel?: Database["public"]["Enums"]["source_channel"] | null
+          specialty_id?: string | null
           status_internal?: Database["public"]["Enums"]["lead_status"] | null
           structured_fields?: Json | null
           updated_at?: string | null
@@ -2338,6 +2341,13 @@ export type Database = {
             columns: ["created_by_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_specialty_id_fkey"
+            columns: ["specialty_id"]
+            isOneToOne: false
+            referencedRelation: "master_specialties"
             referencedColumns: ["id"]
           },
         ]
