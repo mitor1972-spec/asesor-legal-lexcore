@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -161,6 +161,7 @@ export function AdminAlertsFeed({ alerts }: { alerts: LawfirmAlert[] }) {
 // ─── Recent Lawfirms Table ─────────────────────────────────
 
 export function RecentLawfirmsTable({ lawfirms }: { lawfirms: AdminCRMData['recentLawfirms'] }) {
+  const navigate = useNavigate();
   return (
     <Card className="shadow-soft">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -195,7 +196,11 @@ export function RecentLawfirmsTable({ lawfirms }: { lawfirms: AdminCRMData['rece
               </TableRow>
             ) : (
               lawfirms.map(lf => (
-                <TableRow key={lf.id} className="cursor-pointer hover:bg-muted/50">
+                <TableRow
+                  key={lf.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate(`/settings/lawfirms?highlight=${lf.id}`)}
+                >
                   <TableCell className="text-xs">
                     {format(new Date(lf.createdAt), 'dd/MM/yy', { locale: es })}
                   </TableCell>
