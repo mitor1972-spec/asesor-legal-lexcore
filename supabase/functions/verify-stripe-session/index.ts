@@ -50,13 +50,18 @@ serve(async (req) => {
       .eq('transaction_id', sessionId)
       .single();
 
+    const leadIdFromMetadata = (session.metadata as Record<string, string> | null)?.lead_id;
+    const lead_id = payment?.lead_id || leadIdFromMetadata || null;
+
     return new Response(JSON.stringify({
       id: session.id,
       amount_total: session.amount_total,
       currency: session.currency,
       payment_status: session.payment_status,
       customer_email: session.customer_email,
+      metadata: session.metadata,
       payment_db: payment,
+      lead_id,
     }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
