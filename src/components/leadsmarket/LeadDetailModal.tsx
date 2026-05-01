@@ -362,12 +362,8 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               </CardContent>
             </Card>
 
-            {/* Legal Orientation Placeholder */}
-            <Card className="border-lawfirm-primary/20 bg-lawfirm-primary/5">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-lawfirm-primary" />
-            {/* Legal Orientation (real content shown BEFORE purchase) */}
+
+
             <Card className="border-lawfirm-primary/20 bg-lawfirm-primary/5">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
