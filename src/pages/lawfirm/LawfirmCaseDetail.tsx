@@ -313,7 +313,7 @@ export default function LawfirmCaseDetail() {
 
         {/* DOCUMENTOS TAB */}
         <TabsContent value="documents" className="mt-3">
-          {caseData.lead_id && <CaseDocumentsTab leadId={caseData.lead_id} />}
+          {caseData.lead_id && <CaseDocumentsTab leadId={caseData.lead_id} lawfirmId={caseData.lawfirm_id} />}
         </TabsContent>
 
         {/* IA TAB */}
