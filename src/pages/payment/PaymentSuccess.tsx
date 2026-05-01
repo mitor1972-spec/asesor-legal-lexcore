@@ -23,79 +23,86 @@ export default function PaymentSuccess() {
   const [status, setStatus] = useState<Status>('verifying');
   const [session, setSession] = useState<SessionData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
+  const cancelledRef = useRef(false);
 
-  useEffect(() => {
+  const verify = useCallback(async () => {
     if (!sessionId) {
       setError('No se encontró la sesión de pago');
       setStatus('error');
       return;
     }
 
-    let cancelled = false;
-
-    const verify = async () => {
-      // 1. Verificar sesión Stripe (debe devolver lead_id verificable)
-      let leadId: string | undefined;
-      let paymentStatus: string | undefined;
-      try {
-        const { data, error: fnError } = await supabase.functions.invoke('verify-stripe-session', {
-          body: { session_id: sessionId },
-        });
-        if (fnError || !data) {
-          setError('No se pudo verificar la sesión de pago');
-          setStatus('error');
-          return;
-        }
-        setSession({ id: sessionId, ...data });
-        leadId = data.lead_id || data.metadata?.lead_id || data.payment_db?.lead_id;
-        paymentStatus = data.payment_status;
-      } catch (e) {
-        console.error('[PaymentSuccess] verify-stripe-session falló', e);
+    let leadId: string | undefined;
+    let paymentStatus: string | undefined;
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('verify-stripe-session', {
+        body: { session_id: sessionId },
+      });
+      if (fnError || !data) {
         setError('No se pudo verificar la sesión de pago');
         setStatus('error');
         return;
       }
+      setSession({ id: sessionId, ...data });
+      leadId = data.lead_id || data.metadata?.lead_id || data.payment_db?.lead_id;
+      paymentStatus = data.payment_status;
+    } catch (e) {
+      console.error('[PaymentSuccess] verify-stripe-session falló', e);
+      setError('No se pudo verificar la sesión de pago');
+      setStatus('error');
+      return;
+    }
 
-      if (cancelled) return;
+    if (cancelledRef.current) return;
 
-      // Stripe debe haber confirmado el pago
-      if (paymentStatus && paymentStatus !== 'paid') {
-        setError('El pago aún no se ha confirmado en Stripe');
-        setStatus('error');
+    if (paymentStatus && paymentStatus !== 'paid') {
+      setError('El pago aún no se ha confirmado en Stripe');
+      setStatus('error');
+      return;
+    }
+
+    // Sin lead_id verificable: pago recibido pero NO confirmamos asignación.
+    if (!leadId) {
+      setStatus('pending_assignment');
+      return;
+    }
+
+    // Polling: solo confirmar éxito si existe assignment para ESTE lead_id de Stripe
+    for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
+      if (cancelledRef.current) return;
+      const { data } = await supabase
+        .from('lead_assignments')
+        .select('id')
+        .eq('lead_id', leadId)
+        .maybeSingle();
+      if (data) {
+        setStatus('assigned');
         return;
       }
+      await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+    }
 
-      // Sin lead_id verificable NO podemos confirmar asignación.
-      // Mostramos "pago recibido" pero nunca "asignado por error".
-      if (!leadId) {
-        setStatus('pending_assignment');
-        return;
-      }
-
-      // 2. Polling: buscar lead_assignment SOLO por lead_id verificado de Stripe
-      for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
-        if (cancelled) return;
-        const { data } = await supabase
-          .from('lead_assignments')
-          .select('id')
-          .eq('lead_id', leadId)
-          .maybeSingle();
-        if (data) {
-          setStatus('assigned');
-          return;
-        }
-        await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
-      }
-
-      // Timeout: el pago llegó pero la asignación tarda. NO marcar éxito.
-      if (!cancelled) setStatus('pending_assignment');
-    };
-
-    void verify();
-    return () => { cancelled = true; };
+    if (!cancelledRef.current) setStatus('pending_assignment');
   }, [sessionId]);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    void verify();
+    return () => { cancelledRef.current = true; };
+  }, [verify]);
+
+  const handleRetry = useCallback(async () => {
+    setRetrying(true);
+    setStatus('verifying');
+    setError(null);
+    cancelledRef.current = false;
+    await verify();
+    setRetrying(false);
+  }, [verify]);
+
 
   if (status === 'verifying') {
     return (
