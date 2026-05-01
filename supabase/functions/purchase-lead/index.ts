@@ -227,6 +227,17 @@ serve(async (req) => {
 
     if (assignmentError) {
       console.error('Error creating assignment:', assignmentError);
+      // Unique-violation race: another buyer beat us to it. Roll back balance.
+      if ((assignmentError as any).code === '23505') {
+        await supabaseAdmin
+          .from('lawfirms')
+          .update({ marketplace_balance: currentBalance })
+          .eq('id', lawfirm_id);
+        return new Response(
+          JSON.stringify({ error: 'Este lead ya ha sido asignado a otro despacho' }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       throw new Error(`Error al crear asignación: ${assignmentError.message}`);
     }
 
