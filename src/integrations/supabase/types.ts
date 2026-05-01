@@ -572,6 +572,7 @@ export type Database = {
       branches: {
         Row: {
           address: string | null
+          areas_accepted: string[] | null
           cif: string | null
           city: string | null
           created_at: string | null
@@ -580,6 +581,7 @@ export type Database = {
           is_demo: boolean | null
           lawfirm_id: string | null
           name: string
+          phone: string | null
           postal_code: string | null
           province: string | null
           responsible_email: string | null
@@ -587,6 +589,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          areas_accepted?: string[] | null
           cif?: string | null
           city?: string | null
           created_at?: string | null
@@ -595,6 +598,7 @@ export type Database = {
           is_demo?: boolean | null
           lawfirm_id?: string | null
           name: string
+          phone?: string | null
           postal_code?: string | null
           province?: string | null
           responsible_email?: string | null
@@ -602,6 +606,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          areas_accepted?: string[] | null
           cif?: string | null
           city?: string | null
           created_at?: string | null
@@ -610,6 +615,7 @@ export type Database = {
           is_demo?: boolean | null
           lawfirm_id?: string | null
           name?: string
+          phone?: string | null
           postal_code?: string | null
           province?: string | null
           responsible_email?: string | null
@@ -2715,6 +2721,8 @@ export type Database = {
           is_active: boolean | null
           is_demo: boolean | null
           lawfirm_id: string | null
+          legal_areas: string[] | null
+          phone: string | null
           theme_pref: Database["public"]["Enums"]["theme_pref"] | null
           updated_at: string | null
         }
@@ -2729,6 +2737,8 @@ export type Database = {
           is_active?: boolean | null
           is_demo?: boolean | null
           lawfirm_id?: string | null
+          legal_areas?: string[] | null
+          phone?: string | null
           theme_pref?: Database["public"]["Enums"]["theme_pref"] | null
           updated_at?: string | null
         }
@@ -2743,6 +2753,8 @@ export type Database = {
           is_active?: boolean | null
           is_demo?: boolean | null
           lawfirm_id?: string | null
+          legal_areas?: string[] | null
+          phone?: string | null
           theme_pref?: Database["public"]["Enums"]["theme_pref"] | null
           updated_at?: string | null
         }
