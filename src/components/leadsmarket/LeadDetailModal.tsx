@@ -43,6 +43,70 @@ function cleanValue(val: unknown): string | null {
   return s;
 }
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Minimal PII redaction: replaces ONLY name / phone / email values with
+ * placeholders. Preserves section headers, bullets, layout and the rest of
+ * the ficha so the lawyer sees the full case structure.
+ */
+function redactPIIOnly(
+  text: string,
+  fields: Record<string, any>,
+  lead: { contact_name?: string | null; contact_phone?: string | null; contact_email?: string | null } & Record<string, any>,
+): string {
+  if (!text) return '';
+  let out = text;
+
+  const name = (fields?.nombre || fields?.name || fields?.contact_name || (lead as any)?.contact_name || '').toString().trim();
+  const apellidos = (fields?.apellidos || '').toString().trim();
+  const phone = (fields?.telefono || fields?.phone || fields?.contact_phone || (lead as any)?.contact_phone || '').toString().trim();
+  const email = (fields?.email || fields?.correo || fields?.contact_email || (lead as any)?.contact_email || '').toString().trim();
+
+  // Full name combined ("José Antonio Puente Fernández")
+  if (name && apellidos) {
+    const full = `${name} ${apellidos}`.trim();
+    if (full.length > 3) {
+      out = out.replace(new RegExp(escapeRegex(full), 'gi'), '[NOMBRE OCULTO]');
+    }
+  }
+  if (name && name.length > 2) {
+    out = out.replace(new RegExp(escapeRegex(name), 'gi'), '[NOMBRE OCULTO]');
+  }
+  if (apellidos && apellidos.length > 2) {
+    out = out.replace(new RegExp(escapeRegex(apellidos), 'gi'), '[NOMBRE OCULTO]');
+  }
+
+  // Specific phone (any common format)
+  if (phone) {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length >= 9) {
+      out = out.replace(new RegExp(escapeRegex(phone), 'g'), '[TELÉFONO OCULTO]');
+      // Also the bare-digits variant
+      out = out.replace(new RegExp(digits, 'g'), '[TELÉFONO OCULTO]');
+    }
+  }
+
+  // Specific email
+  if (email && email.length > 4) {
+    out = out.replace(new RegExp(escapeRegex(email), 'gi'), '[EMAIL OCULTO]');
+  }
+
+  // Generic Spanish mobile / landline patterns (9 digits starting 6/7/8/9, possibly +34)
+  out = out.replace(
+    /(\+?34[\s.\-]?)?[6789]\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}/g,
+    '[TELÉFONO OCULTO]',
+  );
+
+  // Generic email pattern
+  out = out.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL OCULTO]');
+
+  return out;
+}
+
+
 export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, canAfford }: LeadDetailModalProps) {
   if (!lead) return null;
 
@@ -110,10 +174,12 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     );
   };
 
-  // Prefer marketplace_summary (already anonymized commercial copy).
-  // Fall back to case_summary (legacy ficha) only if marketplace_summary is missing.
-  const rawSummary = lead.marketplace_summary || lead.case_summary || '';
-  const redactedSummary = redactContactFromText(rawSummary, fields);
+  // Prefer the full case_summary (ficha completa) so the lawyer sees the same
+  // structured info as the admin. Fall back to marketplace_summary only if the
+  // full ficha is missing. We then apply a MINIMAL PII redaction that ONLY
+  // replaces contact data — without stripping section headers or layout.
+  const rawSummary = lead.case_summary || lead.marketplace_summary || '';
+  const redactedSummary = redactPIIOnly(rawSummary, fields, lead);
 
   // Hechos / pretensión: prefer explicit structured fields, then extract from legacy template.
   const hechosClave =
@@ -123,8 +189,8 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     cleanValue(fields.pretension_cliente) ||
     cleanValue(fields.objetivo_cliente) ||
     extractSection(lead.case_summary || rawSummary, ['Pretensión del cliente', 'Pretensión', 'Objetivo del cliente']);
-  const redactedHechos = hechosClave ? redactContactFromText(hechosClave, fields) : null;
-  const redactedPretension = pretension ? redactContactFromText(pretension, fields) : null;
+  const redactedHechos = hechosClave ? redactPIIOnly(hechosClave, fields, lead as any) : null;
+  const redactedPretension = pretension ? redactPIIOnly(pretension, fields, lead as any) : null;
 
   // Legal orientation (uses structured_fields if present, else fallback by area).
   const orientation = buildLegalOrientation(legalArea, fields as Record<string, unknown>);
@@ -290,7 +356,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               </CardHeader>
               <CardContent>
                 {redactedSummary ? (
-                  <div className="bg-muted/30 p-4 rounded-lg max-h-72 overflow-y-auto">
+                  <div className="bg-muted/30 p-4 rounded-lg">
                     <div
                       className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert"
                       dangerouslySetInnerHTML={{ __html: processAndSanitize(redactedSummary) }}
