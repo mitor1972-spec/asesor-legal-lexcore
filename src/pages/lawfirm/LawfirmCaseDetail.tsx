@@ -195,7 +195,7 @@ export default function LawfirmCaseDetail() {
 
       {/* Main Tabs: Datos, Economía, Documentos, IA, Seguimiento, Notas */}
       <Tabs defaultValue="datos">
-        <TabsList className="w-full justify-start flex-wrap">
+        <TabsList className="w-full justify-start flex-wrap bg-secondary-foreground text-destructive">
           <TabsTrigger value="datos"><FileText className="h-4 w-4 mr-1.5" />Resumen</TabsTrigger>
           <TabsTrigger value="cliente"><User className="h-4 w-4 mr-1.5" />Cliente</TabsTrigger>
           <TabsTrigger value="documents"><FolderOpen className="h-4 w-4 mr-1.5" />Documentos</TabsTrigger>
