@@ -8,7 +8,7 @@ import {
 import type { MarketplaceLead } from '@/types/marketplace';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { redactContactFromText } from '@/lib/contactSanitizer';
+import { extractCommercialExcerpt } from '@/lib/contactSanitizer';
 
 interface LeadMarketListItemProps {
   lead: MarketplaceLead;
@@ -52,10 +52,10 @@ export function LeadMarketListItem({ lead, onAddToCart, onViewDetails, isInCart,
     : null;
 
   const price = lead.marketplace_price || 0;
-  const redactedSummary = redactContactFromText(
-    lead.marketplace_summary || lead.case_summary?.substring(0, 150),
-    fields
-  );
+  const sourceSummary = lead.marketplace_summary || lead.case_summary || '';
+  const redactedSummary =
+    extractCommercialExcerpt(sourceSummary, fields, 180) ||
+    `Consulta de ${legalArea}${subarea ? ` · ${subarea}` : ''}. Detalles tras la compra.`;
 
   return (
     <Card className={`hover:shadow-md transition-all ${price >= 30 ? 'border-green-500/30 bg-green-500/[0.02]' : ''}`}>
