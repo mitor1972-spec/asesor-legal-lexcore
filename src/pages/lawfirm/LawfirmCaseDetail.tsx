@@ -48,6 +48,7 @@ export default function LawfirmCaseDetail() {
   const { data: caseData, isLoading } = useLawfirmCase(id);
   const updateStatus = useUpdateCaseStatus();
   const updateNotes = useUpdateCaseNotes();
+  const updateOperational = useUpdateOperationalStatus();
 
   const [notes, setNotes] = useState('');
   const [isNotesLoaded, setIsNotesLoaded] = useState(false);
