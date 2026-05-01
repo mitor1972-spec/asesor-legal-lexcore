@@ -249,54 +249,62 @@ export default function LawfirmDashboard() {
 
       {/* Quick Summary Row */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200/50 dark:border-blue-800/30">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-500/10">
-              <ShoppingCartIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{marketplaceLeads.length}</p>
-              <p className="text-xs text-muted-foreground">Leads disponibles</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20 border-green-200/50 dark:border-green-800/30">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-500/10">
-              <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{cases.length}</p>
-              <p className="text-xs text-muted-foreground">Tus casos</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-900/20 border-violet-200/50 dark:border-violet-800/30">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-violet-500/10">
-              <CreditCard className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{balance.toFixed(0)}€</p>
-              <p className="text-xs text-muted-foreground">Crédito disponible</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 border-amber-200/50 dark:border-amber-800/30">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/10">
-              <TrendingUp className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">
-                {cases.length > 0 
-                  ? Math.round((cases.filter(c => ['contacted','in_progress','won'].includes(c.firm_status)).length / cases.length) * 100)
-                  : 0}%
-              </p>
-              <p className="text-xs text-muted-foreground">Conversión</p>
-            </div>
-          </CardContent>
-        </Card>
+        <Link to="/despacho/leadsmarket" className="block group">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200/50 dark:border-blue-800/30 cursor-pointer transition-all group-hover:shadow-md group-hover:-translate-y-0.5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <ShoppingCartIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{marketplaceLeads.length}</p>
+                <p className="text-xs text-muted-foreground">Leads disponibles</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/despacho/casos" className="block group">
+          <Card className="bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/30 dark:to-green-900/20 border-green-200/50 dark:border-green-800/30 cursor-pointer transition-all group-hover:shadow-md group-hover:-translate-y-0.5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{cases.length}</p>
+                <p className="text-xs text-muted-foreground">Tus casos</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/despacho/facturacion" className="block group">
+          <Card className="bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-900/20 border-violet-200/50 dark:border-violet-800/30 cursor-pointer transition-all group-hover:shadow-md group-hover:-translate-y-0.5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-violet-500/10">
+                <CreditCard className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{balance.toFixed(0)}€</p>
+                <p className="text-xs text-muted-foreground">Crédito disponible</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/despacho/informes" className="block group">
+          <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20 border-amber-200/50 dark:border-amber-800/30 cursor-pointer transition-all group-hover:shadow-md group-hover:-translate-y-0.5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/10">
+                <TrendingUp className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">
+                  {cases.length > 0 
+                    ? Math.round((cases.filter(c => ['contacted','in_progress','won'].includes(c.firm_status)).length / cases.length) * 100)
+                    : 0}%
+                </p>
+                <p className="text-xs text-muted-foreground">Conversión</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Top Opportunities */}

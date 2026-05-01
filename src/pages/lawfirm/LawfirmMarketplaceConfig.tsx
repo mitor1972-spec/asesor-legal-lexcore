@@ -62,9 +62,9 @@ export default function LawfirmMarketplaceConfig() {
     }));
   };
 
-  // Get areas the lawfirm works with
+  // Get areas the lawfirm works with — fall back to ALL areas (44) so admin can configure freely
   const lawfirmAreas = lawfirm?.areas_accepted || [];
-  const areasToShow = lawfirmAreas.length > 0 ? lawfirmAreas : AREAS_LEGALES.slice(0, 8);
+  const areasToShow = lawfirmAreas.length > 0 ? lawfirmAreas : AREAS_LEGALES;
 
   if (isLoading) {
     return (
@@ -218,8 +218,13 @@ export default function LawfirmMarketplaceConfig() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Solo estas áreas:</Label>
-                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <Label>Solo estas áreas:</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {formData.auto_purchase_areas.length} / {areasToShow.length} seleccionadas
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-72 overflow-y-auto p-3 border rounded-lg">
                     {areasToShow.map(area => (
                       <div key={area} className="flex items-center gap-2">
                         <Checkbox

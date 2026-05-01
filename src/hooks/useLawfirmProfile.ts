@@ -116,6 +116,8 @@ interface TeamMember {
   created_at: string | null;
   role: string;
   branch_id: string | null;
+  legal_areas: string[] | null;
+  phone: string | null;
 }
 
 export function useLawfirmTeam() {
@@ -136,7 +138,9 @@ export function useLawfirmTeam() {
           full_name,
           is_active,
           created_at,
-          branch_id
+          branch_id,
+          legal_areas,
+          phone
         `)
         .eq('lawfirm_id', lawfirmId);
 
@@ -163,8 +167,12 @@ export function useLawfirmTeam() {
 interface Branch {
   id: string;
   name: string;
+  city: string | null;
   province: string | null;
+  address: string | null;
+  phone: string | null;
   email_derivations: string | null;
+  areas_accepted: string[] | null;
 }
 
 export function useLawfirmBranches() {
@@ -179,7 +187,7 @@ export function useLawfirmBranches() {
 
       const { data, error } = await supabase
         .from('branches')
-        .select('id, name, province, email_derivations')
+        .select('id, name, city, province, address, phone, email_derivations, areas_accepted')
         .eq('lawfirm_id', lawfirmId)
         .order('name');
 

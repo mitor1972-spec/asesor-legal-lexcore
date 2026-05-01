@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { AREAS_LEGALES, PROVINCIAS_ESPANA, URGENCY_LEVELS } from '@/lib/constants';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useLawfirmBranches, useLawfirmTeam, useLawfirmProfile } from '@/hooks/useLawfirmProfile';
+import { useMasterSpecialties } from '@/hooks/useMasterConfig';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Loader2, Plus, User, Scale, Euro, FileText, StickyNote } from 'lucide-react';
+import { Loader2, Plus, User, Scale, Euro, FileText, StickyNote, Building2 } from 'lucide-react';
 
 interface NewCaseDialogProps {
   open: boolean;
@@ -37,6 +39,10 @@ const ECONOMIC_STATUSES = [
 export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
+  const { data: lawfirm } = useLawfirmProfile();
+  const { data: branches = [] } = useLawfirmBranches();
+  const { data: team = [] } = useLawfirmTeam();
+  const { data: specialties = [] } = useMasterSpecialties();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [client, setClient] = useState({
@@ -57,13 +63,45 @@ export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
     cronologia: '', estrategia: '', observaciones: '',
   });
 
+  const [assignment, setAssignment] = useState({ branch_id: '__none__', lawyer_id: '__none__' });
+
   const [descripcion, setDescripcion] = useState('');
+
+  // Areas available for legal area selector — filtered by branch if any
+  const branchAreasNames = useMemo(() => {
+    if (assignment.branch_id === '__none__') return null;
+    const branch = (branches as any[]).find(b => b.id === assignment.branch_id);
+    const ids: string[] = branch?.areas_accepted || [];
+    if (ids.length === 0) return [];
+    const namesById = new Map((specialties as any[]).map(s => [s.id, s.name]));
+    return ids.map(id => namesById.get(id)).filter(Boolean) as string[];
+  }, [assignment.branch_id, branches, specialties]);
+
+  const areasForSelect = branchAreasNames && branchAreasNames.length > 0
+    ? branchAreasNames
+    : AREAS_LEGALES;
+
+  // Lawyers filtered by branch
+  const filteredLawyers = useMemo(() => {
+    const list = team as any[];
+    if (assignment.branch_id === '__none__') return list;
+    return list.filter(m => !m.branch_id || m.branch_id === assignment.branch_id);
+  }, [team, assignment.branch_id]);
+
+  // Reset lawyer if it no longer matches branch
+  useEffect(() => {
+    if (assignment.lawyer_id === '__none__') return;
+    if (!filteredLawyers.some((l: any) => l.id === assignment.lawyer_id)) {
+      setAssignment(p => ({ ...p, lawyer_id: '__none__' }));
+    }
+  }, [filteredLawyers, assignment.lawyer_id]);
 
   const resetForm = () => {
     setClient({ nombre: '', apellidos: '', telefono: '', email: '', direccion: '', notas_cliente: '' });
     setLegal({ area_legal: '', subarea: '', case_type: 'crm_manual', provincia: '', cuantia: '', urgencia: false, urgencia_nivel: '', caso_estrella: false });
     setEconomics({ minuta_fija: '', otros_cargos: '', porcentaje_exito: '', cuantia_exito: '', estado_economico: 'pending_budget' });
     setNotes({ cronologia: '', estrategia: '', observaciones: '' });
+    setAssignment({ branch_id: '__none__', lawyer_id: '__none__' });
     setDescripcion('');
   };
 
@@ -133,6 +171,8 @@ export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
         success_percentage: economics.porcentaje_exito ? parseFloat(economics.porcentaje_exito) : null,
         claimed_amount: economics.cuantia_exito ? parseFloat(economics.cuantia_exito) : null,
         firm_notes: [notes.cronologia, notes.estrategia, notes.observaciones].filter(Boolean).join('\n\n---\n\n') || null,
+        branch_id: assignment.branch_id !== '__none__' ? assignment.branch_id : null,
+        assigned_lawyer_id: assignment.lawyer_id !== '__none__' ? assignment.lawyer_id : null,
       };
 
       const { error: assignError } = await supabase
@@ -168,6 +208,7 @@ export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
           <TabsList className="w-full justify-start shrink-0">
             <TabsTrigger value="client" className="text-xs gap-1"><User className="h-3.5 w-3.5" />Cliente</TabsTrigger>
             <TabsTrigger value="legal" className="text-xs gap-1"><Scale className="h-3.5 w-3.5" />Legal</TabsTrigger>
+            <TabsTrigger value="assignment" className="text-xs gap-1"><Building2 className="h-3.5 w-3.5" />Asignación</TabsTrigger>
             <TabsTrigger value="economics" className="text-xs gap-1"><Euro className="h-3.5 w-3.5" />Economía</TabsTrigger>
             <TabsTrigger value="notes" className="text-xs gap-1"><StickyNote className="h-3.5 w-3.5" />Notas</TabsTrigger>
           </TabsList>
@@ -217,9 +258,12 @@ export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
                   <Select value={legal.area_legal} onValueChange={v => setLegal(p => ({ ...p, area_legal: v }))}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                     <SelectContent>
-                      {AREAS_LEGALES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                      {areasForSelect.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {assignment.branch_id !== '__none__' && branchAreasNames && branchAreasNames.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground">Solo áreas de la sucursal seleccionada</p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Subárea / Tipo</Label>
@@ -276,6 +320,56 @@ export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
                   <p className="text-xs text-muted-foreground">Destacar internamente</p>
                 </div>
                 <Switch checked={legal.caso_estrella} onCheckedChange={c => setLegal(p => ({ ...p, caso_estrella: c }))} />
+              </div>
+            </TabsContent>
+
+            {/* ASSIGNMENT TAB */}
+            <TabsContent value="assignment" className="mt-0 space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Sucursal</Label>
+                <Select value={assignment.branch_id} onValueChange={v => setAssignment(p => ({ ...p, branch_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin asignar</SelectItem>
+                    {(branches as any[]).map(b => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}{b.province ? ` — ${b.province}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(branches as any[]).length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    No hay sucursales creadas. Puedes crearlas en Equipo → Sucursales.
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Abogado responsable</Label>
+                <Select value={assignment.lawyer_id} onValueChange={v => setAssignment(p => ({ ...p, lawyer_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin asignar</SelectItem>
+                    {filteredLawyers.map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.full_name || m.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {assignment.branch_id !== '__none__' && filteredLawyers.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    No hay abogados vinculados a esta sucursal.
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-muted/50 rounded-md p-3 text-xs space-y-1">
+                <p className="font-medium">Reglas de herencia</p>
+                <p className="text-muted-foreground">• Si seleccionas una sucursal, las áreas legales del caso se filtran a las que cubre esa oficina.</p>
+                <p className="text-muted-foreground">• Los abogados se filtran por sucursal seleccionada.</p>
+                <p className="text-muted-foreground">• Sin asignación, el caso queda disponible para todo el despacho.</p>
               </div>
             </TabsContent>
 
