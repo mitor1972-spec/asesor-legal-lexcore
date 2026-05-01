@@ -356,7 +356,7 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               </CardHeader>
               <CardContent>
                 {redactedSummary ? (
-                  <div className="bg-muted/30 p-4 rounded-lg max-h-72 overflow-y-auto">
+                  <div className="bg-muted/30 p-4 rounded-lg">
                     <div
                       className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert"
                       dangerouslySetInnerHTML={{ __html: processAndSanitize(redactedSummary) }}
