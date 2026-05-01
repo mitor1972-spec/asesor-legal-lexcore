@@ -1,73 +1,51 @@
-# Welcome to your Lovable project
+# LexMarket / Lexcore
 
-## Project info
+Marketplace de leads legales y ERP para despachos de abogados.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Plataforma SaaS que conecta consultas legales cualificadas con despachos de abogados, integrando un motor de scoring (Lexcore) y un CRM completo de gestión de casos.
 
-## How can I edit this code?
+## Stack
 
-There are several ways of editing your application.
+- **Frontend:** React 18 + Vite + TypeScript + Tailwind CSS + shadcn/ui
+- **Backend:** Lovable Cloud (Supabase: PostgreSQL + Edge Functions + Auth + Storage)
+- **Pagos:** Stripe (Checkout + Webhooks)
+- **IA:** OpenAI GPT-4o-mini (extracción, scoring, resúmenes y documentos legales)
+- **Mensajería:** Chatwoot (captación de leads vía webhook)
 
-**Use Lovable**
+## Funcionalidades clave
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- **Marketplace de leads** con compra exclusiva y atómica
+- **Motor Lexcore** de valoración automática (0-95) con precio determinista
+- **CRM de despacho** con casos, documentos, timeline, KPIs y comisiones
+- **Asistente comercial IA** para estrategia de marketing
+- **Sistema de roles** (admin, operator, lawfirm_admin, lawfirm_manager, lawfirm_lawyer)
+- **Línea de crédito** y reclamaciones de leads con auto-reembolso
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Instalación local
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Las variables de entorno (`.env`) son gestionadas automáticamente por Lovable Cloud. Solo contienen claves públicas (anon key) — las claves privadas se almacenan como secrets en el backend.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Variables de entorno (públicas)
 
-**Use GitHub Codespaces**
+- `VITE_SUPABASE_PROJECT_ID`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_SUPABASE_URL`
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Seguridad
 
-## What technologies are used for this project?
+- Row Level Security (RLS) activado en todas las tablas
+- Roles separados en tabla `user_roles` (no en `profiles`)
+- Validación JWT en gateway (`verify_jwt`) + en código (`auth.getUser`)
+- Webhooks públicos protegidos con tokens dinámicos / firmas
+- Datos de contacto enmascarados en marketplace pre-compra
 
-This project is built with:
+## Despliegue
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Producción: [https://market.asesor.legal](https://market.asesor.legal)
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Las Edge Functions se despliegan automáticamente al hacer push.

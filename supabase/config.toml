@@ -1,21 +1,15 @@
 project_id = "dyjpcdjgmluknploicho"
 
+# ============================================================
+# PUBLIC WEBHOOKS / PUBLIC ENDPOINTS — verify_jwt = false
+# ============================================================
+# These functions are called by external services or unauthenticated
+# clients and MUST validate their own auth (signatures, tokens, etc.)
+
 [functions.extract-lead-data]
 verify_jwt = false
 
 [functions.client-upload]
-verify_jwt = false
-
-[functions.calculate-lexcore]
-verify_jwt = false
-
-[functions.generate-case-summary]
-verify_jwt = false
-
-[functions.generate-legal-help]
-verify_jwt = false
-
-[functions.send-email]
 verify_jwt = false
 
 [functions.chatwoot-webhook]
@@ -27,13 +21,13 @@ verify_jwt = false
 [functions.chatwoot-debug-conversation]
 verify_jwt = false
 
-[functions.create-user]
+[functions.backfill-chatwoot]
 verify_jwt = false
 
-[functions.approve-application]
+[functions.find-orphan-conversations]
 verify_jwt = false
 
-[functions.purchase-lead]
+[functions.reclassify-leads]
 verify_jwt = false
 
 [functions.repair-leads]
@@ -42,23 +36,41 @@ verify_jwt = false
 [functions.reprocess-lead]
 verify_jwt = false
 
-[functions.backfill-chatwoot]
-verify_jwt = false
+# ============================================================
+# AUTHENTICATED FUNCTIONS — verify_jwt = true (gateway enforced)
+# ============================================================
+# In addition, each function validates JWT in code with auth.getUser()
+# and applies role-based authorization.
+
+[functions.purchase-lead]
+verify_jwt = true
+
+[functions.create-user]
+verify_jwt = true
 
 [functions.process-document]
-verify_jwt = false
-
-[functions.validate-case-documents]
-verify_jwt = false
+verify_jwt = true
 
 [functions.analyze-case-deep]
-verify_jwt = false
+verify_jwt = true
+
+[functions.validate-case-documents]
+verify_jwt = true
 
 [functions.generate-legal-document]
-verify_jwt = false
+verify_jwt = true
 
-[functions.find-orphan-conversations]
-verify_jwt = false
+[functions.generate-case-summary]
+verify_jwt = true
 
-[functions.reclassify-leads]
-verify_jwt = false
+[functions.generate-legal-help]
+verify_jwt = true
+
+[functions.calculate-lexcore]
+verify_jwt = true
+
+[functions.send-email]
+verify_jwt = true
+
+[functions.approve-application]
+verify_jwt = true
