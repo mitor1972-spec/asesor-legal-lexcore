@@ -335,8 +335,6 @@ export function ShoppingCart({
               )}
             </>
           )}
-            </>
-          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>
