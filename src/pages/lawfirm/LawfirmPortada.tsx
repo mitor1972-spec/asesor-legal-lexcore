@@ -45,7 +45,12 @@ export default function LawfirmPortada() {
       if (commissionAreasResult.error) throw commissionAreasResult.error;
 
       const commissionAreas = new Set((commissionAreasResult.data || []).map((item) => item.legal_area));
-      const availableLeads = (availableLeadsResult.data || []).filter((lead) => !lead.lead_assignments || lead.lead_assignments.length === 0);
+      const availableLeads = (availableLeadsResult.data || []).filter((lead) => {
+        const la = lead.lead_assignments as unknown;
+        if (!la) return true;
+        if (Array.isArray(la)) return la.length === 0;
+        return false;
+      });
 
       const urgentCount = availableLeads.filter((lead) => {
         const fields = lead.structured_fields as Record<string, unknown> | null;

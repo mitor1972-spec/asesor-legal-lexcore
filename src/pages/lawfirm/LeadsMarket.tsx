@@ -156,9 +156,12 @@ export default function LeadsMarket() {
       if (error) throw error;
       
       // Filter out leads that already have assignments (purchased/assigned)
-      const filtered = (data || []).filter(l => 
-        !l.lead_assignments || l.lead_assignments.length === 0
-      );
+      const filtered = (data || []).filter(l => {
+        const la = l.lead_assignments as unknown;
+        if (!la) return true;
+        if (Array.isArray(la)) return la.length === 0;
+        return false;
+      });
       
       return filtered.map(l => {
         // Sort lexcore_runs by computed_at desc to get latest

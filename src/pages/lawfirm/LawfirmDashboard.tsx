@@ -80,7 +80,12 @@ export default function LawfirmDashboard() {
       const { data, error } = await query;
       if (error) throw error;
       
-      const filtered = (data || []).filter(l => !l.lead_assignments || l.lead_assignments.length === 0);
+      const filtered = (data || []).filter(l => {
+        const la = l.lead_assignments as unknown;
+        if (!la) return true;
+        if (Array.isArray(la)) return la.length === 0;
+        return false;
+      });
       
       return filtered.map(l => {
         const latestRun = l.lexcore_runs?.[0];
