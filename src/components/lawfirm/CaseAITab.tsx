@@ -29,7 +29,16 @@ const EMAIL_TYPES = [
   { value: 'avance', label: 'Comunicación de avance' },
 ];
 
+const LEGAL_DOC_TYPES = [
+  { value: 'engagement_letter', label: 'Hoja de encargo' },
+  { value: 'burofax', label: 'Burofax' },
+  { value: 'demanda', label: 'Demanda' },
+  { value: 'escrito_admin', label: 'Escrito administración' },
+  { value: 'email_cliente', label: 'Email al cliente' },
+];
+
 export function CaseAITab({ leadId, leadText, structuredFields, sourceChannel, caseSummary }: CaseAITabProps) {
+  const queryClient = useQueryClient();
   const { data: legalHelp, isLoading: isLoadingHelp } = useLegalHelp(leadId);
   const generateLegalHelp = useGenerateLegalHelp();
   const generateSummary = useGenerateCaseSummary();
@@ -37,6 +46,16 @@ export function CaseAITab({ leadId, leadText, structuredFields, sourceChannel, c
   const [emailType, setEmailType] = useState('presupuesto');
   const [generatedEmail, setGeneratedEmail] = useState('');
   const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
+
+  // Deep analysis state
+  const deepAnalysis = (structuredFields?.deep_analysis as string) || '';
+  const [isDeepAnalyzing, setIsDeepAnalyzing] = useState(false);
+  const [localDeepAnalysis, setLocalDeepAnalysis] = useState<string>(deepAnalysis);
+
+  // Legal doc generator
+  const [docType, setDocType] = useState('engagement_letter');
+  const [generatedDoc, setGeneratedDoc] = useState('');
+  const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
 
   const handleGenerateSummary = async () => {
     try {
