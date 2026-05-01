@@ -10,7 +10,7 @@ import type { MarketplaceLead } from '@/types/marketplace';
 import { LeadReference } from '@/components/common/LeadReference';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { redactContactFromText, LEXCORE_SCORING_GROUPS } from '@/lib/contactSanitizer';
+import { extractCommercialExcerpt, LEXCORE_SCORING_GROUPS, getGroupScore, hasAnyScoring } from '@/lib/contactSanitizer';
 
 interface LeadMarketCardProps {
   lead: MarketplaceLead;
@@ -48,7 +48,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
   const isUrgent = fields.urgencia_aplica === true;
   const cuantia = cleanValue(fields.cuantia_aproximada) || cleanValue(fields.cuantia) || cleanValue(fields.cuantia_texto);
   const complejidad = cleanValue(fields.complejidad);
-  const hasLexcoreRun = lead.raw_scores && Object.keys(lead.raw_scores).length > 0;
+  const hasLexcoreRun = hasAnyScoring(lead.raw_scores as Record<string, unknown> | null);
 
   const getScoreColor = (score: number) => {
     if (score >= 70) return 'text-green-600 bg-green-500/10 border-green-500/30';
@@ -58,7 +58,7 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
 
   const renderScoreBar = (group: typeof LEXCORE_SCORING_GROUPS[number]) => {
     const Icon = GROUP_ICONS[group.key] || Crosshair;
-    const data = lead.raw_scores?.[group.key];
+    const data = getGroupScore(lead.raw_scores as Record<string, unknown> | null, group);
     const score = data?.score ?? 0;
     const max = data?.max ?? group.max;
     const percent = max > 0 ? (score / max) * 100 : 0;
@@ -96,11 +96,11 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
     : null;
 
   const price = lead.marketplace_price || 0;
-  const fullRedactedSummary = redactContactFromText(lead.marketplace_summary, fields);
-  // Excerpt corto para la tarjeta: primeras 2 líneas útiles, máx ~220 chars
-  const summaryLines = fullRedactedSummary.split('\n').map(l => l.trim()).filter(Boolean);
-  const excerptRaw = summaryLines.slice(0, 2).join(' ');
-  const redactedSummary = excerptRaw.length > 220 ? excerptRaw.slice(0, 220).trimEnd() + '…' : excerptRaw;
+  // Commercial excerpt: prefer marketplace_summary, fallback to case_summary, then to a generic copy.
+  const sourceSummary = lead.marketplace_summary || lead.case_summary || '';
+  const redactedSummary =
+    extractCommercialExcerpt(sourceSummary, fields, 220) ||
+    `Consulta de ${legalArea}${subarea ? ` · ${subarea}` : ''}. Detalles completos disponibles tras la compra.`;
 
   return (
     <Card className={`overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col ${isUrgent ? 'border-red-500 shadow-red-500/20' : price >= 30 ? 'border-green-500/30 bg-green-500/[0.02]' : ''}`}>

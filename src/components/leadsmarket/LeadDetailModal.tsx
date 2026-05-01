@@ -13,7 +13,7 @@ import {
 import type { MarketplaceLead } from '@/types/marketplace';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { redactContactFromText, isContactField, LEXCORE_SCORING_GROUPS } from '@/lib/contactSanitizer';
+import { redactContactFromText, isContactField, LEXCORE_SCORING_GROUPS, getGroupScore, hasAnyScoring, extractSection } from '@/lib/contactSanitizer';
 
 interface LeadDetailModalProps {
   lead: MarketplaceLead | null;
@@ -65,12 +65,12 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     return 'text-muted-foreground bg-muted border-border';
   };
 
-  // Check if there's a lexcore run with real data
-  const hasLexcoreRun = lead.raw_scores && Object.keys(lead.raw_scores).length > 0;
+  // Check if there's a lexcore run with real data (supports flat numbers + objects + aliases)
+  const hasLexcoreRun = hasAnyScoring(lead.raw_scores as Record<string, unknown> | null);
 
   const renderScoreBar = (group: typeof LEXCORE_SCORING_GROUPS[number]) => {
     const Icon = GROUP_ICONS[group.key] || Crosshair;
-    const data = lead.raw_scores?.[group.key];
+    const data = getGroupScore(lead.raw_scores as Record<string, unknown> | null, group);
     const score = data?.score ?? 0;
     const max = data?.max ?? group.max;
     const percent = max > 0 ? (score / max) * 100 : 0;
@@ -111,6 +111,11 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
   // Always run through redactor as a final safety net, then strip placeholder lines/intro phrases.
   const rawSummary = lead.marketplace_summary || lead.case_summary || '';
   const redactedSummary = redactContactFromText(rawSummary, fields);
+  // Try to surface high-value sections separately to give the lawyer a structured view.
+  const hechosClave = extractSection(rawSummary, ['Hechos clave', 'Hechos relevantes', 'Hechos']);
+  const pretension = extractSection(rawSummary, ['Pretensión del cliente', 'Pretensión', 'Objetivo del cliente']);
+  const redactedHechos = hechosClave ? redactContactFromText(hechosClave, fields) : null;
+  const redactedPretension = pretension ? redactContactFromText(pretension, fields) : null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -223,6 +228,40 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                 )}
               </CardContent>
             </Card>
+
+            {/* Hechos clave (if extracted) */}
+            {redactedHechos && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <ClipboardList className="h-5 w-5 text-lawfirm-primary" />
+                    Hechos Clave
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-muted/30 p-4 rounded-lg">
+                    <p className="text-sm leading-relaxed whitespace-pre-line">{redactedHechos}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pretensión del cliente (if extracted) */}
+            {redactedPretension && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Target className="h-5 w-5 text-lawfirm-primary" />
+                    Pretensión del Cliente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-muted/30 p-4 rounded-lg">
+                    <p className="text-sm leading-relaxed whitespace-pre-line">{redactedPretension}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Case Summary (redacted) */}
             <Card>
