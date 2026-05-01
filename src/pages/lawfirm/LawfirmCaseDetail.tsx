@@ -376,7 +376,7 @@ export default function LawfirmCaseDetail() {
         </TabsContent>
         {/* CLIENTE TAB */}
         <TabsContent value="cliente" className="mt-3">
-          <CaseClientTab fields={f} contactedAt={caseData.contacted_at} />
+          <CaseClientTab leadId={caseData.lead_id} lawfirmId={caseData.lawfirm_id} fields={f} contactedAt={caseData.contacted_at} />
         </TabsContent>
 
         {/* TIMELINE TAB */}
