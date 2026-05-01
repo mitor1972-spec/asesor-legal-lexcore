@@ -111,7 +111,7 @@ export function UploadLinkDialog({ open, onOpenChange, leadId, clientEmail, clie
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>Solicitar documentación al cliente</DialogTitle>
           <DialogDescription>
@@ -168,7 +168,9 @@ export function UploadLinkDialog({ open, onOpenChange, leadId, clientEmail, clie
                         </Button>
                       )}
                     </div>
-                    <code className="block text-xs bg-muted p-1.5 rounded truncate">{url}</code>
+                    <div className="overflow-x-auto">
+                      <code className="block text-xs bg-muted p-1.5 rounded break-all whitespace-normal">{url}</code>
+                    </div>
                     <div className="flex gap-1.5 flex-wrap">
                       <Button size="sm" variant="outline" onClick={() => copy(url)}>
                         <Copy className="h-3 w-3 mr-1" />Copiar
