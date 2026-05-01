@@ -758,6 +758,7 @@ export type Database = {
           ai_summary: string | null
           ai_validation_status: string | null
           category: string | null
+          client_note: string | null
           created_at: string
           file_name: string
           file_size: number | null
@@ -777,6 +778,7 @@ export type Database = {
           ai_summary?: string | null
           ai_validation_status?: string | null
           category?: string | null
+          client_note?: string | null
           created_at?: string
           file_name: string
           file_size?: number | null
@@ -796,6 +798,7 @@ export type Database = {
           ai_summary?: string | null
           ai_validation_status?: string | null
           category?: string | null
+          client_note?: string | null
           created_at?: string
           file_name?: string
           file_size?: number | null
