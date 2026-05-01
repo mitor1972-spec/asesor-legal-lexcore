@@ -713,6 +713,288 @@ export type Database = {
           },
         ]
       }
+      case_ai_analyses: {
+        Row: {
+          analysis_type: string
+          created_at: string
+          created_by: string | null
+          id: string
+          input_snapshot: Json | null
+          lawfirm_id: string
+          lead_id: string
+          prompt_version: string | null
+          result_json: Json | null
+          result_text: string | null
+        }
+        Insert: {
+          analysis_type: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          input_snapshot?: Json | null
+          lawfirm_id: string
+          lead_id: string
+          prompt_version?: string | null
+          result_json?: Json | null
+          result_text?: string | null
+        }
+        Update: {
+          analysis_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          input_snapshot?: Json | null
+          lawfirm_id?: string
+          lead_id?: string
+          prompt_version?: string | null
+          result_json?: Json | null
+          result_text?: string | null
+        }
+        Relationships: []
+      }
+      case_documents: {
+        Row: {
+          ai_extracted_data: Json | null
+          ai_summary: string | null
+          ai_validation_status: string | null
+          category: string | null
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          lawfirm_id: string
+          lead_id: string
+          status: string
+          storage_path: string
+          updated_at: string
+          upload_link_id: string | null
+          uploaded_by: string | null
+          uploaded_by_type: string
+        }
+        Insert: {
+          ai_extracted_data?: Json | null
+          ai_summary?: string | null
+          ai_validation_status?: string | null
+          category?: string | null
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          lawfirm_id: string
+          lead_id: string
+          status?: string
+          storage_path: string
+          updated_at?: string
+          upload_link_id?: string | null
+          uploaded_by?: string | null
+          uploaded_by_type?: string
+        }
+        Update: {
+          ai_extracted_data?: Json | null
+          ai_summary?: string | null
+          ai_validation_status?: string | null
+          category?: string | null
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          lawfirm_id?: string
+          lead_id?: string
+          status?: string
+          storage_path?: string
+          updated_at?: string
+          upload_link_id?: string | null
+          uploaded_by?: string | null
+          uploaded_by_type?: string
+        }
+        Relationships: []
+      }
+      case_financials: {
+        Row: {
+          claimed_amount: number | null
+          commission_percentage: number | null
+          created_at: string
+          engagement_letter_doc_id: string | null
+          estimated_recovery: number | null
+          fee_type: string | null
+          fixed_fee: number | null
+          id: string
+          lawfirm_id: string
+          lead_id: string
+          notes: string | null
+          paid_amount: number | null
+          payment_date: string | null
+          payment_status: string | null
+          provision_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          claimed_amount?: number | null
+          commission_percentage?: number | null
+          created_at?: string
+          engagement_letter_doc_id?: string | null
+          estimated_recovery?: number | null
+          fee_type?: string | null
+          fixed_fee?: number | null
+          id?: string
+          lawfirm_id: string
+          lead_id: string
+          notes?: string | null
+          paid_amount?: number | null
+          payment_date?: string | null
+          payment_status?: string | null
+          provision_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          claimed_amount?: number | null
+          commission_percentage?: number | null
+          created_at?: string
+          engagement_letter_doc_id?: string | null
+          estimated_recovery?: number | null
+          fee_type?: string | null
+          fixed_fee?: number | null
+          id?: string
+          lawfirm_id?: string
+          lead_id?: string
+          notes?: string | null
+          paid_amount?: number | null
+          payment_date?: string | null
+          payment_status?: string | null
+          provision_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      case_tasks: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          lawfirm_id: string
+          lead_id: string
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lawfirm_id: string
+          lead_id: string
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          lawfirm_id?: string
+          lead_id?: string
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      case_timeline_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_type: string
+          id: string
+          lawfirm_id: string
+          lead_id: string
+          metadata: Json | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_type: string
+          id?: string
+          lawfirm_id: string
+          lead_id: string
+          metadata?: Json | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          lawfirm_id?: string
+          lead_id?: string
+          metadata?: Json | null
+          title?: string
+        }
+        Relationships: []
+      }
+      case_upload_links: {
+        Row: {
+          client_message: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          is_active: boolean
+          lawfirm_id: string
+          lead_id: string
+          max_files: number
+          token: string
+          used_count: number
+        }
+        Insert: {
+          client_message?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          lawfirm_id: string
+          lead_id: string
+          max_files?: number
+          token?: string
+          used_count?: number
+        }
+        Update: {
+          client_message?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          lawfirm_id?: string
+          lead_id?: string
+          max_files?: number
+          token?: string
+          used_count?: number
+        }
+        Relationships: []
+      }
       chatwoot_conversations: {
         Row: {
           chatwoot_account_id: number | null
@@ -1554,6 +1836,7 @@ export type Database = {
           lost_reason: string | null
           next_action_date: string | null
           next_action_description: string | null
+          operational_status: string | null
           result_amount: number | null
           result_notes: string | null
           service_type: string | null
@@ -1586,6 +1869,7 @@ export type Database = {
           lost_reason?: string | null
           next_action_date?: string | null
           next_action_description?: string | null
+          operational_status?: string | null
           result_amount?: number | null
           result_notes?: string | null
           service_type?: string | null
@@ -1620,6 +1904,7 @@ export type Database = {
           lost_reason?: string | null
           next_action_date?: string | null
           next_action_description?: string | null
+          operational_status?: string | null
           result_amount?: number | null
           result_notes?: string | null
           service_type?: string | null

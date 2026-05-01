@@ -27,8 +27,13 @@ import {
   ArrowLeft, Phone, CheckCircle2, XCircle, Loader2,
   User, Mail, MapPin, Scale, Euro, Zap, Inbox, Hash,
   FileText, FolderOpen, Sparkles, ClipboardList, MessageSquare, History,
-  ShieldAlert, Calculator, UserCog
+  ShieldAlert, Calculator, UserCog, Clock, CheckSquare, Upload, Download
 } from 'lucide-react';
+import { OperationalStatusSelect, OperationalStatusBadge } from '@/components/lawfirm/OperationalStatusBadge';
+import { useUpdateOperationalStatus } from '@/hooks/useCaseOperationalStatus';
+import { CaseTimelineTab } from '@/components/lawfirm/CaseTimelineTab';
+import { CaseTasksTab } from '@/components/lawfirm/CaseTasksTab';
+import { CaseClientTab } from '@/components/lawfirm/CaseClientTab';
 
 const statusLabels: Record<string, string> = {
   received: 'Nuevo', reviewing: 'Revisando', contacted: 'Contactado',
@@ -43,6 +48,7 @@ export default function LawfirmCaseDetail() {
   const { data: caseData, isLoading } = useLawfirmCase(id);
   const updateStatus = useUpdateCaseStatus();
   const updateNotes = useUpdateCaseNotes();
+  const updateOperational = useUpdateOperationalStatus();
 
   const [notes, setNotes] = useState('');
   const [isNotesLoaded, setIsNotesLoaded] = useState(false);
@@ -154,6 +160,17 @@ export default function LawfirmCaseDetail() {
             </Select>
           </div>
         </div>
+
+        {/* Operational status row */}
+        <div className="flex items-center gap-2 flex-wrap pt-1">
+          <span className="text-xs text-muted-foreground font-medium">Estado operativo:</span>
+          <OperationalStatusSelect
+            value={(caseData as any).operational_status}
+            onChange={(v) => id && updateOperational.mutate({ assignmentId: id, status: v })}
+            disabled={updateOperational.isPending}
+          />
+          <OperationalStatusBadge value={(caseData as any).operational_status} />
+        </div>
       </div>
 
       {/* Temperature & Scoring */}
@@ -177,10 +194,13 @@ export default function LawfirmCaseDetail() {
       {/* Main Tabs: Datos, Economía, Documentos, IA, Seguimiento, Notas */}
       <Tabs defaultValue="datos">
         <TabsList className="w-full justify-start flex-wrap">
-          <TabsTrigger value="datos"><FileText className="h-4 w-4 mr-1.5" />Datos</TabsTrigger>
-          <TabsTrigger value="economia"><Euro className="h-4 w-4 mr-1.5" />Economía</TabsTrigger>
+          <TabsTrigger value="datos"><FileText className="h-4 w-4 mr-1.5" />Resumen</TabsTrigger>
+          <TabsTrigger value="cliente"><User className="h-4 w-4 mr-1.5" />Cliente</TabsTrigger>
           <TabsTrigger value="documents"><FolderOpen className="h-4 w-4 mr-1.5" />Documentos</TabsTrigger>
-          <TabsTrigger value="ia"><Sparkles className="h-4 w-4 mr-1.5" />IA</TabsTrigger>
+          <TabsTrigger value="ia"><Sparkles className="h-4 w-4 mr-1.5" />IA Jurídica</TabsTrigger>
+          <TabsTrigger value="economia"><Euro className="h-4 w-4 mr-1.5" />Honorarios</TabsTrigger>
+          <TabsTrigger value="timeline"><Clock className="h-4 w-4 mr-1.5" />Timeline</TabsTrigger>
+          <TabsTrigger value="tareas"><CheckSquare className="h-4 w-4 mr-1.5" />Tareas</TabsTrigger>
           <TabsTrigger value="tracking"><ClipboardList className="h-4 w-4 mr-1.5" />Seguimiento</TabsTrigger>
           <TabsTrigger value="notes"><MessageSquare className="h-4 w-4 mr-1.5" />Notas</TabsTrigger>
         </TabsList>
@@ -351,6 +371,20 @@ export default function LawfirmCaseDetail() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        {/* CLIENTE TAB */}
+        <TabsContent value="cliente" className="mt-3">
+          <CaseClientTab fields={f} contactedAt={caseData.contacted_at} />
+        </TabsContent>
+
+        {/* TIMELINE TAB */}
+        <TabsContent value="timeline" className="mt-3">
+          {caseData.lead_id && <CaseTimelineTab leadId={caseData.lead_id} />}
+        </TabsContent>
+
+        {/* TAREAS TAB */}
+        <TabsContent value="tareas" className="mt-3">
+          {caseData.lead_id && <CaseTasksTab leadId={caseData.lead_id} />}
         </TabsContent>
       </Tabs>
 
