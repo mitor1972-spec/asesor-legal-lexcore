@@ -48,6 +48,14 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     const lawfirmId = assignment?.lawfirm_id ?? null;
 
+    // Authorization: user must be admin/operator OR belong to the assigned lawfirm
+    const userId = userData.user.id;
+    const { data: profile } = await admin.from("profiles").select("lawfirm_id").eq("id", userId).maybeSingle();
+    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userId);
+    const isInternal = roles?.some(r => r.role === "admin" || r.role === "operator") ?? false;
+    const sameFirm = lawfirmId && profile?.lawfirm_id === lawfirmId;
+    if (!isInternal && !sameFirm) return json({ error: "Forbidden" }, 403);
+
     const { data: docs } = await admin
       .from("case_documents")
       .select("file_name, category, ai_summary, status")

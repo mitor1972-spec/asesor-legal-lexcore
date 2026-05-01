@@ -50,6 +50,14 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     const lawfirmId = assignment?.lawfirm_id ?? null;
 
+    // Authorization
+    const userId = userData.user.id;
+    const { data: profile } = await admin.from("profiles").select("lawfirm_id").eq("id", userId).maybeSingle();
+    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", userId);
+    const isInternal = roles?.some(r => r.role === "admin" || r.role === "operator") ?? false;
+    const sameFirm = lawfirmId && profile?.lawfirm_id === lawfirmId;
+    if (!isInternal && !sameFirm) return json({ error: "Forbidden" }, 403);
+
     const fields = (lead.structured_fields as Record<string, unknown>) || {};
 
     let firmName = "[REVISAR: nombre del despacho]";
