@@ -3,6 +3,9 @@ project_id = "dyjpcdjgmluknploicho"
 [functions.extract-lead-data]
 verify_jwt = false
 
+[functions.client-upload]
+verify_jwt = false
+
 [functions.calculate-lexcore]
 verify_jwt = false
 
