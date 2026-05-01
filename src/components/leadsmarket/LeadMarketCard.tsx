@@ -96,7 +96,11 @@ export function LeadMarketCard({ lead, onAddToCart, onViewDetails, isInCart, can
     : null;
 
   const price = lead.marketplace_price || 0;
-  const redactedSummary = redactContactFromText(lead.marketplace_summary, fields);
+  const fullRedactedSummary = redactContactFromText(lead.marketplace_summary, fields);
+  // Excerpt corto para la tarjeta: primeras 2 líneas útiles, máx ~220 chars
+  const summaryLines = fullRedactedSummary.split('\n').map(l => l.trim()).filter(Boolean);
+  const excerptRaw = summaryLines.slice(0, 2).join(' ');
+  const redactedSummary = excerptRaw.length > 220 ? excerptRaw.slice(0, 220).trimEnd() + '…' : excerptRaw;
 
   return (
     <Card className={`overflow-hidden hover:shadow-xl transition-all duration-200 border-2 flex flex-col ${isUrgent ? 'border-red-500 shadow-red-500/20' : price >= 30 ? 'border-green-500/30 bg-green-500/[0.02]' : ''}`}>
