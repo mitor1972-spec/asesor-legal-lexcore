@@ -622,11 +622,18 @@ serve(async (req) => {
 
     // ==========================================
     // PREPARAR STRUCTURED_FIELDS (regex initial values)
+    // GOLDEN RULE: descartar emails internos (@asesor.legal etc.) — NO son del cliente
     // ==========================================
-    const regexEmail = extractedFromText.email || contactEmail;
-    const regexPhone = extractedFromText.phone || contactPhone;
+    const rawRegexEmail = extractedFromText.email || contactEmail;
+    const rawRegexPhone = extractedFromText.phone || contactPhone;
+    const regexEmail = isValidClientEmail(rawRegexEmail) ? rawRegexEmail : null;
+    const regexPhone = isValidClientPhone(rawRegexPhone) ? rawRegexPhone : null;
     const regexName = extractedFromText.name;
-    
+
+    if (rawRegexEmail && !regexEmail) {
+      console.log(`[Webhook] Discarded internal/invalid email: ${rawRegexEmail}`);
+    }
+
     const structuredFields: Record<string, unknown> = {
       nombre: regexName,
       telefono: regexPhone,
@@ -639,10 +646,49 @@ serve(async (req) => {
     };
 
     // ==========================================
-    // CRITICAL FIX: NO Golden Rule aquí - SIEMPRE crear lead primero
-    // La validación se hace DESPUÉS de la extracción por IA
+    // GOLDEN RULE PRE-AI: si NO hay email cliente NI teléfono válido, descartar silenciosamente
+    // No crear lead. Solo log en chatwoot_import_logs.
     // ==========================================
     const hasRegexContact = !!(regexEmail || regexPhone);
+
+    if (!hasRegexContact) {
+      // Damos una última oportunidad: si la IA puede extraer algo nuevo del texto.
+      // Pero si NO hay ni siquiera mención de email/teléfono en el texto crudo, descartamos ya.
+      const hasAnyContactHint = !!(
+        userText.match(EMAIL_REGEX) || userText.match(PHONE_REGEX_ES)
+      );
+
+      if (!hasAnyContactHint) {
+        const reason = "GOLDEN RULE PRE-AI: no email NI phone detectable en transcript";
+        console.log(`[WEBHOOK_ENTRY] ACCEPTED=false REASON="${reason}" conversation_id=${conversationId}`);
+
+        await supabase.from("chatwoot_import_logs").insert({
+          chatwoot_conversation_id: conversationId,
+          event_type: eventType,
+          status: "discarded_no_contact",
+          payload_json: {
+            transcript_stats: transcriptStats,
+            reason,
+            contact_alias: contactAlias,
+            raw_email_seen: rawRegexEmail,
+            raw_phone_seen: rawRegexPhone,
+          },
+        });
+
+        if (logData?.id) {
+          await supabase.from("webhook_logs").update({
+            result: "discarded",
+            error_message: reason,
+            processing_time_ms: Date.now() - startTime,
+          }).eq("id", logData.id);
+        }
+
+        return new Response(JSON.stringify({ status: "discarded", reason: "no_contact" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const now = new Date().toISOString();
     
     console.log(`[Webhook] Regex extraction: email=${regexEmail}, phone=${regexPhone}, name=${regexName}, hasContact=${hasRegexContact}`);
