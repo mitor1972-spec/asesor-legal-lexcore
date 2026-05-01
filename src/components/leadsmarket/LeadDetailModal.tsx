@@ -189,8 +189,8 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     cleanValue(fields.pretension_cliente) ||
     cleanValue(fields.objetivo_cliente) ||
     extractSection(lead.case_summary || rawSummary, ['Pretensión del cliente', 'Pretensión', 'Objetivo del cliente']);
-  const redactedHechos = hechosClave ? redactContactFromText(hechosClave, fields) : null;
-  const redactedPretension = pretension ? redactContactFromText(pretension, fields) : null;
+  const redactedHechos = hechosClave ? redactPIIOnly(hechosClave, fields, lead as any) : null;
+  const redactedPretension = pretension ? redactPIIOnly(pretension, fields, lead as any) : null;
 
   // Legal orientation (uses structured_fields if present, else fallback by area).
   const orientation = buildLegalOrientation(legalArea, fields as Record<string, unknown>);
