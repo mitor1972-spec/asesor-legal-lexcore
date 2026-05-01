@@ -67,6 +67,19 @@ serve(async (req) => {
 
         const amountPaid = (session.amount_total || 0) / 100;
 
+        // IDEMPOTENCY GUARD: if assignment already exists for this lead, this webhook
+        // is a Stripe retry — acknowledge and skip side effects.
+        const { data: existingAssignment } = await supabaseAdmin
+          .from('lead_assignments')
+          .select('id, lawfirm_id')
+          .eq('lead_id', lead_id)
+          .maybeSingle();
+
+        if (existingAssignment) {
+          console.log(`[STRIPE] Duplicate webhook for lead ${lead_id} (already assigned to ${existingAssignment.lawfirm_id}). Skipping.`);
+          break;
+        }
+
         // Get lawfirm for balance update
         const { data: lawfirm } = await supabaseAdmin
           .from('lawfirms')
@@ -80,8 +93,8 @@ serve(async (req) => {
           .update({ is_in_marketplace: false, status_internal: 'Enviado' })
           .eq('id', lead_id);
 
-        // Create lead assignment
-        await supabaseAdmin
+        // Create lead assignment (unique constraint will reject duplicates)
+        const { error: assignmentError } = await supabaseAdmin
           .from('lead_assignments')
           .insert({
             lead_id,
@@ -93,6 +106,12 @@ serve(async (req) => {
             is_commission: false,
             lead_cost: amountPaid,
           });
+
+        if (assignmentError) {
+          // Likely unique-violation race; treat as already-processed
+          console.log(`[STRIPE] Assignment insert rejected for lead ${lead_id}: ${assignmentError.message}. Treating as duplicate.`);
+          break;
+        }
 
         // Create balance transaction (record the Stripe payment)
         await supabaseAdmin
