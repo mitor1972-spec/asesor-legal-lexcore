@@ -5,26 +5,36 @@ project_id = "dyjpcdjgmluknploicho"
 # ============================================================
 # These functions are called by external services or unauthenticated
 # clients and MUST validate their own auth (signatures, tokens, etc.)
+#
+# - stripe-webhook: validates Stripe signature (STRIPE_WEBHOOK_SECRET)
+# - chatwoot-webhook: validates dynamic token from `chatwoot_settings` table
+# - client-upload: validates temporary token + expires_at + max_files
 
-[functions.extract-lead-data]
-verify_jwt = false
-
-[functions.client-upload]
+[functions.stripe-webhook]
 verify_jwt = false
 
 [functions.chatwoot-webhook]
 verify_jwt = false
 
-[functions.process-chatwoot-conversation]
+[functions.client-upload]
 verify_jwt = false
+
+# ============================================================
+# AUTHENTICATED FUNCTIONS — verify_jwt = true (gateway enforced)
+# ============================================================
+# In addition, each function validates JWT in code with auth.getUser()
+# / getClaims() and applies role-based authorization.
+
+# ---- Internal admin / ops tools ----
+[functions.process-chatwoot-conversation]
+verify_jwt = true
 
 [functions.chatwoot-debug-conversation]
-verify_jwt = false
+verify_jwt = true
 
 [functions.find-orphan-conversations]
-verify_jwt = false
+verify_jwt = true
 
-# ---- admin tools moved to JWT-required (validan rol admin en código también) ----
 [functions.backfill-chatwoot]
 verify_jwt = true
 
@@ -37,12 +47,10 @@ verify_jwt = true
 [functions.reprocess-lead]
 verify_jwt = true
 
-# ============================================================
-# AUTHENTICATED FUNCTIONS — verify_jwt = true (gateway enforced)
-# ============================================================
-# In addition, each function validates JWT in code with auth.getUser()
-# and applies role-based authorization.
+[functions.extract-lead-data]
+verify_jwt = true
 
+# ---- Core authenticated business functions ----
 [functions.purchase-lead]
 verify_jwt = true
 
