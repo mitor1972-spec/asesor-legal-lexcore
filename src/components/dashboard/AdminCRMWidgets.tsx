@@ -92,6 +92,14 @@ export function AdminAlertsFeed({ alerts }: { alerts: LawfirmAlert[] }) {
     profile_incomplete: 'Perfil incompleto',
   };
 
+  // Cada tipo de alerta lleva a una sección distinta
+  const linkFor = (alert: LawfirmAlert): string => {
+    if (alert.type === 'new_registration' || alert.type === 'profile_incomplete') {
+      return `/settings/lawfirms?highlight=${alert.id}`;
+    }
+    return `/settings/lawfirm-applications?highlight=${alert.id}`;
+  };
+
   if (alerts.length === 0) {
     return (
       <Card className="shadow-soft">
