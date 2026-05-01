@@ -376,6 +376,15 @@ export default function LawfirmCaseDetail() {
 
       {id && <CaseResultDialog open={resultDialogOpen} onOpenChange={setResultDialogOpen} assignmentId={id} type={resultType} />}
       <ReportClaimDialog open={claimDialogOpen} onClose={() => setClaimDialogOpen(false)} leadId={caseData.lead_id} assignmentId={id!} />
+      {id && (
+        <AssignCaseDialog
+          open={assignDialogOpen}
+          onOpenChange={setAssignDialogOpen}
+          assignmentId={id}
+          currentBranchId={(caseData as any).branch_id || null}
+          currentLawyerId={caseData.assigned_lawyer_id || null}
+        />
+      )}
     </div>
   );
 }
