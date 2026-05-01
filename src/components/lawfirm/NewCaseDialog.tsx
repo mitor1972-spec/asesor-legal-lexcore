@@ -39,6 +39,10 @@ const ECONOMIC_STATUSES = [
 export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
+  const { data: lawfirm } = useLawfirmProfile();
+  const { data: branches = [] } = useLawfirmBranches();
+  const { data: team = [] } = useLawfirmTeam();
+  const { data: specialties = [] } = useMasterSpecialties();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [client, setClient] = useState({
@@ -59,13 +63,45 @@ export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
     cronologia: '', estrategia: '', observaciones: '',
   });
 
+  const [assignment, setAssignment] = useState({ branch_id: '__none__', lawyer_id: '__none__' });
+
   const [descripcion, setDescripcion] = useState('');
+
+  // Areas available for legal area selector — filtered by branch if any
+  const branchAreasNames = useMemo(() => {
+    if (assignment.branch_id === '__none__') return null;
+    const branch = (branches as any[]).find(b => b.id === assignment.branch_id);
+    const ids: string[] = branch?.areas_accepted || [];
+    if (ids.length === 0) return [];
+    const namesById = new Map((specialties as any[]).map(s => [s.id, s.name]));
+    return ids.map(id => namesById.get(id)).filter(Boolean) as string[];
+  }, [assignment.branch_id, branches, specialties]);
+
+  const areasForSelect = branchAreasNames && branchAreasNames.length > 0
+    ? branchAreasNames
+    : AREAS_LEGALES;
+
+  // Lawyers filtered by branch
+  const filteredLawyers = useMemo(() => {
+    const list = team as any[];
+    if (assignment.branch_id === '__none__') return list;
+    return list.filter(m => !m.branch_id || m.branch_id === assignment.branch_id);
+  }, [team, assignment.branch_id]);
+
+  // Reset lawyer if it no longer matches branch
+  useEffect(() => {
+    if (assignment.lawyer_id === '__none__') return;
+    if (!filteredLawyers.some((l: any) => l.id === assignment.lawyer_id)) {
+      setAssignment(p => ({ ...p, lawyer_id: '__none__' }));
+    }
+  }, [filteredLawyers, assignment.lawyer_id]);
 
   const resetForm = () => {
     setClient({ nombre: '', apellidos: '', telefono: '', email: '', direccion: '', notas_cliente: '' });
     setLegal({ area_legal: '', subarea: '', case_type: 'crm_manual', provincia: '', cuantia: '', urgencia: false, urgencia_nivel: '', caso_estrella: false });
     setEconomics({ minuta_fija: '', otros_cargos: '', porcentaje_exito: '', cuantia_exito: '', estado_economico: 'pending_budget' });
     setNotes({ cronologia: '', estrategia: '', observaciones: '' });
+    setAssignment({ branch_id: '__none__', lawyer_id: '__none__' });
     setDescripcion('');
   };
 
