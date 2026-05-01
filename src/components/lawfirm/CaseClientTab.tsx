@@ -101,12 +101,10 @@ export function CaseClientTab({ leadId, lawfirmId, fields, contactedAt }: Props)
       const { error } = await supabase
         .from('leads')
         .update({
-          contact_name: fullName || null,
-          contact_phone: next.telefono || null,
-          contact_email: next.email || null,
           structured_fields: {
             ...(fields || {}),
             ...next,
+            nombre_completo: fullName || null,
             updated_at: new Date().toISOString(),
           } as any,
         })
