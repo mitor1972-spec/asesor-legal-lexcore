@@ -207,6 +207,8 @@ Tono formal pero cercano. En español. Solo el cuerpo del email, sin asunto. Má
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const handleCopyEmail = () => {
     navigator.clipboard.writeText(generatedEmail);
     toast.success('Email copiado al portapapeles');
   };
