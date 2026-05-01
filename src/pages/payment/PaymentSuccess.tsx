@@ -36,70 +36,60 @@ export default function PaymentSuccess() {
     let cancelled = false;
 
     const verify = async () => {
-      // 1. Verificar sesión Stripe (puede devolver lead_id si el webhook ya guardó la metadata)
+      // 1. Verificar sesión Stripe (debe devolver lead_id verificable)
       let leadId: string | undefined;
+      let paymentStatus: string | undefined;
       try {
         const { data, error: fnError } = await supabase.functions.invoke('verify-stripe-session', {
           body: { session_id: sessionId },
         });
-        if (!fnError && data) {
-          setSession({ id: sessionId, ...data });
-          leadId = data.lead_id || data.metadata?.lead_id;
-        } else {
-          setSession({ id: sessionId });
+        if (fnError || !data) {
+          setError('No se pudo verificar la sesión de pago');
+          setStatus('error');
+          return;
         }
+        setSession({ id: sessionId, ...data });
+        leadId = data.lead_id || data.metadata?.lead_id || data.payment_db?.lead_id;
+        paymentStatus = data.payment_status;
       } catch (e) {
-        console.warn('[PaymentSuccess] verify-stripe-session falló, se continúa con polling', e);
-        setSession({ id: sessionId });
+        console.error('[PaymentSuccess] verify-stripe-session falló', e);
+        setError('No se pudo verificar la sesión de pago');
+        setStatus('error');
+        return;
       }
 
       if (cancelled) return;
 
-      // 2. Polling: buscar lead_assignment hasta que aparezca
-      const checkAssignment = async (): Promise<boolean> => {
-        // Si tenemos lead_id, buscamos por lead_id directamente
-        if (leadId) {
-          const { data } = await supabase
-            .from('lead_assignments')
-            .select('id')
-            .eq('lead_id', leadId)
-            .maybeSingle();
-          return !!data;
-        }
-        // Fallback: buscar la asignación más reciente del usuario actual
-        // (no podemos filtrar por session_id porque no se guarda en lead_assignments)
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return false;
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('lawfirm_id')
-          .eq('id', user.id)
-          .maybeSingle();
-        if (!profile?.lawfirm_id) return false;
-        const { data } = await supabase
-          .from('lead_assignments')
-          .select('id, assigned_at')
-          .eq('lawfirm_id', profile.lawfirm_id)
-          .order('assigned_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        // Solo aceptamos asignaciones de los últimos 2 minutos
-        if (!data) return false;
-        const assignedAt = new Date((data as any).assigned_at).getTime();
-        return Date.now() - assignedAt < 2 * 60 * 1000;
-      };
+      // Stripe debe haber confirmado el pago
+      if (paymentStatus && paymentStatus !== 'paid') {
+        setError('El pago aún no se ha confirmado en Stripe');
+        setStatus('error');
+        return;
+      }
 
+      // Sin lead_id verificable NO podemos confirmar asignación.
+      // Mostramos "pago recibido" pero nunca "asignado por error".
+      if (!leadId) {
+        setStatus('pending_assignment');
+        return;
+      }
+
+      // 2. Polling: buscar lead_assignment SOLO por lead_id verificado de Stripe
       for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
         if (cancelled) return;
-        const found = await checkAssignment();
-        if (found) {
+        const { data } = await supabase
+          .from('lead_assignments')
+          .select('id')
+          .eq('lead_id', leadId)
+          .maybeSingle();
+        if (data) {
           setStatus('assigned');
           return;
         }
         await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
       }
 
-      // Timeout: el pago llegó pero la asignación tarda. Mostrar mensaje neutro.
+      // Timeout: el pago llegó pero la asignación tarda. NO marcar éxito.
       if (!cancelled) setStatus('pending_assignment');
     };
 
