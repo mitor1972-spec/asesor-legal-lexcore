@@ -56,6 +56,28 @@ function looksLikeAlias(name: string | null | undefined): boolean {
   return ALIAS_REGEX.test(name.trim());
 }
 
+// GOLDEN RULE helpers — emails internos (NUESTROS) no cuentan como contacto del cliente
+const INTERNAL_EMAIL_DOMAINS = ["asesor.legal", "lexmarket.es"];
+
+function isInternalEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const lower = email.toLowerCase().trim();
+  return INTERNAL_EMAIL_DOMAINS.some(d => lower.endsWith("@" + d) || lower.includes("@" + d));
+}
+
+function isValidClientEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const e = email.trim();
+  if (e.length < 5 || !e.includes("@")) return false;
+  return !isInternalEmail(e);
+}
+
+function isValidClientPhone(phone: string | null | undefined): boolean {
+  if (!phone) return false;
+  const digits = phone.replace(/\D/g, "");
+  return digits.length >= 9;
+}
+
 // Strip HTML from content
 function stripHtml(input: string): string {
   return input
