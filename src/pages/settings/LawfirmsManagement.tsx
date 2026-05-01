@@ -113,7 +113,14 @@ export default function LawfirmsManagement() {
               </TableRow>
             ) : (
               filteredLawfirms.map(lf => (
-                <TableRow key={lf.id}>
+                <TableRow
+                  key={lf.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('button')) return;
+                    handleEdit(lf.id);
+                  }}
+                >
                   <TableCell className="font-medium">{lf.name}</TableCell>
                   <TableCell className="font-mono text-sm">{lf.cif || '-'}</TableCell>
                   <TableCell>
