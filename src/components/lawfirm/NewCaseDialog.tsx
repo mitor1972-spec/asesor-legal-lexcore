@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { AREAS_LEGALES, PROVINCIAS_ESPANA, URGENCY_LEVELS } from '@/lib/constants';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useLawfirmBranches, useLawfirmTeam, useLawfirmProfile } from '@/hooks/useLawfirmProfile';
+import { useMasterSpecialties } from '@/hooks/useMasterConfig';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Loader2, Plus, User, Scale, Euro, FileText, StickyNote } from 'lucide-react';
+import { Loader2, Plus, User, Scale, Euro, FileText, StickyNote, Building2 } from 'lucide-react';
 
 interface NewCaseDialogProps {
   open: boolean;
