@@ -372,6 +372,20 @@ export default function LawfirmCaseDetail() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* CLIENTE TAB */}
+        <TabsContent value="cliente" className="mt-3">
+          <CaseClientTab fields={f} contactedAt={caseData.contacted_at} />
+        </TabsContent>
+
+        {/* TIMELINE TAB */}
+        <TabsContent value="timeline" className="mt-3">
+          {caseData.lead_id && <CaseTimelineTab leadId={caseData.lead_id} />}
+        </TabsContent>
+
+        {/* TAREAS TAB */}
+        <TabsContent value="tareas" className="mt-3">
+          {caseData.lead_id && <CaseTasksTab leadId={caseData.lead_id} />}
+        </TabsContent>
       </Tabs>
 
       {/* Quick Actions */}
