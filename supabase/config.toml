@@ -51,6 +51,12 @@ verify_jwt = false
 [functions.validate-case-documents]
 verify_jwt = false
 
+[functions.analyze-case-deep]
+verify_jwt = false
+
+[functions.generate-legal-document]
+verify_jwt = false
+
 [functions.find-orphan-conversations]
 verify_jwt = false
 
