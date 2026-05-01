@@ -75,13 +75,21 @@ const App = () => (
             <BrowserRouter>
               <RouteCleanup />
               <Routes>
+                {/* ============================================ */}
+                {/* RUTAS PÚBLICAS — sin autenticación requerida */}
+                {/* ============================================ */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/registro-despacho" element={<RegistroDespacho />} />
                 <Route path="/registro-proveedor" element={<RegistroProveedor />} />
                 <Route path="/alta-despacho" element={<AltaDespacho />} />
                 <Route path="/payment/success" element={<PaymentSuccess />} />
                 <Route path="/payment/cancel" element={<PaymentCancel />} />
+                {/* Portal cliente — subida de documentos por token, sin login */}
                 <Route path="/upload/:token" element={<ClientUploadPage />} />
+
+                {/* ============================================ */}
+                {/* RUTAS PROTEGIDAS                             */}
+                {/* ============================================ */}
                 <Route path="/" element={<MainLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
