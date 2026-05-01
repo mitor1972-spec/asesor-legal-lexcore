@@ -814,14 +814,23 @@ serve(async (req) => {
         
         if (updatedLead) {
           const sf = updatedLead.structured_fields as Record<string, unknown>;
-          postAiEmail = (sf?.email as string) || null;
-          postAiPhone = (sf?.telefono as string) || null;
-          
-          const postAiHasContact = !!(
-            (postAiEmail && postAiEmail.trim() !== '') || 
-            (postAiPhone && postAiPhone.trim() !== '')
-          );
-          
+          const rawPostAiEmail = (sf?.email as string) || null;
+          const rawPostAiPhone = (sf?.telefono as string) || null;
+
+          // GOLDEN RULE: emails @asesor.legal NO cuentan como contacto del cliente
+          postAiEmail = isValidClientEmail(rawPostAiEmail) ? rawPostAiEmail : null;
+          postAiPhone = isValidClientPhone(rawPostAiPhone) ? rawPostAiPhone : null;
+
+          // Si la IA "inventó" un email interno o un tel inválido, limpiar el structured_fields
+          if (rawPostAiEmail !== postAiEmail || rawPostAiPhone !== postAiPhone) {
+            console.log(`[Webhook] Sanitizing invented contact: email ${rawPostAiEmail}->${postAiEmail}, phone ${rawPostAiPhone}->${postAiPhone}`);
+            await supabase.from("leads").update({
+              structured_fields: { ...sf, email: postAiEmail, telefono: postAiPhone },
+            }).eq("id", upsertedLead.id);
+          }
+
+          const postAiHasContact = !!(postAiEmail || postAiPhone);
+
           console.log(`[Webhook] POST-AI Golden Rule check: email=${postAiEmail}, phone=${postAiPhone}, valid=${postAiHasContact}`);
           
           if (!postAiHasContact) {
