@@ -77,7 +77,7 @@ export default function SalesReport() {
       // Calculate lawfirm stats
       const lawfirmStats: Record<string, LawfirmStat> = {};
       leadsData.forEach(lead => {
-        const assignments = lead.lead_assignments as unknown as any[];
+        const _la = lead.lead_assignments as unknown; const assignments: any[] = Array.isArray(_la) ? _la : (_la ? [_la] : []);
         assignments?.forEach(a => {
           if (a.lawfirms) {
             const id = a.lawfirms.id;
@@ -137,7 +137,7 @@ export default function SalesReport() {
             (areaStats[area].avgScore * (areaStats[area].leads - 1) + lead.score_final) / areaStats[area].leads;
         }
         
-        const assignments = lead.lead_assignments as unknown as any[];
+        const _la = lead.lead_assignments as unknown; const assignments: any[] = Array.isArray(_la) ? _la : (_la ? [_la] : []);
         if (assignments?.some(a => a.firm_status === 'won')) {
           areaStats[area].won += 1;
         }
@@ -151,13 +151,13 @@ export default function SalesReport() {
       
       // Count won leads
       const leadsWon = leadsData.filter(l => {
-        const assignments = l.lead_assignments as unknown as any[];
+        const _la = l.lead_assignments as unknown; const assignments: any[] = Array.isArray(_la) ? _la : (_la ? [_la] : []);
         return assignments?.some(a => a.firm_status === 'won');
       }).length;
       
       const wonValue = leadsData
         .filter(l => {
-          const assignments = l.lead_assignments as unknown as any[];
+          const _la = l.lead_assignments as unknown; const assignments: any[] = Array.isArray(_la) ? _la : (_la ? [_la] : []);
           return assignments?.some(a => a.firm_status === 'won');
         })
         .reduce((sum, l) => sum + (l.price_final || 0), 0);
