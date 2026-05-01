@@ -200,26 +200,32 @@ export function ShoppingCart({
                   <span className="font-medium text-green-600">0€</span>
                 </div>
               )}
-              {hasCreditLine && (
+              {subtotal > 0 && (
                 <>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground flex items-center gap-1">
                       <Wallet className="h-4 w-4" />
-                      Crédito disponible:
+                      Saldo disponible:
                     </span>
                     <span className="font-medium">{balance.toFixed(2)}€</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between">
-                    <span className="font-medium">Crédito tras compra:</span>
-                    <span className={`font-bold text-lg ${canAffordWithCredit ? 'text-green-600' : 'text-destructive'}`}>
+                    <span className="font-medium">Saldo tras compra:</span>
+                    <span className={`font-bold text-lg ${canPayWithBalance ? 'text-green-600' : 'text-muted-foreground'}`}>
                       {newBalance.toFixed(2)}€
                     </span>
                   </div>
-                  {!canAffordWithCredit && subtotal > 0 && (
-                    <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-3 rounded-lg">
+                  {!canPayWithBalance && canUseCreditLine && (
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm bg-amber-500/10 p-3 rounded-lg">
                       <AlertCircle className="h-4 w-4" />
-                      Crédito insuficiente — completa con pago por tarjeta
+                      Saldo insuficiente — puedes usar tu línea de crédito o pagar con tarjeta
+                    </div>
+                  )}
+                  {cardBlockedByMultiple && (
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm bg-amber-500/10 p-3 rounded-lg">
+                      <AlertCircle className="h-4 w-4" />
+                      El pago con tarjeta procesa un solo lead por transacción. Selecciona uno para pagar con tarjeta o usa saldo / línea de crédito para varios.
                     </div>
                   )}
                 </>
