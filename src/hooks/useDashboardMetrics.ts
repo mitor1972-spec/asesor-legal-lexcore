@@ -116,7 +116,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
       const totalLeads = leads.length;
       const totalValue = leads.reduce((sum, l) => sum + getLeadCommercialValue(l), 0);
       const leadsWon = leads.filter(l => {
-        const assignments = l.lead_assignments as any[];
+        const assignments = l.lead_assignments as unknown as any[];
         return assignments?.some(a => a.firm_status === 'won');
       }).length;
       const conversionRate = totalLeads > 0 ? (leadsWon / totalLeads) * 100 : 0;
@@ -151,7 +151,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
 
       const lawfirmStats: Record<string, { name: string; leads: number; value: number }> = {};
       leads.forEach(l => {
-        const assignments = l.lead_assignments as any[];
+        const assignments = l.lead_assignments as unknown as any[];
         assignments?.forEach(a => {
           if (a.lawfirms?.name) {
             const name = a.lawfirms.name;
@@ -169,7 +169,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
         if (!dailyStats[date]) dailyStats[date] = { total: 0, derived: 0, won: 0 };
         dailyStats[date].total += 1;
         if (l.status_internal === 'Enviado') dailyStats[date].derived += 1;
-        const assignments = l.lead_assignments as any[];
+        const assignments = l.lead_assignments as unknown as any[];
         if (assignments?.some(a => a.firm_status === 'won')) dailyStats[date].won += 1;
       });
       const dailyEvolution = Object.entries(dailyStats).map(([date, stats]) => ({ date, ...stats })).sort((a, b) => a.date.localeCompare(b.date));
@@ -179,7 +179,7 @@ export function useDashboardMetrics(period: DatePeriod, customRange?: DateRange)
         .slice(0, 5)
         .map(l => {
           const fields = l.structured_fields as any;
-          const assignments = l.lead_assignments as any[];
+          const assignments = l.lead_assignments as unknown as any[];
           const lawfirm = assignments?.[0]?.lawfirms?.name || null;
           const nameParts = [fields?.nombre, fields?.apellidos].filter(Boolean);
           const name = nameParts.length > 0 ? nameParts.join(' ') : '';
