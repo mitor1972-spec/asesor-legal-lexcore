@@ -246,104 +246,95 @@ export function ShoppingCart({
         <SheetFooter className="border-t pt-4 flex-col gap-2">
           {items.length > 0 && (
             <>
-              {hasCreditLine ? (
-                <>
-                  {/* Firms with credit line: pay with credit (primary) + Stripe fallback */}
-                  <div className="flex gap-2 w-full">
-                    <Button
-                      variant="outline"
-                      onClick={onClearCart}
-                      disabled={isCheckingOut}
-                      size="sm"
-                    >
-                      Vaciar carrito
-                    </Button>
-                    <Button
-                      onClick={handleCheckout}
-                      disabled={selectedItems.length === 0 || isCheckingOut || !canAffordWithCredit}
-                      className="flex-1"
-                      size="sm"
-                    >
-                      {isCheckingOut ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Procesando...
-                        </>
-                      ) : (
-                        <>
-                          <Wallet className="h-4 w-4 mr-1" />
-                          Pagar con crédito
-                          {subtotal > 0 ? ` - ${subtotal.toFixed(0)}€` : ''}
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  {onStripeCheckout && subtotal > 0 && (
-                    <Button
-                      variant="outline"
-                      onClick={() => onStripeCheckout(Array.from(selectedIds))}
-                      disabled={selectedItems.length === 0 || isCheckingOut}
-                      className="w-full"
-                      size="sm"
-                    >
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Pagar con tarjeta
-                      {` - ${subtotal.toFixed(0)}€`}
-                    </Button>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* No credit line: card payment is the only option (no scary "insufficient balance") */}
-                  <div className="flex gap-2 w-full">
-                    <Button
-                      variant="outline"
-                      onClick={onClearCart}
-                      disabled={isCheckingOut}
-                      size="sm"
-                    >
-                      Vaciar carrito
-                    </Button>
-                    {onStripeCheckout && subtotal > 0 ? (
-                      <Button
-                        onClick={() => onStripeCheckout(Array.from(selectedIds))}
-                        disabled={selectedItems.length === 0 || isCheckingOut}
-                        className="flex-1"
-                        size="sm"
-                      >
-                        {isCheckingOut ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Procesando...
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="h-4 w-4 mr-2" />
-                            Pagar con tarjeta
-                            {` - ${subtotal.toFixed(0)}€`}
-                          </>
-                        )}
-                      </Button>
+              <div className="flex gap-2 w-full">
+                <Button
+                  variant="outline"
+                  onClick={onClearCart}
+                  disabled={isCheckingOut}
+                  size="sm"
+                >
+                  Vaciar carrito
+                </Button>
+
+                {/* Pay with balance — available whenever firm has enough balance, no credit line required */}
+                {canPayWithBalance ? (
+                  <Button
+                    onClick={handleCheckout}
+                    disabled={selectedItems.length === 0 || isCheckingOut}
+                    className="flex-1"
+                    size="sm"
+                  >
+                    {isCheckingOut ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Procesando...
+                      </>
                     ) : (
-                      <Button
-                        onClick={handleCheckout}
-                        disabled={selectedItems.length === 0 || isCheckingOut}
-                        className="flex-1"
-                        size="sm"
-                      >
-                        {isCheckingOut ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Procesando...
-                          </>
-                        ) : (
-                          <>Confirmar adquisición</>
-                        )}
-                      </Button>
+                      <>
+                        <Wallet className="h-4 w-4 mr-1" />
+                        Pagar con saldo
+                        {` - ${subtotal.toFixed(0)}€`}
+                      </>
                     )}
-                  </div>
-                </>
+                  </Button>
+                ) : canUseCreditLine ? (
+                  <Button
+                    onClick={handleCheckout}
+                    disabled={selectedItems.length === 0 || isCheckingOut}
+                    className="flex-1"
+                    size="sm"
+                  >
+                    {isCheckingOut ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <Wallet className="h-4 w-4 mr-1" />
+                        Usar línea de crédito
+                        {` - ${subtotal.toFixed(0)}€`}
+                      </>
+                    )}
+                  </Button>
+                ) : subtotal === 0 ? (
+                  /* Only commission leads → free confirmation */
+                  <Button
+                    onClick={handleCheckout}
+                    disabled={selectedItems.length === 0 || isCheckingOut}
+                    className="flex-1"
+                    size="sm"
+                  >
+                    {isCheckingOut ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      <>Confirmar adquisición</>
+                    )}
+                  </Button>
+                ) : null}
+              </div>
+
+              {/* Card payment — secondary, blocked if more than 1 paid lead */}
+              {onStripeCheckout && subtotal > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => onStripeCheckout(Array.from(selectedIds))}
+                  disabled={selectedItems.length === 0 || isCheckingOut || cardBlockedByMultiple}
+                  className="w-full"
+                  size="sm"
+                  title={cardBlockedByMultiple ? 'Selecciona un solo lead para pagar con tarjeta' : undefined}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Pagar con tarjeta
+                  {` - ${subtotal.toFixed(0)}€`}
+                  {cardBlockedByMultiple && ' (1 lead máx.)'}
+                </Button>
               )}
+            </>
+          )}
             </>
           )}
         </SheetFooter>
