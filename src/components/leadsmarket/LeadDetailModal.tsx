@@ -110,15 +110,29 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     );
   };
 
-  // Prefer marketplace_summary (already anonymized) over case_summary (internal, contains contact data).
-  // Always run through redactor as a final safety net, then strip placeholder lines/intro phrases.
+  // Prefer marketplace_summary (already anonymized commercial copy).
+  // Fall back to case_summary (legacy ficha) only if marketplace_summary is missing.
   const rawSummary = lead.marketplace_summary || lead.case_summary || '';
   const redactedSummary = redactContactFromText(rawSummary, fields);
-  // Try to surface high-value sections separately to give the lawyer a structured view.
-  const hechosClave = extractSection(rawSummary, ['Hechos clave', 'Hechos relevantes', 'Hechos']);
-  const pretension = extractSection(rawSummary, ['Pretensión del cliente', 'Pretensión', 'Objetivo del cliente']);
+
+  // Hechos / pretensión: prefer explicit structured fields, then extract from legacy template.
+  const hechosClave =
+    cleanValue(fields.hechos_clave) ||
+    extractSection(lead.case_summary || rawSummary, ['Hechos clave', 'Hechos relevantes', 'Hechos']);
+  const pretension =
+    cleanValue(fields.pretension_cliente) ||
+    cleanValue(fields.objetivo_cliente) ||
+    extractSection(lead.case_summary || rawSummary, ['Pretensión del cliente', 'Pretensión', 'Objetivo del cliente']);
   const redactedHechos = hechosClave ? redactContactFromText(hechosClave, fields) : null;
   const redactedPretension = pretension ? redactContactFromText(pretension, fields) : null;
+
+  // Legal orientation (uses structured_fields if present, else fallback by area).
+  const orientation = buildLegalOrientation(legalArea, fields as Record<string, unknown>);
+  const orientationDeadlines =
+    orientation.deadlines ||
+    cleanValue(fields.fechas_limite) ||
+    cleanValue(fields.plazos) ||
+    (isUrgent ? cleanValue(fields.urgencia_motivo) : null);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
