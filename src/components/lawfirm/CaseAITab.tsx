@@ -146,7 +146,67 @@ Tono formal pero cercano. En español. Solo el cuerpo del email, sin asunto. Má
     }
   };
 
-  const handleCopyEmail = () => {
+  const handleDeepAnalyze = async () => {
+    setIsDeepAnalyzing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-case-deep`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ lead_id: leadId }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error en análisis');
+      setLocalDeepAnalysis(data.analysis);
+      queryClient.invalidateQueries({ queryKey: ['lead', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['case-timeline', leadId] });
+      toast.success('Análisis jurídico profundo generado');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error en análisis profundo');
+    } finally {
+      setIsDeepAnalyzing(false);
+    }
+  };
+
+  const handleGenerateDoc = async () => {
+    setIsGeneratingDoc(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-legal-document`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ lead_id: leadId, document_type: docType }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error generando documento');
+      setGeneratedDoc(data.document);
+      queryClient.invalidateQueries({ queryKey: ['case-timeline', leadId] });
+      toast.success('Borrador generado. Revisa antes de enviar.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error generando documento');
+    } finally {
+      setIsGeneratingDoc(false);
+    }
+  };
+
+  const handleDownloadDoc = () => {
+    if (!generatedDoc) return;
+    const blob = new Blob([generatedDoc], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${docType}-${leadId.slice(0, 8)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
     navigator.clipboard.writeText(generatedEmail);
     toast.success('Email copiado al portapapeles');
   };
