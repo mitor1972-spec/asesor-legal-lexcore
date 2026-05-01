@@ -93,7 +93,7 @@ export default function LawfirmCases() {
 
     return {
       branchId,
-      branchName: branch?.name || 'Sin sede asignada',
+      branchName: branch?.name || 'Despacho principal',
       branchProvince: branch?.province,
       caseCount: branchCases.length,
       lawyers: Object.entries(byLawyer).map(([lawyerId, lawyerCases]) => {
