@@ -58,6 +58,7 @@ import SalesReport from "@/pages/reports/SalesReport";
 import PaymentSuccess from "@/pages/payment/PaymentSuccess";
 import PaymentCancel from "@/pages/payment/PaymentCancel";
 import NotFound from "@/pages/NotFound";
+import ClientUploadPage from "@/pages/public/ClientUploadPage";
 import { RequireAdmin } from "@/components/auth/RequireAdmin";
 import { RouteCleanup } from "@/components/layout/RouteCleanup";
 
@@ -80,6 +81,7 @@ const App = () => (
                 <Route path="/alta-despacho" element={<AltaDespacho />} />
                 <Route path="/payment/success" element={<PaymentSuccess />} />
                 <Route path="/payment/cancel" element={<PaymentCancel />} />
+                <Route path="/upload/:token" element={<ClientUploadPage />} />
                 <Route path="/" element={<MainLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
