@@ -434,6 +434,16 @@ export default function LawfirmCaseDetail() {
           currentLawyerId={caseData.assigned_lawyer_id || null}
         />
       )}
+      {caseData.lead_id && (
+        <UploadLinkDialog
+          open={uploadLinkOpen}
+          onOpenChange={setUploadLinkOpen}
+          leadId={caseData.lead_id}
+          clientEmail={getContactEmail(f)}
+          clientPhone={getContactPhone(f)}
+          clientName={getDisplayName(f)}
+        />
+      )}
     </div>
   );
 }
