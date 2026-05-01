@@ -132,7 +132,11 @@ export function AdminAlertsFeed({ alerts }: { alerts: LawfirmAlert[] }) {
         {alerts.map((a, i) => {
           const cfg = iconMap[a.type];
           return (
-            <div key={i} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+            <Link
+              key={i}
+              to={linkFor(a)}
+              className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+            >
               <div className={`p-1.5 rounded-md ${cfg.bg} mt-0.5`}>
                 <cfg.icon className={`h-3.5 w-3.5 ${cfg.color}`} />
               </div>
@@ -146,7 +150,7 @@ export function AdminAlertsFeed({ alerts }: { alerts: LawfirmAlert[] }) {
               <span className="text-[10px] text-muted-foreground shrink-0">
                 {format(new Date(a.date), 'dd/MM', { locale: es })}
               </span>
-            </div>
+            </Link>
           );
         })}
       </CardContent>
