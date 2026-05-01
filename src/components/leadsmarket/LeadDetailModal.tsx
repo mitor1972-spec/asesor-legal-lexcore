@@ -14,6 +14,9 @@ import type { MarketplaceLead } from '@/types/marketplace';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { redactContactFromText, isContactField, LEXCORE_SCORING_GROUPS, getGroupScore, hasAnyScoring, extractSection } from '@/lib/contactSanitizer';
+import { buildLegalOrientation } from '@/lib/legalDefaults';
+import { processAndSanitize } from '@/lib/sanitize';
+import { Clock, FileCheck } from 'lucide-react';
 
 interface LeadDetailModalProps {
   lead: MarketplaceLead | null;
@@ -107,15 +110,29 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     );
   };
 
-  // Prefer marketplace_summary (already anonymized) over case_summary (internal, contains contact data).
-  // Always run through redactor as a final safety net, then strip placeholder lines/intro phrases.
+  // Prefer marketplace_summary (already anonymized commercial copy).
+  // Fall back to case_summary (legacy ficha) only if marketplace_summary is missing.
   const rawSummary = lead.marketplace_summary || lead.case_summary || '';
   const redactedSummary = redactContactFromText(rawSummary, fields);
-  // Try to surface high-value sections separately to give the lawyer a structured view.
-  const hechosClave = extractSection(rawSummary, ['Hechos clave', 'Hechos relevantes', 'Hechos']);
-  const pretension = extractSection(rawSummary, ['Pretensión del cliente', 'Pretensión', 'Objetivo del cliente']);
+
+  // Hechos / pretensión: prefer explicit structured fields, then extract from legacy template.
+  const hechosClave =
+    cleanValue(fields.hechos_clave) ||
+    extractSection(lead.case_summary || rawSummary, ['Hechos clave', 'Hechos relevantes', 'Hechos']);
+  const pretension =
+    cleanValue(fields.pretension_cliente) ||
+    cleanValue(fields.objetivo_cliente) ||
+    extractSection(lead.case_summary || rawSummary, ['Pretensión del cliente', 'Pretensión', 'Objetivo del cliente']);
   const redactedHechos = hechosClave ? redactContactFromText(hechosClave, fields) : null;
   const redactedPretension = pretension ? redactContactFromText(pretension, fields) : null;
+
+  // Legal orientation (uses structured_fields if present, else fallback by area).
+  const orientation = buildLegalOrientation(legalArea, fields as Record<string, unknown>);
+  const orientationDeadlines =
+    orientation.deadlines ||
+    cleanValue(fields.fechas_limite) ||
+    cleanValue(fields.plazos) ||
+    (isUrgent ? cleanValue(fields.urgencia_motivo) : null);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -272,11 +289,16 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-muted/30 p-4 rounded-lg">
-                  <p className="text-sm leading-relaxed whitespace-pre-line">
-                    {redactedSummary || 'Sin resumen disponible'}
-                  </p>
-                </div>
+                {redactedSummary ? (
+                  <div className="bg-muted/30 p-4 rounded-lg max-h-72 overflow-y-auto">
+                    <div
+                      className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert"
+                      dangerouslySetInnerHTML={{ __html: processAndSanitize(redactedSummary) }}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Resumen no disponible para este lead.</p>
+                )}
                 
                 {lead.vj_key_phrases && lead.vj_key_phrases.length > 0 && (
                   <div className="mt-4">
@@ -340,7 +362,8 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
               </CardContent>
             </Card>
 
-            {/* Legal Orientation Placeholder */}
+
+
             <Card className="border-lawfirm-primary/20 bg-lawfirm-primary/5">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -348,34 +371,73 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                   Orientación Legal
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-start gap-2 p-3 bg-background rounded-lg">
-                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Legislación aplicable</p>
-                    <p className="text-xs text-muted-foreground">
-                      Se mostrará la legislación relevante tras la compra
+              <CardContent className="space-y-4">
+                {/* Legislación */}
+                <div className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-1">Legislación aplicable</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {orientation.legislation}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-2 p-3 bg-background rounded-lg">
-                  <ClipboardList className="h-4 w-4 text-blue-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Documentación necesaria</p>
-                    <p className="text-xs text-muted-foreground">
-                      Lista de documentos a solicitar al cliente
-                    </p>
+
+                {/* Documentación */}
+                <div className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                  <FileCheck className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-1">Documentación a solicitar al cliente</p>
+                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-0.5">
+                      {(orientation.documents || []).map((doc, i) => (
+                        <li key={i}>{doc}</li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-                <div className="flex items-start gap-2 p-3 bg-background rounded-lg">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Alertas y riesgos</p>
-                    <p className="text-xs text-muted-foreground">
-                      Puntos de atención identificados
-                    </p>
+
+                {/* Riesgos */}
+                <div className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-1">Alertas y riesgos</p>
+                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-0.5">
+                      {(orientation.risks || []).map((risk, i) => (
+                        <li key={i}>{risk}</li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
+
+                {/* Plazos */}
+                {orientationDeadlines && (
+                  <div className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                    <Clock className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium mb-1">Plazos importantes</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {orientationDeadlines}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Estrategia inicial sugerida (si AI la generó) */}
+                {orientation.strategy && (
+                  <div className="flex items-start gap-3 p-3 bg-background rounded-lg">
+                    <Target className="h-5 w-5 text-lawfirm-primary mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium mb-1">Estrategia inicial sugerida</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        {redactContactFromText(orientation.strategy, fields)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground italic pt-1">
+                  Orientación general según el área legal. Tras la compra accederás al expediente completo, contacto del cliente y herramientas de IA específicas del caso.
+                </p>
               </CardContent>
             </Card>
           </div>
