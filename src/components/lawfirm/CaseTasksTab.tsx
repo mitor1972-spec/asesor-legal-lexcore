@@ -46,7 +46,7 @@ export function CaseTasksTab({ leadId }: Props) {
       if (!form.title.trim()) throw new Error('El título es obligatorio');
       const { error } = await supabase.from('case_tasks' as any).insert({
         lead_id: leadId,
-        lawfirm_id: profile?.lawfirm_id,
+        lawfirm_id: profile?.id,
         title: form.title.trim(),
         description: form.description.trim() || null,
         due_date: form.due_date || null,
