@@ -116,6 +116,8 @@ interface TeamMember {
   created_at: string | null;
   role: string;
   branch_id: string | null;
+  legal_areas: string[] | null;
+  phone: string | null;
 }
 
 export function useLawfirmTeam() {
@@ -136,7 +138,9 @@ export function useLawfirmTeam() {
           full_name,
           is_active,
           created_at,
-          branch_id
+          branch_id,
+          legal_areas,
+          phone
         `)
         .eq('lawfirm_id', lawfirmId);
 
