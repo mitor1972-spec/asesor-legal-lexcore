@@ -95,7 +95,7 @@ export function CasesByBranchWidget({
   const branchData = Object.entries(branchCount).map(([branchId, count]) => {
     const branch = branches.find(b => b.id === branchId);
     return {
-      name: branch?.name || 'Sin sede asignada',
+      name: branch?.name || 'Despacho principal',
       province: branch?.province,
       count
     };

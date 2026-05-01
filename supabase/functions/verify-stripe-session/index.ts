@@ -32,8 +32,17 @@ serve(async (req) => {
       });
     }
 
+    // Accept session_id from query OR JSON body (PaymentSuccess sends it via body)
     const url = new URL(req.url);
-    const sessionId = url.searchParams.get('session_id');
+    let sessionId = url.searchParams.get('session_id');
+    if (!sessionId && (req.method === 'POST' || req.method === 'PUT')) {
+      try {
+        const body = await req.json();
+        sessionId = body?.session_id || null;
+      } catch {
+        // ignore — handled below
+      }
+    }
 
     if (!sessionId) {
       return new Response(JSON.stringify({ error: 'session_id es requerido' }), {
@@ -43,12 +52,12 @@ serve(async (req) => {
 
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    // Get payment record from DB
+    // Get payment record from DB (maybeSingle: payment row may not exist yet)
     const { data: payment } = await supabaseAdmin
       .from('payments')
       .select('id, lead_id, amount, status, completed_at')
       .eq('transaction_id', sessionId)
-      .single();
+      .maybeSingle();
 
     const leadIdFromMetadata = (session.metadata as Record<string, string> | null)?.lead_id;
     const lead_id = payment?.lead_id || leadIdFromMetadata || null;

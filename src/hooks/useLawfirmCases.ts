@@ -46,13 +46,19 @@ export function useLawfirmCases() {
   const { user } = useAuthContext();
   const { impersonatedLawfirm, isImpersonating } = useImpersonation();
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
+  // Permisos: lawfirm_admin / lawfirm_manager ven todo el despacho.
+  // lawfirm_lawyer solo ve los casos asignados a él/ella.
+  // Internos (admin/operator) e impersonación: ven todo.
+  const role = (user as any)?.role as string | null;
+  const isLawyerOnly = !isImpersonating && role === 'lawfirm_lawyer';
+  const userId = user?.id;
 
   return useQuery({
-    queryKey: ['lawfirm-cases', lawfirmId],
+    queryKey: ['lawfirm-cases', lawfirmId, isLawyerOnly ? userId : 'all'],
     queryFn: async () => {
       if (!lawfirmId) return [];
 
-      const query = supabase
+      let query = supabase
         .from('lead_assignments')
         .select(`
           *,
@@ -68,6 +74,11 @@ export function useLawfirmCases() {
         .or('is_demo.is.null,is_demo.eq.false')
         .order('assigned_at', { ascending: false });
 
+      if (isLawyerOnly && userId) {
+        // Solo casos asignados a este abogado
+        query = query.eq('assigned_lawyer_id', userId);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as unknown as LawfirmCase[];
@@ -80,12 +91,15 @@ export function useLawfirmCase(assignmentId: string | undefined) {
   const { user } = useAuthContext();
   const { impersonatedLawfirm, isImpersonating } = useImpersonation();
   const lawfirmId = isImpersonating ? impersonatedLawfirm?.id : user?.profile?.lawfirm_id;
+  const role = (user as any)?.role as string | null;
+  const isLawyerOnly = !isImpersonating && role === 'lawfirm_lawyer';
+  const userId = user?.id;
 
   return useQuery({
-    queryKey: ['lawfirm-case', assignmentId],
+    queryKey: ['lawfirm-case', assignmentId, isLawyerOnly ? userId : 'all'],
     queryFn: async () => {
       if (!assignmentId || !lawfirmId) return null;
-      const { data, error } = await supabase
+      let query = supabase
         .from('lead_assignments')
         .select(`
           *,
@@ -98,8 +112,13 @@ export function useLawfirmCase(assignmentId: string | undefined) {
           )
         `)
         .eq('id', assignmentId)
-        .eq('lawfirm_id', lawfirmId)
-        .single();
+        .eq('lawfirm_id', lawfirmId);
+
+      if (isLawyerOnly && userId) {
+        query = query.eq('assigned_lawyer_id', userId);
+      }
+
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return data as unknown as LawfirmCase;
     },

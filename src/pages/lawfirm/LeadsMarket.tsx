@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { toast } from 'sonner';
 import { ShoppingCart, Wallet, Filter, LayoutGrid, List, ArrowUpDown, RotateCcw, Search, Zap, Percent, TrendingUp, Euro } from 'lucide-react';
-import { LEGAL_AREAS, PROVINCES } from '@/lib/constants';
+import { PROVINCES } from '@/lib/constants';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { LeadMarketCard } from '@/components/leadsmarket/LeadMarketCard';
 import { LeadMarketListItem } from '@/components/leadsmarket/LeadMarketListItem';
@@ -102,18 +102,38 @@ export default function LeadsMarket() {
     enabled: !!lawfirmId,
   });
 
-  // Fetch commission areas
+  // Fetch commission map from master_specialties (single source of truth)
+  // Keyed by specialty NAME because structured_fields.area_legal stores the name string.
   const { data: commissionAreas } = useQuery({
-    queryKey: ['commission-areas-map'],
+    queryKey: ['commission-specialties-map'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('commission_areas')
-        .select('legal_area, commission_percent')
-        .eq('is_active', true);
-      if (error) return {};
+        .from('master_specialties')
+        .select('id, name, default_commission_percent, commission_allowed, is_active')
+        .eq('is_active', true)
+        .eq('commission_allowed', true);
+      if (error) return {} as Record<string, number>;
       const map: Record<string, number> = {};
-      (data || []).forEach(a => { map[a.legal_area] = a.commission_percent; });
+      (data || []).forEach((s: any) => {
+        if (s.name && s.default_commission_percent != null) {
+          map[s.name] = Number(s.default_commission_percent);
+        }
+      });
       return map;
+    },
+  });
+
+  // Fetch active legal-area options for the filter (from master_specialties)
+  const { data: areaOptions = [] } = useQuery<string[]>({
+    queryKey: ['marketplace-area-options'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('master_specialties')
+        .select('name')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+      if (error) return [];
+      return (data || []).map((s: any) => s.name as string).filter(Boolean);
     },
   });
 
@@ -380,11 +400,16 @@ export default function LeadsMarket() {
       return;
     }
 
-    // Stripe checkout works one lead at a time
-    const leadId = selectedIds[0];
-    if (selectedIds.length > 1) {
-      toast.info('El pago con tarjeta procesa un lead a la vez. Se procesará el primero seleccionado.');
+    // Stripe Checkout sólo soporta 1 lead por sesión (compra múltiple real no implementada)
+    const paidIds = selectedIds.filter(id => {
+      const it = cartItems.find(c => c.id === id);
+      return it && !it.isCommission;
+    });
+    if (paidIds.length > 1) {
+      toast.error('Pago con tarjeta: selecciona un solo lead. Para varios usa saldo o línea de crédito.');
+      return;
     }
+    const leadId = paidIds[0] || selectedIds[0];
 
     setIsCheckingOut(true);
     try {
@@ -454,7 +479,7 @@ export default function LeadsMarket() {
             <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
             
             <MultiSelect
-              options={LEGAL_AREAS}
+              options={areaOptions}
               selected={draftAreas}
               onChange={setDraftAreas}
               placeholder="Áreas legales"
