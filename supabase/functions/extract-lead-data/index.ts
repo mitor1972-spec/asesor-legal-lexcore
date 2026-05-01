@@ -18,11 +18,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { callAI, AIError } from "../_shared/ai-client.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
 
 // Lista canónica de áreas legales — se inyecta en el prompt como variable.
 // Mantener aquí permite que la BD del prompt no tenga que actualizarse cada
@@ -44,9 +40,8 @@ const AREAS_LEGALES = [
 ];
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const __pre = handleCorsPreflight(req); if (__pre) return __pre;
+  const corsHeaders = buildCorsHeaders(req);
 
   try {
     // ---- Auth ----
