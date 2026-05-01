@@ -7,11 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Sparkles, Mail, FileText, Loader2, Copy, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Sparkles, Mail, FileText, Loader2, Copy, RefreshCw, AlertTriangle, Scale, FileSignature, Download } from 'lucide-react';
 import { useLegalHelp, useGenerateLegalHelp } from '@/hooks/useLegalHelp';
 import { useGenerateCaseSummary } from '@/hooks/useCaseSummary';
 import { processAndSanitize } from '@/lib/sanitize';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CaseAITabProps {
   leadId: string;
@@ -28,7 +29,16 @@ const EMAIL_TYPES = [
   { value: 'avance', label: 'Comunicación de avance' },
 ];
 
+const LEGAL_DOC_TYPES = [
+  { value: 'engagement_letter', label: 'Hoja de encargo' },
+  { value: 'burofax', label: 'Burofax' },
+  { value: 'demanda', label: 'Demanda' },
+  { value: 'escrito_admin', label: 'Escrito administración' },
+  { value: 'email_cliente', label: 'Email al cliente' },
+];
+
 export function CaseAITab({ leadId, leadText, structuredFields, sourceChannel, caseSummary }: CaseAITabProps) {
+  const queryClient = useQueryClient();
   const { data: legalHelp, isLoading: isLoadingHelp } = useLegalHelp(leadId);
   const generateLegalHelp = useGenerateLegalHelp();
   const generateSummary = useGenerateCaseSummary();
@@ -36,6 +46,16 @@ export function CaseAITab({ leadId, leadText, structuredFields, sourceChannel, c
   const [emailType, setEmailType] = useState('presupuesto');
   const [generatedEmail, setGeneratedEmail] = useState('');
   const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
+
+  // Deep analysis state
+  const deepAnalysis = (structuredFields?.deep_analysis as string) || '';
+  const [isDeepAnalyzing, setIsDeepAnalyzing] = useState(false);
+  const [localDeepAnalysis, setLocalDeepAnalysis] = useState<string>(deepAnalysis);
+
+  // Legal doc generator
+  const [docType, setDocType] = useState('engagement_letter');
+  const [generatedDoc, setGeneratedDoc] = useState('');
+  const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
 
   const handleGenerateSummary = async () => {
     try {
@@ -124,6 +144,68 @@ Tono formal pero cercano. En español. Solo el cuerpo del email, sin asunto. Má
     } finally {
       setIsGeneratingEmail(false);
     }
+  };
+
+  const handleDeepAnalyze = async () => {
+    setIsDeepAnalyzing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-case-deep`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ lead_id: leadId }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error en análisis');
+      setLocalDeepAnalysis(data.analysis);
+      queryClient.invalidateQueries({ queryKey: ['lead', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['case-timeline', leadId] });
+      toast.success('Análisis jurídico profundo generado');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error en análisis profundo');
+    } finally {
+      setIsDeepAnalyzing(false);
+    }
+  };
+
+  const handleGenerateDoc = async () => {
+    setIsGeneratingDoc(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-legal-document`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ lead_id: leadId, document_type: docType }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error generando documento');
+      setGeneratedDoc(data.document);
+      queryClient.invalidateQueries({ queryKey: ['case-timeline', leadId] });
+      toast.success('Borrador generado. Revisa antes de enviar.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error generando documento');
+    } finally {
+      setIsGeneratingDoc(false);
+    }
+  };
+
+  const handleDownloadDoc = () => {
+    if (!generatedDoc) return;
+    const blob = new Blob([generatedDoc], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${docType}-${leadId.slice(0, 8)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleCopyEmail = () => {
@@ -269,6 +351,86 @@ Tono formal pero cercano. En español. Solo el cuerpo del email, sin asunto. Má
             <div className="text-center py-6">
               <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
               <p className="text-sm text-muted-foreground">Genera orientación legal con IA para este caso</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      {/* Deep Legal Analysis */}
+      <Card className="shadow-soft border-primary/30">
+        <CardHeader className="py-2 px-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Scale className="h-4 w-4 text-primary" />
+            Análisis Jurídico Profundo
+          </CardTitle>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={handleDeepAnalyze} disabled={isDeepAnalyzing}>
+              {isDeepAnalyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+              {localDeepAnalysis ? 'Regenerar' : 'Generar análisis'}
+            </Button>
+            {localDeepAnalysis && (
+              <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(localDeepAnalysis); toast.success('Copiado'); }}>
+                <Copy className="h-3.5 w-3.5 mr-1.5" />Copiar
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="py-2 px-3">
+          {localDeepAnalysis ? (
+            <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap text-sm bg-muted/30 rounded-lg p-3 max-h-96 overflow-y-auto">
+              {localDeepAnalysis}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Informe profesional: viabilidad, riesgos, estrategia, plazos y próximos pasos.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Legal Document Generator */}
+      <Card className="shadow-soft">
+        <CardHeader className="py-2 px-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileSignature className="h-4 w-4 text-primary" />
+            Generador de Documentos Legales
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="py-2 px-3 space-y-3">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Label className="text-xs">Tipo de documento</Label>
+              <Select value={docType} onValueChange={setDocType}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LEGAL_DOC_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button size="sm" onClick={handleGenerateDoc} disabled={isGeneratingDoc}>
+                {isGeneratingDoc ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+                Generar borrador
+              </Button>
+            </div>
+          </div>
+
+          {generatedDoc && (
+            <div className="space-y-2">
+              <Textarea
+                value={generatedDoc}
+                onChange={e => setGeneratedDoc(e.target.value)}
+                rows={14}
+                className="text-sm font-mono"
+              />
+              <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(generatedDoc); toast.success('Copiado'); }}>
+                  <Copy className="h-3.5 w-3.5 mr-1.5" />Copiar
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleDownloadDoc}>
+                  <Download className="h-3.5 w-3.5 mr-1.5" />Descargar .txt
+                </Button>
+                <p className="text-xs text-muted-foreground self-center">Borrador IA. Revisión obligatoria por el letrado.</p>
+              </div>
             </div>
           )}
         </CardContent>
