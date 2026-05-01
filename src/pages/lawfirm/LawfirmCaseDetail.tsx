@@ -194,10 +194,13 @@ export default function LawfirmCaseDetail() {
       {/* Main Tabs: Datos, Economía, Documentos, IA, Seguimiento, Notas */}
       <Tabs defaultValue="datos">
         <TabsList className="w-full justify-start flex-wrap">
-          <TabsTrigger value="datos"><FileText className="h-4 w-4 mr-1.5" />Datos</TabsTrigger>
-          <TabsTrigger value="economia"><Euro className="h-4 w-4 mr-1.5" />Economía</TabsTrigger>
+          <TabsTrigger value="datos"><FileText className="h-4 w-4 mr-1.5" />Resumen</TabsTrigger>
+          <TabsTrigger value="cliente"><User className="h-4 w-4 mr-1.5" />Cliente</TabsTrigger>
           <TabsTrigger value="documents"><FolderOpen className="h-4 w-4 mr-1.5" />Documentos</TabsTrigger>
-          <TabsTrigger value="ia"><Sparkles className="h-4 w-4 mr-1.5" />IA</TabsTrigger>
+          <TabsTrigger value="ia"><Sparkles className="h-4 w-4 mr-1.5" />IA Jurídica</TabsTrigger>
+          <TabsTrigger value="economia"><Euro className="h-4 w-4 mr-1.5" />Honorarios</TabsTrigger>
+          <TabsTrigger value="timeline"><Clock className="h-4 w-4 mr-1.5" />Timeline</TabsTrigger>
+          <TabsTrigger value="tareas"><CheckSquare className="h-4 w-4 mr-1.5" />Tareas</TabsTrigger>
           <TabsTrigger value="tracking"><ClipboardList className="h-4 w-4 mr-1.5" />Seguimiento</TabsTrigger>
           <TabsTrigger value="notes"><MessageSquare className="h-4 w-4 mr-1.5" />Notas</TabsTrigger>
         </TabsList>
