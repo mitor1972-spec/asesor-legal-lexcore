@@ -27,8 +27,13 @@ import {
   ArrowLeft, Phone, CheckCircle2, XCircle, Loader2,
   User, Mail, MapPin, Scale, Euro, Zap, Inbox, Hash,
   FileText, FolderOpen, Sparkles, ClipboardList, MessageSquare, History,
-  ShieldAlert, Calculator, UserCog
+  ShieldAlert, Calculator, UserCog, Clock, CheckSquare, Upload, Download
 } from 'lucide-react';
+import { OperationalStatusSelect, OperationalStatusBadge } from '@/components/lawfirm/OperationalStatusBadge';
+import { useUpdateOperationalStatus } from '@/hooks/useCaseOperationalStatus';
+import { CaseTimelineTab } from '@/components/lawfirm/CaseTimelineTab';
+import { CaseTasksTab } from '@/components/lawfirm/CaseTasksTab';
+import { CaseClientTab } from '@/components/lawfirm/CaseClientTab';
 
 const statusLabels: Record<string, string> = {
   received: 'Nuevo', reviewing: 'Revisando', contacted: 'Contactado',
