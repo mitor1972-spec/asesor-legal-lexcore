@@ -289,11 +289,16 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="bg-muted/30 p-4 rounded-lg">
-                  <p className="text-sm leading-relaxed whitespace-pre-line">
-                    {redactedSummary || 'Sin resumen disponible'}
-                  </p>
-                </div>
+                {redactedSummary ? (
+                  <div className="bg-muted/30 p-4 rounded-lg max-h-72 overflow-y-auto">
+                    <div
+                      className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert"
+                      dangerouslySetInnerHTML={{ __html: processAndSanitize(redactedSummary) }}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Resumen no disponible para este lead.</p>
+                )}
                 
                 {lead.vj_key_phrases && lead.vj_key_phrases.length > 0 && (
                   <div className="mt-4">
