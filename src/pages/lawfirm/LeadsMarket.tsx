@@ -124,7 +124,7 @@ export default function LeadsMarket() {
   });
 
   // Fetch active legal-area options for the filter (from master_specialties)
-  const { data: areaOptions = [] } = useQuery({
+  const { data: areaOptions = [] } = useQuery<string[]>({
     queryKey: ['marketplace-area-options'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -132,8 +132,8 @@ export default function LeadsMarket() {
         .select('name')
         .eq('is_active', true)
         .order('name', { ascending: true });
-      if (error) return [] as { value: string; label: string }[];
-      return (data || []).map((s: any) => ({ value: s.name, label: s.name }));
+      if (error) return [];
+      return (data || []).map((s: any) => s.name as string).filter(Boolean);
     },
   });
 
