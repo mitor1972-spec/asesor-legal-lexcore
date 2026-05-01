@@ -323,6 +323,56 @@ export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
               </div>
             </TabsContent>
 
+            {/* ASSIGNMENT TAB */}
+            <TabsContent value="assignment" className="mt-0 space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Sucursal</Label>
+                <Select value={assignment.branch_id} onValueChange={v => setAssignment(p => ({ ...p, branch_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin asignar</SelectItem>
+                    {(branches as any[]).map(b => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}{b.province ? ` — ${b.province}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(branches as any[]).length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    No hay sucursales creadas. Puedes crearlas en Equipo → Sucursales.
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Abogado responsable</Label>
+                <Select value={assignment.lawyer_id} onValueChange={v => setAssignment(p => ({ ...p, lawyer_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin asignar</SelectItem>
+                    {filteredLawyers.map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.full_name || m.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {assignment.branch_id !== '__none__' && filteredLawyers.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    No hay abogados vinculados a esta sucursal.
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-muted/50 rounded-md p-3 text-xs space-y-1">
+                <p className="font-medium">Reglas de herencia</p>
+                <p className="text-muted-foreground">• Si seleccionas una sucursal, las áreas legales del caso se filtran a las que cubre esa oficina.</p>
+                <p className="text-muted-foreground">• Los abogados se filtran por sucursal seleccionada.</p>
+                <p className="text-muted-foreground">• Sin asignación, el caso queda disponible para todo el despacho.</p>
+              </div>
+            </TabsContent>
+
             {/* ECONOMICS TAB */}
             <TabsContent value="economics" className="mt-0 space-y-3">
               <div className="grid grid-cols-2 gap-3">
