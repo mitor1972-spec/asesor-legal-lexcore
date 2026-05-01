@@ -208,6 +208,7 @@ export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
           <TabsList className="w-full justify-start shrink-0">
             <TabsTrigger value="client" className="text-xs gap-1"><User className="h-3.5 w-3.5" />Cliente</TabsTrigger>
             <TabsTrigger value="legal" className="text-xs gap-1"><Scale className="h-3.5 w-3.5" />Legal</TabsTrigger>
+            <TabsTrigger value="assignment" className="text-xs gap-1"><Building2 className="h-3.5 w-3.5" />Asignación</TabsTrigger>
             <TabsTrigger value="economics" className="text-xs gap-1"><Euro className="h-3.5 w-3.5" />Economía</TabsTrigger>
             <TabsTrigger value="notes" className="text-xs gap-1"><StickyNote className="h-3.5 w-3.5" />Notas</TabsTrigger>
           </TabsList>
@@ -257,9 +258,12 @@ export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
                   <Select value={legal.area_legal} onValueChange={v => setLegal(p => ({ ...p, area_legal: v }))}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                     <SelectContent>
-                      {AREAS_LEGALES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                      {areasForSelect.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {assignment.branch_id !== '__none__' && branchAreasNames && branchAreasNames.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground">Solo áreas de la sucursal seleccionada</p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Subárea / Tipo</Label>
