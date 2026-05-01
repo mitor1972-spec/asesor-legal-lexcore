@@ -110,10 +110,12 @@ export function LeadDetailModal({ lead, open, onClose, onAddToCart, isInCart, ca
     );
   };
 
-  // Prefer marketplace_summary (already anonymized commercial copy).
-  // Fall back to case_summary (legacy ficha) only if marketplace_summary is missing.
-  const rawSummary = lead.marketplace_summary || lead.case_summary || '';
-  const redactedSummary = redactContactFromText(rawSummary, fields);
+  // Prefer the full case_summary (ficha completa) so the lawyer sees the same
+  // structured info as the admin. Fall back to marketplace_summary only if the
+  // full ficha is missing. We then apply a MINIMAL PII redaction that ONLY
+  // replaces contact data — without stripping section headers or layout.
+  const rawSummary = lead.case_summary || lead.marketplace_summary || '';
+  const redactedSummary = redactPIIOnly(rawSummary, fields, lead);
 
   // Hechos / pretensión: prefer explicit structured fields, then extract from legacy template.
   const hechosClave =
