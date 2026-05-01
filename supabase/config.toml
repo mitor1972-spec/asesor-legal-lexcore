@@ -21,20 +21,21 @@ verify_jwt = false
 [functions.chatwoot-debug-conversation]
 verify_jwt = false
 
-[functions.backfill-chatwoot]
-verify_jwt = false
-
 [functions.find-orphan-conversations]
 verify_jwt = false
 
+# ---- admin tools moved to JWT-required (validan rol admin en código también) ----
+[functions.backfill-chatwoot]
+verify_jwt = true
+
 [functions.reclassify-leads]
-verify_jwt = false
+verify_jwt = true
 
 [functions.repair-leads]
-verify_jwt = false
+verify_jwt = true
 
 [functions.reprocess-lead]
-verify_jwt = false
+verify_jwt = true
 
 # ============================================================
 # AUTHENTICATED FUNCTIONS — verify_jwt = true (gateway enforced)
