@@ -16,6 +16,7 @@ import { CaseEconomicSummary } from '@/components/lawfirm/CaseEconomicSummary';
 import { CaseAITab } from '@/components/lawfirm/CaseAITab';
 import { CaseResultDialog } from '@/components/lawfirm/CaseResultDialog';
 import { ReportClaimDialog } from '@/components/lawfirm/ReportClaimDialog';
+import { AssignCaseDialog } from '@/components/lawfirm/AssignCaseDialog';
 import { processAndSanitize } from '@/lib/sanitize';
 import { formatLocation } from '@/lib/cityProvinceMapping';
 import { getDisplayName, getContactPhone, getContactEmail, getChatwootAlias } from '@/lib/contactUtils';
@@ -26,7 +27,7 @@ import {
   ArrowLeft, Phone, CheckCircle2, XCircle, Loader2,
   User, Mail, MapPin, Scale, Euro, Zap, Inbox, Hash,
   FileText, FolderOpen, Sparkles, ClipboardList, MessageSquare, History,
-  ShieldAlert, Calculator
+  ShieldAlert, Calculator, UserCog
 } from 'lucide-react';
 
 const statusLabels: Record<string, string> = {
@@ -48,6 +49,7 @@ export default function LawfirmCaseDetail() {
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const [resultType, setResultType] = useState<'won' | 'lost'>('won');
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
   if (caseData && !isNotesLoaded) {
     setNotes(caseData.firm_notes || '');
@@ -134,6 +136,10 @@ export default function LawfirmCaseDetail() {
               }
               return null;
             })()}
+            <Button variant="outline" size="sm" onClick={() => setAssignDialogOpen(true)}>
+              <UserCog className="mr-1.5 h-3.5 w-3.5" />
+              {caseData.assigned_lawyer?.full_name || caseData.assigned_lawyer?.email || 'Asignar'}
+            </Button>
             <Select value={caseData.firm_status} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
               <SelectContent>
