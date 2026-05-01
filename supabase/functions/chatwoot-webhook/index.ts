@@ -122,7 +122,9 @@ function extractContactFromText(text: string): {
   }
   
   return {
-    email: emailMatches ? emailMatches[0].toLowerCase() : null,
+    email: emailMatches
+      ? (emailMatches.find(e => !isInternalEmail(e))?.toLowerCase() ?? null)
+      : null,
     phone,
     name,
   };
