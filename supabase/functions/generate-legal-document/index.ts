@@ -36,20 +36,29 @@ Deno.serve(async (req: Request) => {
 
     const { data: lead, error: le } = await admin
       .from("leads")
-      .select("structured_fields, case_summary, lead_text, contact_email, contact_phone, contact_name, assigned_lawfirm_id")
+      .select("structured_fields, case_summary, lead_text")
       .eq("id", lead_id)
       .maybeSingle();
     if (le || !lead) return json({ error: "Lead not found" }, 404);
+
+    const { data: assignment } = await admin
+      .from("lead_assignments")
+      .select("lawfirm_id")
+      .eq("lead_id", lead_id)
+      .order("assigned_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const lawfirmId = assignment?.lawfirm_id ?? null;
 
     const fields = (lead.structured_fields as Record<string, unknown>) || {};
 
     let firmName = "[REVISAR: nombre del despacho]";
     let firmAddress = "[REVISAR: dirección del despacho]";
-    if (lead.assigned_lawfirm_id) {
+    if (lawfirmId) {
       const { data: firm } = await admin
         .from("lawfirms")
         .select("name, address")
-        .eq("id", lead.assigned_lawfirm_id)
+        .eq("id", lawfirmId)
         .maybeSingle();
       if (firm) {
         firmName = firm.name || firmName;
@@ -57,17 +66,21 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const clientName = (fields.nombre_completo as string) ||
+      [fields.nombre, fields.apellidos].filter(Boolean).join(" ").trim() ||
+      "[REVISAR: nombre del cliente]";
+
     const result = await callAI({
       prompt_key: "generate_legal_document",
       function_name: "generate-legal-document",
       lead_id,
       variables: {
         document_type,
-        client_name: lead.contact_name || (fields.nombre as string) || "[REVISAR: nombre del cliente]",
+        client_name: clientName,
         client_dni: (fields.dni as string) || "[REVISAR: DNI/NIE]",
         client_address: (fields.direccion as string) || "[REVISAR: dirección]",
-        client_phone: lead.contact_phone || "[REVISAR: teléfono]",
-        client_email: lead.contact_email || "[REVISAR: email]",
+        client_phone: (fields.telefono as string) || "[REVISAR: teléfono]",
+        client_email: (fields.email as string) || "[REVISAR: email]",
         area_legal: (fields.area_legal as string) || "no especificada",
         cuantia: (fields.cuantia as string) || "[REVISAR: cuantía]",
         firm_name: firmName,
@@ -77,10 +90,10 @@ Deno.serve(async (req: Request) => {
       },
     });
 
-    if (lead.assigned_lawfirm_id) {
+    if (lawfirmId) {
       await admin.from("case_timeline_events").insert({
         lead_id,
-        lawfirm_id: lead.assigned_lawfirm_id,
+        lawfirm_id: lawfirmId,
         event_type: "legal_document_generated",
         title: `Documento generado: ${document_type}`,
         description: "Borrador IA creado. Pendiente de revisión por el letrado.",

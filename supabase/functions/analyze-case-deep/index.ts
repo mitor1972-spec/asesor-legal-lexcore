@@ -34,10 +34,19 @@ Deno.serve(async (req: Request) => {
 
     const { data: lead, error: le } = await admin
       .from("leads")
-      .select("structured_fields, case_summary, lead_text, assigned_lawfirm_id")
+      .select("structured_fields, case_summary, lead_text")
       .eq("id", lead_id)
       .maybeSingle();
     if (le || !lead) return json({ error: "Lead not found" }, 404);
+
+    const { data: assignment } = await admin
+      .from("lead_assignments")
+      .select("lawfirm_id")
+      .eq("lead_id", lead_id)
+      .order("assigned_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const lawfirmId = assignment?.lawfirm_id ?? null;
 
     const { data: docs } = await admin
       .from("case_documents")
@@ -65,10 +74,10 @@ Deno.serve(async (req: Request) => {
     const updatedFields = { ...fields, deep_analysis: result.text, deep_analysis_at: new Date().toISOString() };
     await admin.from("leads").update({ structured_fields: updatedFields }).eq("id", lead_id);
 
-    if (lead.assigned_lawfirm_id) {
+    if (lawfirmId) {
       await admin.from("case_timeline_events").insert({
         lead_id,
-        lawfirm_id: lead.assigned_lawfirm_id,
+        lawfirm_id: lawfirmId,
         event_type: "ai_deep_analysis",
         title: "Análisis jurídico profundo generado",
         description: "Informe IA completo: viabilidad, riesgos, estrategia y próximos pasos.",
