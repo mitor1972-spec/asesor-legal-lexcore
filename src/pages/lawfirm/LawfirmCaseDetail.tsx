@@ -160,6 +160,17 @@ export default function LawfirmCaseDetail() {
             </Select>
           </div>
         </div>
+
+        {/* Operational status row */}
+        <div className="flex items-center gap-2 flex-wrap pt-1">
+          <span className="text-xs text-muted-foreground font-medium">Estado operativo:</span>
+          <OperationalStatusSelect
+            value={(caseData as any).operational_status}
+            onChange={(v) => id && updateOperational.mutate({ assignmentId: id, status: v })}
+            disabled={updateOperational.isPending}
+          />
+          <OperationalStatusBadge value={(caseData as any).operational_status} />
+        </div>
       </div>
 
       {/* Temperature & Scoring */}
