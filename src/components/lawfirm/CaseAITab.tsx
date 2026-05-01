@@ -355,6 +355,86 @@ Tono formal pero cercano. En español. Solo el cuerpo del email, sin asunto. Má
           )}
         </CardContent>
       </Card>
+      {/* Deep Legal Analysis */}
+      <Card className="shadow-soft border-primary/30">
+        <CardHeader className="py-2 px-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Scale className="h-4 w-4 text-primary" />
+            Análisis Jurídico Profundo
+          </CardTitle>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={handleDeepAnalyze} disabled={isDeepAnalyzing}>
+              {isDeepAnalyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+              {localDeepAnalysis ? 'Regenerar' : 'Generar análisis'}
+            </Button>
+            {localDeepAnalysis && (
+              <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(localDeepAnalysis); toast.success('Copiado'); }}>
+                <Copy className="h-3.5 w-3.5 mr-1.5" />Copiar
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="py-2 px-3">
+          {localDeepAnalysis ? (
+            <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap text-sm bg-muted/30 rounded-lg p-3 max-h-96 overflow-y-auto">
+              {localDeepAnalysis}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Informe profesional: viabilidad, riesgos, estrategia, plazos y próximos pasos.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Legal Document Generator */}
+      <Card className="shadow-soft">
+        <CardHeader className="py-2 px-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileSignature className="h-4 w-4 text-primary" />
+            Generador de Documentos Legales
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="py-2 px-3 space-y-3">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Label className="text-xs">Tipo de documento</Label>
+              <Select value={docType} onValueChange={setDocType}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LEGAL_DOC_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button size="sm" onClick={handleGenerateDoc} disabled={isGeneratingDoc}>
+                {isGeneratingDoc ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+                Generar borrador
+              </Button>
+            </div>
+          </div>
+
+          {generatedDoc && (
+            <div className="space-y-2">
+              <Textarea
+                value={generatedDoc}
+                onChange={e => setGeneratedDoc(e.target.value)}
+                rows={14}
+                className="text-sm font-mono"
+              />
+              <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(generatedDoc); toast.success('Copiado'); }}>
+                  <Copy className="h-3.5 w-3.5 mr-1.5" />Copiar
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleDownloadDoc}>
+                  <Download className="h-3.5 w-3.5 mr-1.5" />Descargar .txt
+                </Button>
+                <p className="text-xs text-muted-foreground self-center">Borrador IA. Revisión obligatoria por el letrado.</p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
