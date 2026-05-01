@@ -160,7 +160,7 @@ export default function PaymentSuccess() {
             <p className="text-muted-foreground mt-2">
               {isAssigned
                 ? 'Tu lead ha sido asignado correctamente y ya está disponible en tus casos.'
-                : 'Hemos recibido tu pago. Estamos activando el caso, puede tardar un par de minutos en aparecer en "Mis Casos".'}
+                : 'Pago recibido. El caso puede tardar unos minutos en aparecer en "Mis Casos".'}
             </p>
           </div>
 
@@ -190,6 +190,20 @@ export default function PaymentSuccess() {
           </div>
 
           <div className="flex gap-3 justify-center pt-2 flex-wrap">
+            {!isAssigned && (
+              <Button
+                variant="secondary"
+                onClick={handleRetry}
+                disabled={retrying}
+              >
+                {retrying ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Reintentar comprobación
+              </Button>
+            )}
             <Link to="/despacho/casos">
               <Button>Ver mis casos</Button>
             </Link>
