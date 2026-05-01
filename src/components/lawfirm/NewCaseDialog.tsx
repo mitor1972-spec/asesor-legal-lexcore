@@ -171,6 +171,8 @@ export function NewCaseDialog({ open, onOpenChange }: NewCaseDialogProps) {
         success_percentage: economics.porcentaje_exito ? parseFloat(economics.porcentaje_exito) : null,
         claimed_amount: economics.cuantia_exito ? parseFloat(economics.cuantia_exito) : null,
         firm_notes: [notes.cronologia, notes.estrategia, notes.observaciones].filter(Boolean).join('\n\n---\n\n') || null,
+        branch_id: assignment.branch_id !== '__none__' ? assignment.branch_id : null,
+        assigned_lawyer_id: assignment.lawyer_id !== '__none__' ? assignment.lawyer_id : null,
       };
 
       const { error: assignError } = await supabase
