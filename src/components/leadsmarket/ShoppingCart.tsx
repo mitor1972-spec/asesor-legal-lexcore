@@ -62,8 +62,13 @@ export function ShoppingCart({
   const selectedItems = items.filter(i => selectedIds.has(i.id));
   const subtotal = selectedItems.reduce((sum, i) => sum + (i.isCommission ? 0 : i.price), 0);
   const commissionCount = selectedItems.filter(i => i.isCommission).length;
-  // Only relevant when the firm actually has a credit line
-  const canAffordWithCredit = hasCreditLine && balance >= subtotal;
+  const paidItemsCount = selectedItems.length - commissionCount;
+  // Pago con saldo: cualquier despacho con saldo suficiente puede usarlo (no requiere credit line)
+  const canPayWithBalance = balance >= subtotal && subtotal > 0;
+  // Línea de crédito: solo si está aprobada y NO tiene saldo suficiente
+  const canUseCreditLine = hasCreditLine && !canPayWithBalance && subtotal > 0;
+  // Tarjeta: solo 1 lead de pago (Stripe checkout no soporta múltiple real)
+  const cardBlockedByMultiple = paidItemsCount > 1;
   const newBalance = balance - subtotal;
 
   const getScoreColor = (score: number) => {
