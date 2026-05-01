@@ -157,7 +157,15 @@ export default function Users() {
                   const RoleIcon = roleInfo?.icon || Shield;
                   
                   return (
-                    <TableRow key={user.id}>
+                    <TableRow
+                      key={user.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={(e) => {
+                        // No interceptar si pulsan en el Select o el Switch
+                        if ((e.target as HTMLElement).closest('button, [role="combobox"], [role="switch"]')) return;
+                        toast.info(`${user.full_name || user.email} — usa el selector de rol o el switch para editar`);
+                      }}
+                    >
                       <TableCell>
                         <div>
                           <p className="font-medium">{user.full_name || 'Sin nombre'}</p>

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -45,29 +45,31 @@ interface AdminCRMKPIsProps {
 
 export function AdminCRMKPIs({ data, isLoading }: AdminCRMKPIsProps) {
   const cards = [
-    { title: 'Despachos Registrados', value: data.totalLawfirms, icon: Building2, color: 'text-primary', bg: 'bg-primary/10' },
-    { title: 'Nuevos (periodo)', value: data.newLawfirms, icon: UserPlus, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
-    { title: 'Onboarding Pendiente', value: data.pendingOnboarding, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-500/10' },
-    { title: 'Solicitudes Crédito', value: data.creditRequests, icon: CreditCard, color: 'text-blue-600', bg: 'bg-blue-500/10' },
-    { title: 'Interés Publicidad', value: data.adInterests, icon: Megaphone, color: 'text-purple-600', bg: 'bg-purple-500/10' },
+    { title: 'Despachos Registrados', value: data.totalLawfirms, icon: Building2, color: 'text-primary', bg: 'bg-primary/10', link: '/settings/lawfirms' },
+    { title: 'Nuevos (periodo)', value: data.newLawfirms, icon: UserPlus, color: 'text-emerald-600', bg: 'bg-emerald-500/10', link: '/settings/lawfirms?filter=nuevos' },
+    { title: 'Onboarding Pendiente', value: data.pendingOnboarding, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-500/10', link: '/settings/lawfirms?filter=onboarding' },
+    { title: 'Solicitudes Crédito', value: data.creditRequests, icon: CreditCard, color: 'text-blue-600', bg: 'bg-blue-500/10', link: '/settings/lawfirm-applications?filter=credito' },
+    { title: 'Interés Publicidad', value: data.adInterests, icon: Megaphone, color: 'text-purple-600', bg: 'bg-purple-500/10', link: '/settings/lawfirm-applications?filter=publicidad' },
   ];
 
   return (
     <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
       {cards.map(c => (
-        <Card key={c.title} className="shadow-soft hover:shadow-medium transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">{c.title}</CardTitle>
-            <div className={`p-2 rounded-lg ${c.bg}`}>
-              <c.icon className={`h-4 w-4 ${c.color}`} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-display font-bold">
-              {isLoading ? '...' : c.value}
-            </div>
-          </CardContent>
-        </Card>
+        <Link key={c.title} to={c.link} className="block">
+          <Card className="shadow-soft hover:shadow-medium transition-all cursor-pointer hover:scale-[1.02] hover:border-primary/50">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-medium text-muted-foreground">{c.title}</CardTitle>
+              <div className={`p-2 rounded-lg ${c.bg}`}>
+                <c.icon className={`h-4 w-4 ${c.color}`} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-display font-bold">
+                {isLoading ? '...' : c.value}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       ))}
     </div>
   );
@@ -88,6 +90,14 @@ export function AdminAlertsFeed({ alerts }: { alerts: LawfirmAlert[] }) {
     credit_request: 'Solicitud crédito',
     ad_interest: 'Interés publicidad',
     profile_incomplete: 'Perfil incompleto',
+  };
+
+  // Cada tipo de alerta lleva a una sección distinta
+  const linkFor = (alert: LawfirmAlert): string => {
+    if (alert.type === 'new_registration' || alert.type === 'profile_incomplete') {
+      return `/settings/lawfirms?highlight=${alert.id}`;
+    }
+    return `/settings/lawfirm-applications?highlight=${alert.id}`;
   };
 
   if (alerts.length === 0) {
@@ -122,7 +132,11 @@ export function AdminAlertsFeed({ alerts }: { alerts: LawfirmAlert[] }) {
         {alerts.map((a, i) => {
           const cfg = iconMap[a.type];
           return (
-            <div key={i} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+            <Link
+              key={i}
+              to={linkFor(a)}
+              className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+            >
               <div className={`p-1.5 rounded-md ${cfg.bg} mt-0.5`}>
                 <cfg.icon className={`h-3.5 w-3.5 ${cfg.color}`} />
               </div>
@@ -136,7 +150,7 @@ export function AdminAlertsFeed({ alerts }: { alerts: LawfirmAlert[] }) {
               <span className="text-[10px] text-muted-foreground shrink-0">
                 {format(new Date(a.date), 'dd/MM', { locale: es })}
               </span>
-            </div>
+            </Link>
           );
         })}
       </CardContent>
@@ -147,6 +161,7 @@ export function AdminAlertsFeed({ alerts }: { alerts: LawfirmAlert[] }) {
 // ─── Recent Lawfirms Table ─────────────────────────────────
 
 export function RecentLawfirmsTable({ lawfirms }: { lawfirms: AdminCRMData['recentLawfirms'] }) {
+  const navigate = useNavigate();
   return (
     <Card className="shadow-soft">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -181,7 +196,11 @@ export function RecentLawfirmsTable({ lawfirms }: { lawfirms: AdminCRMData['rece
               </TableRow>
             ) : (
               lawfirms.map(lf => (
-                <TableRow key={lf.id} className="cursor-pointer hover:bg-muted/50">
+                <TableRow
+                  key={lf.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate(`/settings/lawfirms?highlight=${lf.id}`)}
+                >
                   <TableCell className="text-xs">
                     {format(new Date(lf.createdAt), 'dd/MM/yy', { locale: es })}
                   </TableCell>

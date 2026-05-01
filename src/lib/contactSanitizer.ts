@@ -86,6 +86,16 @@ export function redactContactFromText(text: string | null | undefined, fields?: 
   // Bare placeholder lines (just "[nombre oculto]" alone)
   redacted = redacted.replace(/^\s*\[(?:nombre|apellidos?|tel[eé]fono|email)\s+oculto\]\s*$/gim, '');
 
+  // --- Markdown cleanup: eliminar formato roto típico del prompt ---
+  // Líneas decorativas con guiones bajos/guiones repetidos: ____ , ---- , ====
+  redacted = redacted.replace(/^[\s_\-=*]{3,}$/gm, '');
+  // Inline: secuencias de 3+ guiones bajos en cualquier posición
+  redacted = redacted.replace(/_{3,}/g, '');
+  // **Resumen** redundante (es ya el título de la card)
+  redacted = redacted.replace(/\*\*\s*resumen\s*(?:[–\-—:][^*\n]*)?\*\*\s*/gi, '');
+  // Encabezado tipo "Resumen – Cliente y Tema" si va al inicio
+  redacted = redacted.replace(/^\s*resumen\s+[–\-—][^\n]*\n/i, '');
+
   // Collapse 3+ newlines to 2, trim leading/trailing whitespace
   redacted = redacted.replace(/\n{3,}/g, '\n\n').trim();
   
